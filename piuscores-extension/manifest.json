@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "PIU Scores Scraper",
+  "version": "0.1.0",
+  "description": "Extracts rival comparison scores from piuscores.arroweclip.se and logs them to the console.",
+  "content_scripts": [
+    {
+      "matches": ["https://piuscores.arroweclip.se/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
