@@ -117,7 +117,7 @@
   const TOAST_MS = 5000;
   let uiHost = null;
 
-  // Creates (or re-attaches) the shadow host holding the toast stack and the export button.
+  // Creates (or re-attaches) the shadow host holding the toast stack, the buttons and the scores window.
   function getUi() {
     if (uiHost) {
       if (!uiHost.isConnected) document.body.appendChild(uiHost);
@@ -127,11 +127,54 @@
     const shadow = uiHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
       <style>
-        .export { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647;
-                  background: #14201A; color: #4FE33F; border: 1px solid #4FE33F; border-radius: 6px;
-                  padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
-                  box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-        .export:hover { background: #1C2B22; }
+        .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; gap: 8px; }
+        .btn { background: #14201A; color: #4FE33F; border: 1px solid #4FE33F; border-radius: 6px;
+               padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
+               box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+        .btn:hover { background: #1C2B22; }
+
+        .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
+                   display: flex; align-items: center; justify-content: center;
+                   font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
+        .overlay[hidden] { display: none; }
+        .dialog { background: #14201A; border: 1px solid #2B4034; border-radius: 8px;
+                  min-width: min(900px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100vh - 64px);
+                  display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+        .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+                    border-bottom: 1px solid #2B4034; }
+        .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; flex: 1; }
+        .dlg-count { color: #9AB3A3; }
+        .dlg-close { background: none; border: none; color: #9AB3A3; font-size: 30px; line-height: 1;
+                     cursor: pointer; padding: 0 4px; }
+        .dlg-close:hover { color: #EAF5EC; }
+        .filters { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 999px;
+                padding: 3px 10px; font: inherit; cursor: pointer; }
+        .chip:hover { color: #EAF5EC; }
+        .chip.on { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; font-weight: 600;
+                   box-shadow: 0 0 0 1px #4FE33F inset; }
+        .chip { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; border-radius: 10px; }
+        .chip-stats { font-size: .6em; font-weight: 400; color: #8A9590; }
+        .chip-stats .blue { color: #3FA9F5; }
+        .chip-stats .zero { opacity: .2; }
+        .dlg-body { overflow: auto; padding: 0 16px 12px; }
+        table { border-collapse: collapse; }
+        .track { width: 420px; min-width: 420px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mine { color: #FFC433; font-weight: 600; }
+        .won { opacity: .4; }
+        th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
+             text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
+        td { padding: 4px 6px; vertical-align: top; }
+        tr.alt { background: rgba(255,255,255,.05); }
+        tr.tier-gap td { height: 40px; padding: 0; }
+        tbody tr.tier-gap + tr.group td { border-top: 3px solid #4FE33F33; }
+        tr.group td { border-top: 1px solid #2B4034; padding-top: 14px; }
+        tbody tr.group:not(:first-child) td { border-top-width: 2px; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .muted { color: #9AB3A3; }
+        .empty { padding: 24px; text-align: center; color: #9AB3A3; }
+
         .stack { position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
                  display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px));
                  font: 13px/1.4 Roboto, Arial, sans-serif; }
@@ -150,9 +193,31 @@
         @keyframes in { from { opacity: 0; transform: translateY(8px); } }
       </style>
       <div class="stack"></div>
-      <button class="export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>`;
+      <div class="buttons">
+        <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
+        <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
+      </div>
+      <div class="overlay" hidden>
+        <div class="dialog" role="dialog" aria-label="Rival scores">
+          <div class="dlg-head"><h2>Rival scores</h2><span class="dlg-count"></span>
+            <button class="dlg-close" type="button" aria-label="Close">×</button></div>
+          <div class="filters"></div>
+          <div class="dlg-body"></div>
+        </div>
+      </div>`;
     shadow.querySelector('.export').addEventListener('click', () => {
       exportTargets().catch((e) => console.error(TAG, e));
+    });
+    shadow.querySelector('.show-scores').addEventListener('click', () => openScores(shadow));
+    shadow.querySelector('.dlg-close').addEventListener('click', () => closeScores(shadow));
+    shadow.querySelector('.overlay').addEventListener('click', (ev) => {
+      if (ev.target.classList.contains('overlay')) closeScores(shadow); // click on the backdrop
+    });
+    shadow.querySelector('.filters').addEventListener('click', (ev) => {
+      const chip = ev.target.closest('.chip');
+      if (!chip) return;
+      selectedLevel = chip.dataset.level || null; // "All" has an empty level
+      renderScores(shadow).catch((e) => console.error(TAG, e));
     });
     document.body.appendChild(uiHost);
     return shadow;
@@ -203,6 +268,14 @@
 
   // ---- Export: every stored chart where a rival is ahead of you, or you have no score ----
 
+  // Sort weight: sum of sqrt(|difference|) over rivals ahead of me, so many small deficits can
+  // outrank one big one. Rivals I beat, and charts where I have no score, contribute 0.
+  const targetWeight = (diffs) => diffs.reduce((acc, d) => acc + (d !== null && d < 0 ? Math.sqrt(-d) : 0), 0);
+  // Heaviest first. At weight 0, charts I haven't played (but rivals have) go before charts
+  // where I'm best among rivals. Then by track name.
+  const byTargetWeight = (a, b) =>
+    b.weight - a.weight || Number(b.unplayed) - Number(a.unplayed) || a.track.localeCompare(b.track);
+
   async function exportTargets() {
     const all = await chrome.storage.local.get(null);
     const charts = [];
@@ -216,14 +289,15 @@
         .map(([rival, score]) => ({ rival, score, difference: delta(mine, score) }))
         .filter((r) => r.difference === null || r.difference < 0)
         .sort((a, b) => b.score - a.score);
-      // Sort weight: sum of sqrt(|difference|), so many small deficits can outrank one big one.
-      // Charts where I have no score contribute 0.
-      const weight = entries.reduce((acc, r) => acc + Math.sqrt(Math.abs(r.difference ?? 0)), 0);
-      if (entries.length) charts.push({ track, chart, entries, weight });
+      if (entries.length) {
+        charts.push({
+          track, chart, entries, unplayed: mine === null || mine === undefined,
+          weight: targetWeight(entries.map((r) => r.difference)),
+        });
+      }
     }
 
-    // Heaviest first; ties (e.g. no-score-only charts at 0) by track name
-    charts.sort((a, b) => b.weight - a.weight || a.track.localeCompare(b.track));
+    charts.sort(byTargetWeight);
 
     const lines = [`PIU Scores targets — ${new Date().toLocaleString()}`, `${charts.length} chart(s)`, ''];
     for (const { track, chart, entries } of charts) {
@@ -246,6 +320,137 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
+
+  // ---- Rival scores window, filterable by chart level ----
+
+  let selectedLevel = null; // null = all levels
+
+  // "S16" -> type "S", number 16. Anything unparsable is its own type.
+  const levelType = (l) => (l.match(/^[A-Za-z]+/) || [l])[0];
+  const levelNum = (l) => parseInt((l.match(/\d+/) || ['0'])[0], 10);
+
+  // "S16" < "S17" < "D16" < ...: singles, doubles, then anything else; numeric within a type
+  const TYPE_ORDER = { S: 0, D: 1 };
+  function compareLevels(a, b) {
+    const ta = levelType(a), tb = levelType(b);
+    return (TYPE_ORDER[ta] ?? 9) - (TYPE_ORDER[tb] ?? 9) || ta.localeCompare(tb) || levelNum(a) - levelNum(b);
+  }
+
+  async function loadCharts() {
+    const all = await chrome.storage.local.get(null);
+    const charts = [];
+    for (const [key, raw] of Object.entries(all)) {
+      if (!key.startsWith('chart:')) continue;
+      const [track, chart] = key.slice('chart:'.length).split(/\|(?=[^|]*$)/);
+      const { mine, rivals } = normalize(raw);
+      const list = Object.entries(rivals)
+        .map(([player, score]) => ({ player, score, delta: delta(mine, score) }))
+        .sort((a, b) => b.score - a.score);
+      if (list.length) {
+        charts.push({
+          track, chart, mine: mine ?? null, rivals: list, unplayed: mine === null || mine === undefined,
+          weight: targetWeight(list.map((r) => r.delta)),
+        });
+      }
+    }
+    return charts;
+  }
+
+  async function renderScores(shadow) {
+    const charts = await loadCharts();
+    const levels = [...new Set(charts.map((c) => c.chart))].sort(compareLevels);
+    if (selectedLevel !== null && !levels.includes(selectedLevel)) selectedLevel = null;
+
+    // Radio-style: exactly one of "All" or a single level is active.
+    // One line per chart type (singles, doubles, ...); "All" leads the first line.
+    // Per level, count rival results: I lose (red), I win (green), I haven't played (grey). Ties count as neither.
+    const stats = {};
+    const statsFor = (key) => (stats[key] ||= { lose: 0, win: 0, unplayed: 0 });
+    for (const c of charts) {
+      for (const r of c.rivals) {
+        const kind = r.delta === null ? 'unplayed' : r.delta < 0 ? 'lose' : r.delta > 0 ? 'win' : null;
+        if (!kind) continue;
+        statsFor(c.chart)[kind]++;
+        statsFor('')[kind]++; // "All"
+      }
+    }
+
+    const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
+    const chip = (label, level) => {
+      const on = (level || null) === selectedLevel;
+      const s = statsFor(level);
+      return `<button class="chip${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}"><span>${esc(label)}</span>`
+        + `<span class="chip-stats" title="lose / not played / win">${stat('neg', s.lose)} / ${stat('blue', s.unplayed)} / ${stat('pos', s.win)}</span></button>`;
+    };
+    const types = [...new Set(levels.map(levelType))];
+    shadow.querySelector('.filters').innerHTML = types.map((t, i) =>
+      `<div class="filter-row" role="radiogroup">${i === 0 ? chip('All', '') : ''}${
+        levels.filter((l) => levelType(l) === t).map((l) => chip(l, l)).join('')}</div>`).join('')
+      || `<div class="filter-row">${chip('All', '')}</div>`;
+
+    const visible = charts
+      .filter((c) => selectedLevel === null || c.chart === selectedLevel)
+      .sort(byTargetWeight);
+    shadow.querySelector('.dlg-count').textContent = `${visible.length} chart(s)`;
+
+    const body = shadow.querySelector('.dlg-body');
+    if (visible.length === 0) {
+      body.innerHTML = '<div class="empty">No saved rival scores yet — open a rival\'s page to collect them.</div>';
+      return;
+    }
+
+    // Sort order makes three blocks: rivals ahead of me, not played by me, I'm best. A gap row separates them.
+    const tier = (c) => (c.weight > 0 ? 0 : c.unplayed ? 1 : 2);
+    const rows = visible.flatMap((c, ci) => {
+      const gap = ci > 0 && tier(c) !== tier(visible[ci - 1]) ? ['<tr class="tier-gap"><td colspan="5"></td></tr>'] : [];
+      return [...gap, ...chartRows(c)];
+    });
+
+    function chartRows(c) {
+      // My score sits among the rivals' in score order (ahead of rivals on a tie), in yellow
+      const list = [...c.rivals];
+      if (c.mine !== null) list.push({ player: 'You', score: c.mine, me: true });
+      list.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+
+      return list.map((r, i) => {
+        const head = i === 0
+          ? `<td class="track" rowspan="${list.length}" title="${esc(c.track)}">${esc(c.track)}</td>
+             <td rowspan="${list.length}"><b>${esc(c.chart)}</b></td>`
+          : '';
+        // Zebra stripes per player within a chart. Odd rows only, so the track/chart cells
+        // (which span from the plain first row) stay unstriped.
+        const tr = i === 0 ? '<tr class="group">' : i % 2 ? '<tr class="alt">' : '<tr>';
+        if (r.me) {
+          return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt(r.score)}</td><td></td></tr>`;
+        }
+        const won = r.delta !== null && r.delta > 0 ? ' won' : ''; // rivals I beat are dimmed
+        return `${tr}${head}<td class="${won}">${esc(r.player)}</td><td class="num${won}">${fmt(r.score)}</td><td class="num${won}">${fmtDelta(r.delta)}</td></tr>`;
+      });
+    }
+    body.innerHTML = `<table>
+      <thead><tr><th class="track">Track</th><th>Chart</th><th>Player</th><th class="num">Score</th><th class="num">Diff</th></tr></thead>
+      <tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  const isScoresOpen = () => uiHost && !uiHost.shadowRoot.querySelector('.overlay').hidden;
+
+  function openScores(shadow) {
+    shadow.querySelector('.overlay').hidden = false;
+    renderScores(shadow).catch((e) => console.error(TAG, e));
+  }
+
+  function closeScores(shadow) {
+    shadow.querySelector('.overlay').hidden = true;
+  }
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && isScoresOpen()) closeScores(uiHost.shadowRoot);
+  });
+
+  // Keep the window current while it's open (e.g. a scan just saved new scores)
+  chrome.storage.onChanged.addListener((_, area) => {
+    if (area === 'local' && isScoresOpen()) renderScores(uiHost.shadowRoot).catch((e) => console.error(TAG, e));
+  });
 
   // Chain runs so two scrapes never read/write storage at the same time.
   let pending = Promise.resolve();
