@@ -138,7 +138,7 @@
                    font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
         .overlay[hidden] { display: none; }
         .dialog { background: #14201A; border: 1px solid #2B4034; border-radius: 8px;
-                  min-width: min(900px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100vh - 64px);
+                  width: min(1200px, calc(100vw - 32px)); height: min(900px, calc(100vh - 64px));
                   display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
         .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
                     border-bottom: 1px solid #2B4034; }
@@ -147,8 +147,12 @@
         .dlg-close { background: none; border: none; color: #9AB3A3; font-size: 30px; line-height: 1;
                      cursor: pointer; padding: 0 4px; }
         .dlg-close:hover { color: #EAF5EC; }
-        .filters { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
-        .filter-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .dlg-main { display: flex; flex: 1; min-height: 0; }
+        /* Level buttons in a left sidebar: one column per chart type (singles, doubles, ...) */
+        .filters { display: flex; gap: 6px; padding: 10px; border-right: 1px solid #2B4034;
+                   overflow-y: auto; flex-shrink: 0; align-items: flex-start; }
+        .filter-row { display: flex; flex-direction: column; gap: 6px; }
+        .filter-row .chip { width: 100%; }
         .chip { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 999px;
                 padding: 3px 10px; font: inherit; cursor: pointer; }
         .chip:hover { color: #EAF5EC; }
@@ -158,7 +162,7 @@
         .chip-stats { font-size: .6em; font-weight: 400; color: #8A9590; }
         .chip-stats .blue { color: #3FA9F5; }
         .chip-stats .zero { opacity: .2; }
-        .dlg-body { overflow: auto; padding: 0 16px 12px; }
+        .dlg-body { overflow: auto; padding: 0 16px 12px; flex: 1; }
         table { border-collapse: collapse; }
         .track { width: 420px; min-width: 420px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mine { color: #FFC433; font-weight: 600; }
@@ -201,8 +205,10 @@
         <div class="dialog" role="dialog" aria-label="Rival scores">
           <div class="dlg-head"><h2>Rival scores</h2><span class="dlg-count"></span>
             <button class="dlg-close" type="button" aria-label="Close">×</button></div>
-          <div class="filters"></div>
-          <div class="dlg-body"></div>
+          <div class="dlg-main">
+            <div class="filters"></div>
+            <div class="dlg-body"></div>
+          </div>
         </div>
       </div>`;
     shadow.querySelector('.export').addEventListener('click', () => {
@@ -210,13 +216,10 @@
     });
     shadow.querySelector('.show-scores').addEventListener('click', () => openScores(shadow));
     shadow.querySelector('.dlg-close').addEventListener('click', () => closeScores(shadow));
-    shadow.querySelector('.overlay').addEventListener('click', (ev) => {
-      if (ev.target.classList.contains('overlay')) closeScores(shadow); // click on the backdrop
-    });
     shadow.querySelector('.filters').addEventListener('click', (ev) => {
       const chip = ev.target.closest('.chip');
       if (!chip) return;
-      selectedLevel = chip.dataset.level || null; // "All" has an empty level
+      selectedLevel = chip.dataset.level;
       renderScores(shadow).catch((e) => console.error(TAG, e));
     });
     document.body.appendChild(uiHost);
@@ -323,7 +326,7 @@
 
   // ---- Rival scores window, filterable by chart level ----
 
-  let selectedLevel = null; // null = all levels
+  let selectedLevel = null; // set to the first level on first render
 
   // "S16" -> type "S", number 16. Anything unparsable is its own type.
   const levelType = (l) => (l.match(/^[A-Za-z]+/) || [l])[0];
@@ -335,6 +338,9 @@
     const ta = levelType(a), tb = levelType(b);
     return (TYPE_ORDER[ta] ?? 9) - (TYPE_ORDER[tb] ?? 9) || ta.localeCompare(tb) || levelNum(a) - levelNum(b);
   }
+
+  // Sort order makes three blocks: 0 = some rival ahead of me, 1 = not played by me, 2 = I'm best
+  const chartTier = (c) => (c.weight > 0 ? 0 : c.unplayed ? 1 : 2);
 
   async function loadCharts() {
     const all = await chrome.storage.local.get(null);
@@ -359,37 +365,30 @@
   async function renderScores(shadow) {
     const charts = await loadCharts();
     const levels = [...new Set(charts.map((c) => c.chart))].sort(compareLevels);
-    if (selectedLevel !== null && !levels.includes(selectedLevel)) selectedLevel = null;
+    // Radio-style: exactly one level is always active; defaults to the first one
+    if (!levels.includes(selectedLevel)) selectedLevel = levels[0] ?? null;
 
-    // Radio-style: exactly one of "All" or a single level is active.
-    // One line per chart type (singles, doubles, ...); "All" leads the first line.
-    // Per level, count rival results: I lose (red), I win (green), I haven't played (grey). Ties count as neither.
+    // One column per chart type (singles, doubles, ...)
+    // Per level, count charts in each block: some rival ahead of me (red), not played by me (blue),
+    // I'm best (green) — the same split as the gaps in the table
     const stats = {};
     const statsFor = (key) => (stats[key] ||= { lose: 0, win: 0, unplayed: 0 });
-    for (const c of charts) {
-      for (const r of c.rivals) {
-        const kind = r.delta === null ? 'unplayed' : r.delta < 0 ? 'lose' : r.delta > 0 ? 'win' : null;
-        if (!kind) continue;
-        statsFor(c.chart)[kind]++;
-        statsFor('')[kind]++; // "All"
-      }
-    }
+    for (const c of charts) statsFor(c.chart)[['lose', 'unplayed', 'win'][chartTier(c)]]++;
 
     const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
     const chip = (label, level) => {
-      const on = (level || null) === selectedLevel;
+      const on = level === selectedLevel;
       const s = statsFor(level);
       return `<button class="chip${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}"><span>${esc(label)}</span>`
-        + `<span class="chip-stats" title="lose / not played / win">${stat('neg', s.lose)} / ${stat('blue', s.unplayed)} / ${stat('pos', s.win)}</span></button>`;
+        + `<span class="chip-stats" title="charts: losing / not played / best">${stat('neg', s.lose)} / ${stat('blue', s.unplayed)} / ${stat('pos', s.win)}</span></button>`;
     };
     const types = [...new Set(levels.map(levelType))];
-    shadow.querySelector('.filters').innerHTML = types.map((t, i) =>
-      `<div class="filter-row" role="radiogroup">${i === 0 ? chip('All', '') : ''}${
-        levels.filter((l) => levelType(l) === t).map((l) => chip(l, l)).join('')}</div>`).join('')
-      || `<div class="filter-row">${chip('All', '')}</div>`;
+    shadow.querySelector('.filters').innerHTML = types.map((t) =>
+      `<div class="filter-row" role="radiogroup">${
+        levels.filter((l) => levelType(l) === t).map((l) => chip(l, l)).join('')}</div>`).join('');
 
     const visible = charts
-      .filter((c) => selectedLevel === null || c.chart === selectedLevel)
+      .filter((c) => c.chart === selectedLevel)
       .sort(byTargetWeight);
     shadow.querySelector('.dlg-count').textContent = `${visible.length} chart(s)`;
 
@@ -399,10 +398,9 @@
       return;
     }
 
-    // Sort order makes three blocks: rivals ahead of me, not played by me, I'm best. A gap row separates them.
-    const tier = (c) => (c.weight > 0 ? 0 : c.unplayed ? 1 : 2);
+    // A gap row separates the blocks (see chartTier)
     const rows = visible.flatMap((c, ci) => {
-      const gap = ci > 0 && tier(c) !== tier(visible[ci - 1]) ? ['<tr class="tier-gap"><td colspan="5"></td></tr>'] : [];
+      const gap = ci > 0 && chartTier(c) !== chartTier(visible[ci - 1]) ? ['<tr class="tier-gap"><td colspan="5"></td></tr>'] : [];
       return [...gap, ...chartRows(c)];
     });
 
@@ -442,10 +440,6 @@
   function closeScores(shadow) {
     shadow.querySelector('.overlay').hidden = true;
   }
-
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && isScoresOpen()) closeScores(uiHost.shadowRoot);
-  });
 
   // Keep the window current while it's open (e.g. a scan just saved new scores)
   chrome.storage.onChanged.addListener((_, area) => {
