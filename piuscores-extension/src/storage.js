@@ -16,6 +16,13 @@ export const targetWeight = (diffs) =>
 export const byTargetWeight = (a, b) =>
   b.weight - a.weight || Number(b.unplayed) - Number(a.unplayed) || a.track.localeCompare(b.track);
 
+export const leadWeight = (chart) =>
+  chart.rivals.reduce((acc, rival) =>
+    acc + (rival.delta !== null && rival.delta > 0 ? Math.sqrt(rival.delta) : 0), 0);
+
+export const byLeadWeight = (a, b) =>
+  leadWeight(b) - leadWeight(a) || a.track.localeCompare(b.track);
+
 export async function loadCharts() {
   const all = await chrome.storage.local.get(null);
   const charts = [];

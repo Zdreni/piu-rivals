@@ -99,6 +99,8 @@ chrome.storage.onChanged.addListener((_, area) => {
   if (area === 'local' && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
 });
 
+ui.initialize();
+
 let pending = Promise.resolve();
 const schedule = () => {
   ui.ensure();

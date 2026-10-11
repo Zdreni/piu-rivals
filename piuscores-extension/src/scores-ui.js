@@ -1,4 +1,4 @@
-import { byTargetWeight, loadCharts } from './storage.js';
+import { byLeadWeight, byTargetWeight, loadCharts } from './storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
 const fmtDelta = (n) => {
@@ -20,7 +20,30 @@ function compareLevels(a, b) {
     || levelNum(a) - levelNum(b);
 }
 
-const chartTier = (chart) => (chart.weight > 0 ? 0 : chart.unplayed ? 1 : 2);
+const chartTier = (chart) => (chart.weight > 0 ? 'rivals-win' : chart.unplayed ? 'not-played' : 'you-win');
+const TABS = [
+  { id: 'rivals-win', label: 'Rivals win' },
+  { id: 'not-played', label: 'Not played' },
+  { id: 'you-win', label: 'You win' },
+];
+const UI_STATE_KEY = 'piuscores.rivalScores.uiState';
+
+function readUiState() {
+  try {
+    const raw = sessionStorage.getItem(UI_STATE_KEY);
+    if (!raw) return { isOpen: false, selectedLevel: null, selectedTab: 'rivals-win' };
+
+    const saved = JSON.parse(raw);
+    return {
+      isOpen: saved.isOpen === true,
+      selectedLevel: typeof saved.selectedLevel === 'string' ? saved.selectedLevel : null,
+      selectedTab: TABS.some(({ id }) => id === saved.selectedTab) ? saved.selectedTab : 'rivals-win',
+    };
+  } catch (error) {
+    console.error('[piuscores] Unable to restore rival scores window state', error);
+    return { isOpen: false, selectedLevel: null, selectedTab: 'rivals-win' };
+  }
+}
 
 const styles = `
   .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; gap: 8px; }
@@ -43,6 +66,7 @@ const styles = `
                cursor: pointer; padding: 0 4px; }
   .dlg-close:hover { color: #EAF5EC; }
   .dlg-main { display: flex; flex: 1; min-height: 0; }
+  .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
   .filters { display: flex; gap: 6px; padding: 10px; border-right: 1px solid #2B4034;
              overflow-y: auto; flex-shrink: 0; align-items: flex-start; }
   .filter-row { display: flex; flex-direction: column; gap: 6px; }
@@ -56,6 +80,15 @@ const styles = `
   .chip-stats { font-size: .6em; font-weight: 400; color: #8A9590; }
   .chip-stats .blue { color: #3FA9F5; }
   .chip-stats .zero { opacity: .2; }
+  .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
+  .tab { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 6px;
+         padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
+  .tab:hover { color: #EAF5EC; }
+  .tab[aria-selected="true"] { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; }
+  .tab-count { margin-left: 6px; }
+  .tab-count.rivals-win { color: #FF5A5A; }
+  .tab-count.not-played { color: #3FA9F5; }
+  .tab-count.you-win { color: #4FE33F; }
   .dlg-body { overflow: auto; padding: 0 16px 12px; flex: 1; }
   table { border-collapse: collapse; }
   .track { width: 420px; min-width: 420px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -65,8 +98,6 @@ const styles = `
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; }
   tr.alt { background: rgba(255,255,255,.05); }
-  tr.tier-gap td { height: 40px; padding: 0; }
-  tbody tr.tier-gap + tr.group td { border-top: 3px solid #4FE33F33; }
   tr.group td { border-top: 1px solid #2B4034; padding-top: 14px; }
   tbody tr.group:not(:first-child) td { border-top-width: 2px; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -92,7 +123,18 @@ const styles = `
 
 export function createScoresUI(exportTargets) {
   let uiHost = null;
-  let selectedLevel = null;
+  const savedState = readUiState();
+  let isWindowOpen = savedState.isOpen;
+  let selectedLevel = savedState.selectedLevel;
+  let selectedTab = savedState.selectedTab;
+
+  function saveUiState() {
+    try {
+      sessionStorage.setItem(UI_STATE_KEY, JSON.stringify({ isOpen: isWindowOpen, selectedLevel, selectedTab }));
+    } catch (error) {
+      console.error('[piuscores] Unable to save rival scores window state', error);
+    }
+  }
 
   function ensure() {
     if (uiHost) {
@@ -109,11 +151,17 @@ export function createScoresUI(exportTargets) {
         <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
       </div>
-      <div class="overlay" hidden>
+      <div class="overlay" ${isWindowOpen ? '' : 'hidden'}>
         <div class="dialog" role="dialog" aria-label="Rival scores">
           <div class="dlg-head"><h2>Rival scores</h2><span class="dlg-count"></span>
             <button class="dlg-close" type="button" aria-label="Close">×</button></div>
-          <div class="dlg-main"><div class="filters"></div><div class="dlg-body"></div></div>
+          <div class="dlg-main">
+            <div class="filters"></div>
+            <div class="score-content">
+              <div class="tabs" role="tablist" aria-label="Score results"></div>
+              <div class="dlg-body" role="tabpanel"></div>
+            </div>
+          </div>
         </div>
       </div>`;
     shadow.querySelector('.export').addEventListener('click', () => {
@@ -125,6 +173,14 @@ export function createScoresUI(exportTargets) {
       const chip = event.target.closest('.chip');
       if (!chip) return;
       selectedLevel = chip.dataset.level;
+      saveUiState();
+      render().catch((error) => console.error('[piuscores]', error));
+    });
+    shadow.querySelector('.tabs').addEventListener('click', (event) => {
+      const tab = event.target.closest('.tab');
+      if (!tab) return;
+      selectedTab = tab.dataset.tab;
+      saveUiState();
       render().catch((error) => console.error('[piuscores]', error));
     });
     document.body.appendChild(uiHost);
@@ -154,11 +210,17 @@ export function createScoresUI(exportTargets) {
     const shadow = ensure();
     const charts = await loadCharts();
     const levels = [...new Set(charts.map((chart) => chart.chart))].sort(compareLevels);
-    if (!levels.includes(selectedLevel)) selectedLevel = levels[0] ?? null;
+    if (!levels.includes(selectedLevel)) {
+      selectedLevel = levels[0] ?? null;
+      saveUiState();
+    }
 
     const stats = {};
     const statsFor = (key) => (stats[key] ||= { lose: 0, win: 0, unplayed: 0 });
-    for (const chart of charts) statsFor(chart.chart)[['lose', 'unplayed', 'win'][chartTier(chart)]]++;
+    for (const chart of charts) {
+      const statKey = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win' }[chartTier(chart)];
+      statsFor(chart.chart)[statKey]++;
+    }
 
     const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
     const chip = (label) => {
@@ -172,36 +234,53 @@ export function createScoresUI(exportTargets) {
       `<div class="filter-row" role="radiogroup">${
         levels.filter((level) => levelType(level) === type).map(chip).join('')}</div>`).join('');
 
-    const visible = charts.filter((chart) => chart.chart === selectedLevel).sort(byTargetWeight);
+    const levelCharts = charts.filter((chart) => chart.chart === selectedLevel);
+    const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
+      id, levelCharts.filter((chart) => chartTier(chart) === id).length,
+    ]));
+    shadow.querySelector('.tabs').innerHTML = TABS.map(({ id, label }) =>
+      `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
+      + `${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join('');
+
+    const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
+    visible.sort(selectedTab === 'you-win' ? byLeadWeight : byTargetWeight);
     shadow.querySelector('.dlg-count').textContent = `${visible.length} chart(s)`;
     const body = shadow.querySelector('.dlg-body');
     if (visible.length === 0) {
-      body.innerHTML = '<div class="empty">No saved rival scores yet — open a rival\'s page to collect them.</div>';
+      const message = charts.length === 0
+        ? 'No saved rival scores yet — open a rival\'s page to collect them.'
+        : `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
+      body.innerHTML = `<div class="empty">${message}</div>`;
       return;
     }
 
-    const rows = visible.flatMap((chart, index) => {
-      const gap = index > 0 && chartTier(chart) !== chartTier(visible[index - 1])
-        ? ['<tr class="tier-gap"><td colspan="5"></td></tr>'] : [];
-      return [...gap, ...chartRows(chart)];
-    });
+    const rows = visible.flatMap(chartRows);
     body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th>Chart</th><th>Player</th><th class="num">Score</th><th class="num">Diff</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table>`;
   }
 
   function isOpen() {
-    return Boolean(uiHost && !uiHost.shadowRoot.querySelector('.overlay').hidden);
+    return isWindowOpen;
   }
 
   function open() {
+    isWindowOpen = true;
+    saveUiState();
     ensure().querySelector('.overlay').hidden = false;
     render().catch((error) => console.error('[piuscores]', error));
   }
 
   function close() {
+    isWindowOpen = false;
+    saveUiState();
     ensure().querySelector('.overlay').hidden = true;
   }
 
-  return { ensure, render, isOpen };
+  function initialize() {
+    ensure();
+    if (isWindowOpen) render().catch((error) => console.error('[piuscores]', error));
+  }
+
+  return { ensure, initialize, render, isOpen };
 }
