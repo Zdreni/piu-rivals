@@ -107,6 +107,9 @@
   function isPlayerSessionsPage() {
     return /^\/Player\/[^/]+\/Sessions\/?$/i.test(location.pathname);
   }
+  function isPlayerProfilePage() {
+    return /^\/Player\/[^/]+\/?$/i.test(location.pathname);
+  }
   function readUiState() {
     try {
       const raw = sessionStorage.getItem(UI_STATE_KEY);
@@ -256,8 +259,13 @@
     }
     function updateScrapButton(shadow) {
       const scrapButton = shadow.querySelector(".scrap-results");
+      scrapButton.hidden = !isPlayerSessionsPage() && !isPlayerProfilePage();
+      if (isPlayerProfilePage()) {
+        scrapButton.disabled = false;
+        scrapButton.textContent = "Open sessions to grab scores";
+        return;
+      }
       const info = getScrapInfo2();
-      scrapButton.hidden = !isPlayerSessionsPage();
       scrapButton.disabled = isScraping || !info || info.count === 0;
       const label = scrapStatus ?? scrapLabel(info);
       if (scrapButton.textContent !== label) scrapButton.textContent = label;
@@ -307,6 +315,10 @@
       const scrapButton = shadow.querySelector(".scrap-results");
       updateScrapButton(shadow);
       scrapButton.addEventListener("click", async () => {
+        if (isPlayerProfilePage()) {
+          location.assign(`${location.pathname.replace(/\/$/, "")}/Sessions`);
+          return;
+        }
         isScraping = true;
         updateScrapButton(shadow);
         try {
@@ -727,21 +739,9 @@
   function profilePlayerId() {
     return /^\/Player\/[^/]+\/?$/.test(location.pathname) ? pagePlayerId() : null;
   }
-  function addSessionsButton(playerId) {
-    const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
-    if (!block || block.querySelector(".piuscores-sessions-btn")) return;
-    const link = document.createElement("a");
-    link.className = "piuscores-sessions-btn";
-    link.href = `/Player/${playerId}/Sessions`;
-    link.textContent = "Sessions \u2192";
-    link.title = "Open this player's Sessions page";
-    link.style.cssText = "align-self:flex-start;margin-left:auto;padding:2px 8px;border:1px solid #4FE33F;border-radius:4px;color:#4FE33F;font:500 12px/1.4 Roboto,Arial,sans-serif;text-decoration:none;white-space:nowrap;";
-    block.appendChild(link);
-  }
   async function runProfilePage(ui2, ownPlayerId) {
     const playerId = profilePlayerId();
     if (!playerId) return;
-    addSessionsButton(playerId);
     const hero = document.querySelector('[data-testid="player-hero"]');
     await savePlayerInfo(
       ui2,

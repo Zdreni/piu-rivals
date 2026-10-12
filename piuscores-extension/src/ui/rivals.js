@@ -53,6 +53,11 @@ function isPlayerSessionsPage() {
 }
 
 
+function isPlayerProfilePage() {
+  return /^\/Player\/[^/]+\/?$/i.test(location.pathname);
+}
+
+
 function readUiState() {
   try {
     const raw = sessionStorage.getItem(UI_STATE_KEY);
@@ -211,8 +216,13 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   // checkpoint is known, so the button stays disabled until the session count is final.
   function updateScrapButton(shadow) {
     const scrapButton = shadow.querySelector('.scrap-results');
+    scrapButton.hidden = !isPlayerSessionsPage() && !isPlayerProfilePage();
+    if (isPlayerProfilePage()) {
+      scrapButton.disabled = false;
+      scrapButton.textContent = 'Open sessions to grab scores';
+      return;
+    }
     const info = getScrapInfo();
-    scrapButton.hidden = !isPlayerSessionsPage();
     scrapButton.disabled = isScraping || !info || info.count === 0;
     const label = scrapStatus ?? scrapLabel(info);
     if (scrapButton.textContent !== label) scrapButton.textContent = label;
@@ -267,6 +277,10 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     const scrapButton = shadow.querySelector('.scrap-results');
     updateScrapButton(shadow);
     scrapButton.addEventListener('click', async () => {
+      if (isPlayerProfilePage()) {
+        location.assign(`${location.pathname.replace(/\/$/, '')}/Sessions`);
+        return;
+      }
       isScraping = true;
       updateScrapButton(shadow);
       try {
