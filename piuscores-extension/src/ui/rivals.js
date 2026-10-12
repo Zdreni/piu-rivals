@@ -86,7 +86,7 @@ const styles = `
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .btn:hover:not(:disabled) { background: #1C2B22; }
-  .btn:disabled { opacity: .45; cursor: default; }
+  .btn:disabled { color: #2F782B; border-color: #2F782B; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
@@ -208,6 +208,8 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   let uiHost = null;
   let isScraping = false;
   let scrapStatus = null;
+  // The finished message stays until another page is opened.
+  let finishedPath = null;
   const savedState = readUiState();
   let isWindowOpen = savedState.isOpen;
   let selectedLevel = savedState.selectedLevel;
@@ -231,8 +233,12 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       scrapButton.textContent = 'Open sessions to grab scores';
       return;
     }
+    if (finishedPath !== null && finishedPath !== location.pathname) {
+      finishedPath = null;
+      scrapStatus = null;
+    }
     const info = getScrapInfo();
-    scrapButton.disabled = isScraping || !info || info.count === 0;
+    scrapButton.disabled = isScraping || finishedPath !== null || !info || info.count === 0;
     const label = scrapStatus ?? scrapLabel(info);
     if (scrapButton.textContent !== label) scrapButton.textContent = label;
   }
@@ -240,7 +246,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   // "6+" means every session on the page is new, so older pages may hold more. PB is left out
   // until the PUMBILITY of the newest session can be read.
   function scrapLabel(info) {
-    if (!info) return 'Grab scores';
+    if (!info) return 'Loading sessions...';
     const { count, more, known, name, pumbility } = info;
     if (count === 0) return 'No new sessions to grab';
     if (!known) return `Add player '${name}'${pumbility === null ? '' : ` PB ${fmt(pumbility)}`} and scrap his results`;
@@ -295,20 +301,23 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       isScraping = true;
       updateScrapButton(shadow);
       try {
-        await scrapeResults((status) => {
+        const finished = await scrapeResults((status) => {
           scrapStatus = status;
           updateScrapButton(shadow);
         });
+        if (finished) finishedPath = location.pathname;
       } catch (error) {
         console.error('[piuscores] Unable to scrape player sessions', error);
         scrapStatus = 'Scraping failed';
       } finally {
         isScraping = false;
         updateScrapButton(shadow);
-        setTimeout(() => {
-          scrapStatus = null;
-          updateScrapButton(shadow);
-        }, 2500);
+        if (finishedPath === null) {
+          setTimeout(() => {
+            scrapStatus = null;
+            updateScrapButton(shadow);
+          }, 2500);
+        }
       }
     });
     shadow.querySelector('.show-scores').addEventListener('click', () => open());

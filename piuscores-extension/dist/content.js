@@ -156,7 +156,7 @@
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .btn:hover:not(:disabled) { background: #1C2B22; }
-  .btn:disabled { opacity: .45; cursor: default; }
+  .btn:disabled { color: #2F782B; border-color: #2F782B; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
@@ -276,6 +276,7 @@
     let uiHost = null;
     let isScraping = false;
     let scrapStatus = null;
+    let finishedPath = null;
     const savedState = readUiState();
     let isWindowOpen = savedState.isOpen;
     let selectedLevel = savedState.selectedLevel;
@@ -295,13 +296,17 @@
         scrapButton.textContent = "Open sessions to grab scores";
         return;
       }
+      if (finishedPath !== null && finishedPath !== location.pathname) {
+        finishedPath = null;
+        scrapStatus = null;
+      }
       const info = getScrapInfo2();
-      scrapButton.disabled = isScraping || !info || info.count === 0;
+      scrapButton.disabled = isScraping || finishedPath !== null || !info || info.count === 0;
       const label = scrapStatus ?? scrapLabel(info);
       if (scrapButton.textContent !== label) scrapButton.textContent = label;
     }
     function scrapLabel(info) {
-      if (!info) return "Grab scores";
+      if (!info) return "Loading sessions...";
       const { count, more, known, name, pumbility } = info;
       if (count === 0) return "No new sessions to grab";
       if (!known) return `Add player '${name}'${pumbility === null ? "" : ` PB ${fmt(pumbility)}`} and scrap his results`;
@@ -353,20 +358,23 @@
         isScraping = true;
         updateScrapButton(shadow);
         try {
-          await scrapeResults((status) => {
+          const finished = await scrapeResults((status) => {
             scrapStatus = status;
             updateScrapButton(shadow);
           });
+          if (finished) finishedPath = location.pathname;
         } catch (error) {
           console.error("[piuscores] Unable to scrape player sessions", error);
           scrapStatus = "Scraping failed";
         } finally {
           isScraping = false;
           updateScrapButton(shadow);
-          setTimeout(() => {
-            scrapStatus = null;
-            updateScrapButton(shadow);
-          }, 2500);
+          if (finishedPath === null) {
+            setTimeout(() => {
+              scrapStatus = null;
+              updateScrapButton(shadow);
+            }, 2500);
+          }
         }
       });
       shadow.querySelector(".show-scores").addEventListener("click", () => open());
@@ -922,6 +930,23 @@
   function sessionCheckpointMatches(checkpoint, info) {
     return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;
   }
+  function parseCardTimestamp(timestamp) {
+    const match = timestamp.match(/(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M/i);
+    if (!match) return null;
+    const [, day, month, hours, minutes, half] = match;
+    return {
+      date: `${Number(day)} ${month.toLowerCase()}`,
+      minutes: (Number(hours) % 12 + (half.toUpperCase() === "P" ? 12 : 0)) * 60 + Number(minutes)
+    };
+  }
+  function findGrownCheckpoint(checkpoint, sessions) {
+    const first = sessions[0]?.info;
+    if (!checkpoint || !first || findPageButton("newer")) return null;
+    if (sessions.some(({ info }) => sessionCheckpointMatches(checkpoint, info))) return null;
+    const was = parseCardTimestamp(checkpoint.timestamp);
+    const now = parseCardTimestamp(first.timestamp);
+    return first.title === checkpoint.title && was && now && was.date === now.date && now.minutes > was.minutes ? first : null;
+  }
   function findPageButton(direction) {
     const main = document.querySelector("main") || document;
     const controls = [...main.querySelectorAll(
@@ -944,7 +969,7 @@
   }
   function sameSessionDate(cardTimestamp, heroTimestamp) {
     const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
-    const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)\b/i);
+    const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
     if (!cardDate || !heroDate) return false;
     const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
     return Number(cardDate[1]) === Number(heroDate[2]) && months.indexOf(cardDate[2].toLowerCase()) + 1 === Number(heroDate[1]) && cardDate[3].replace(/\s+/g, "").toLowerCase() === heroDate[3].replace(/\s+/g, "").toLowerCase();
@@ -956,7 +981,7 @@
     await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
     return true;
   }
-  async function saveSessionCheckpoint(playerId, info, scrapedScores) {
+  async function saveSessionCheckpoint(playerId, info, scrapedScores, isNewSession) {
     const stored = await chrome.storage.local.get(["players"]);
     const players = { ...stored.players || {} };
     const scrapStats = players[playerId]?.scrapStats || {};
@@ -965,22 +990,38 @@
       lastScrapedSession: info,
       scrapStats: {
         scores: (scrapStats.scores || 0) + scrapedScores,
-        sessions: (scrapStats.sessions || 0) + 1
+        sessions: (scrapStats.sessions || 0) + (isNewSession ? 1 : 0)
       }
     };
     const name = playerName();
     if (name) players[playerId].name = name;
     await chrome.storage.local.set({ players });
   }
+  function openSessionMismatches(info) {
+    const hero = document.querySelector('[data-testid="session-hero"]');
+    if (!hero) return ["session hero is missing"];
+    const heroWhen = text(hero.querySelector(".sbd-hero-when"));
+    const heroTitle = text(hero.querySelector(".sbd-hero-title"));
+    const heroMix = heroWhen.split("\xB7")[0].trim();
+    const cardTitle = info.title.split("\xB7")[0].trim();
+    const mismatches = [];
+    if (heroMix !== "Phoenix 2") mismatches.push(`mix: hero "${heroMix}", expected "Phoenix 2"`);
+    if (heroTitle !== cardTitle) mismatches.push(`title: hero "${heroTitle}", card "${cardTitle}"`);
+    if (!sameSessionDate(info.timestamp, heroWhen)) {
+      mismatches.push(`date: hero "${heroWhen}", card "${info.timestamp}"`);
+    }
+    if (!document.querySelector('[data-testid="session-all-plays"]')) mismatches.push("all plays list is missing");
+    return mismatches;
+  }
   async function parseSessionCard(ui2, card, info, playerId, report, progress) {
     card.click();
-    await waitForChange(() => {
-      const hero = document.querySelector('[data-testid="session-hero"]');
-      const heroWhen = text(hero?.querySelector(".sbd-hero-when"));
-      const heroTitle = text(hero?.querySelector(".sbd-hero-title"));
-      const cardTitle = info.title.split("\xB7")[0].trim();
-      return heroWhen.split("\xB7")[0].trim() === "Phoenix 2" && heroTitle === cardTitle && sameSessionDate(info.timestamp, heroWhen) && !!document.querySelector('[data-testid="session-all-plays"]');
-    }, `session "${info.title}" to open`);
+    try {
+      await waitForChange(() => openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
+    } catch (error) {
+      console.error(`${TAG} Session "${info.title}" (${info.timestamp}) didn't open:
+  ` + openSessionMismatches(info).join("\n  "));
+      throw error;
+    }
     const showAll = document.querySelector('[data-testid="session-show-all-plays"]');
     if (showAll) {
       showAll.click();
@@ -998,9 +1039,9 @@
     if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
     if (result.playerId !== playerId) throw new Error("Session player changed while scraping");
     await runSessionScores(ui2, result, await syncOwnPlayerId(), true);
-    await saveSessionCheckpoint(playerId, info, result.scrapedScores);
+    await saveSessionCheckpoint(playerId, info, result.scrapedScores, info !== progress.grown);
     progress.count++;
-    report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
+    progress.results += result.scrapedScores;
     showSessionToast(
       ui2.ensure(),
       playerName() || playerId,
@@ -1029,12 +1070,16 @@
       const seenPages = /* @__PURE__ */ new Set();
       let checkpointFound = !checkpoint;
       let reachedPhoenixBoundary = false;
+      let grown = null;
+      const countFound = () => pages.reduce((sum, page) => sum + page.length, 0);
+      const reportFound = () => report(`Searching sessions, ${countFound()} found...`);
       if (!checkpoint) {
         let signature = sessionCardSignature();
         while (!seenPages.has(signature)) {
           seenPages.add(signature);
           const page = currentPhoenix2Sessions();
           pages.push(page.sessions.map(({ info }) => info));
+          reportFound();
           if (page.reachedPhoenix) break;
           const next = findPageButton("older");
           if (!next) break;
@@ -1042,8 +1087,14 @@
           signature = sessionCardSignature();
         }
       } else {
+        grown = findGrownCheckpoint(checkpoint, currentPhoenix2Sessions().sessions);
+        if (grown) {
+          pages.push([grown]);
+          checkpointFound = true;
+          reportFound();
+        }
         let signature = sessionCardSignature();
-        while (!seenPages.has(signature)) {
+        while (!grown && !seenPages.has(signature)) {
           seenPages.add(signature);
           const page = [];
           const currentPage = currentPhoenix2Sessions();
@@ -1055,6 +1106,7 @@
             page.push(info);
           }
           pages.push(page);
+          reportFound();
           if (checkpointFound || currentPage.reachedPhoenix) {
             reachedPhoenixBoundary = currentPage.reachedPhoenix;
             break;
@@ -1068,12 +1120,13 @@
       if (checkpoint && !checkpointFound && !reachedPhoenixBoundary) {
         throw new Error("Saved session checkpoint was not found in the Sessions history");
       }
-      const progress = { count: 0 };
+      const total = countFound();
+      const progress = { count: 0, results: 0, grown };
       for (let pageIndex = pages.length - 1; pageIndex >= 0; pageIndex--) {
         for (const info of [...pages[pageIndex]].reverse()) {
           const card = findCurrentCard(info);
           if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
-          report(`Opening ${info.title} (${info.timestamp})`);
+          report(`Scrapping session ${progress.count + 1} of ${total}...`);
           await parseSessionCard(ui2, card, info, playerId, report, progress);
         }
         if (pageIndex > 0) {
@@ -1083,7 +1136,9 @@
         }
       }
       if (progress.count) await syncSessionsPumbility(ui2, await syncOwnPlayerId());
-      report(`Scraping complete: ${progress.count} Phoenix 2 session(s)`);
+      const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+      report(`Finished scrapping ${plural(progress.count, "session")} with ${plural(progress.results, "result")}`);
+      return true;
     } finally {
       isScrapingSessions = false;
     }
@@ -1154,6 +1209,7 @@
     const { sessions, reachedPhoenix } = currentPhoenix2Sessions();
     const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
     if (index >= 0) return { count: index, more: false };
+    if (findGrownCheckpoint(checkpoint, sessions)) return { count: 1, more: false };
     return { count: sessions.length, more: !reachedPhoenix && !!findPageButton("older") };
   }
   var cachedStorage = null;

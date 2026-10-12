@@ -167,6 +167,34 @@ function sessionCheckpointMatches(checkpoint, info) {
 }
 
 
+// Card timestamps look like "Mon 12 Oct · 6:55 PM"; returns null when the format is different.
+function parseCardTimestamp(timestamp) {
+  const match = timestamp.match(/(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M/i);
+  if (!match) return null;
+  const [, day, month, hours, minutes, half] = match;
+  return {
+    date: `${Number(day)} ${month.toLowerCase()}`,
+    minutes: (Number(hours) % 12 + (half.toUpperCase() === 'P' ? 12 : 0)) * 60 + Number(minutes),
+  };
+}
+
+
+// A session that is still active grows when more plays are imported, and its card timestamp
+// moves to the latest play, so the stored checkpoint no longer matches exactly. Only the newest
+// session can grow, so it is the first card on the first page: same title, same day, later time,
+// while the exact checkpoint card is not on the page (otherwise the first card is a new session).
+function findGrownCheckpoint(checkpoint, sessions) {
+  const first = sessions[0]?.info;
+  if (!checkpoint || !first || findPageButton('newer')) return null;
+  if (sessions.some(({ info }) => sessionCheckpointMatches(checkpoint, info))) return null;
+  const was = parseCardTimestamp(checkpoint.timestamp);
+  const now = parseCardTimestamp(first.timestamp);
+  return first.title === checkpoint.title && was && now && was.date === now.date && now.minutes > was.minutes
+    ? first
+    : null;
+}
+
+
 function findPageButton(direction) {
   const main = document.querySelector('main') || document;
   const controls = [...main.querySelectorAll(
@@ -196,7 +224,8 @@ function findPageButton(direction) {
 
 function sameSessionDate(cardTimestamp, heroTimestamp) {
   const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
-  const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)\b/i);
+  // No trailing \b: imported sessions glue the next text right after AM/PM ("6:31 PMimported from ...").
+  const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
   if (!cardDate || !heroDate) return false;
   const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   return Number(cardDate[1]) === Number(heroDate[2])
@@ -216,7 +245,8 @@ async function clickPageButton(button, direction) {
 
 // Scrap counters only grow here: each session is scraped once by the button thanks to the
 // checkpoint, while automatic scraping of the open session may repeat and is not counted.
-async function saveSessionCheckpoint(playerId, info, scrapedScores) {
+// A grown checkpoint session is scraped again, adding its new scores but not another session.
+async function saveSessionCheckpoint(playerId, info, scrapedScores, isNewSession) {
   const stored = await chrome.storage.local.get(['players']);
   const players = { ...(stored.players || {}) };
   const scrapStats = players[playerId]?.scrapStats || {};
@@ -225,7 +255,7 @@ async function saveSessionCheckpoint(playerId, info, scrapedScores) {
     lastScrapedSession: info,
     scrapStats: {
       scores: (scrapStats.scores || 0) + scrapedScores,
-      sessions: (scrapStats.sessions || 0) + 1,
+      sessions: (scrapStats.sessions || 0) + (isNewSession ? 1 : 0),
     },
   };
   const name = playerName();
@@ -234,18 +264,34 @@ async function saveSessionCheckpoint(playerId, info, scrapedScores) {
 }
 
 
+// Lists why the opened session doesn't match the clicked card yet; empty once it does.
+function openSessionMismatches(info) {
+  const hero = document.querySelector('[data-testid="session-hero"]');
+  if (!hero) return ['session hero is missing'];
+  const heroWhen = text(hero.querySelector('.sbd-hero-when'));
+  const heroTitle = text(hero.querySelector('.sbd-hero-title'));
+  const heroMix = heroWhen.split('·')[0].trim();
+  const cardTitle = info.title.split('·')[0].trim();
+  const mismatches = [];
+  if (heroMix !== 'Phoenix 2') mismatches.push(`mix: hero "${heroMix}", expected "Phoenix 2"`);
+  if (heroTitle !== cardTitle) mismatches.push(`title: hero "${heroTitle}", card "${cardTitle}"`);
+  if (!sameSessionDate(info.timestamp, heroWhen)) {
+    mismatches.push(`date: hero "${heroWhen}", card "${info.timestamp}"`);
+  }
+  if (!document.querySelector('[data-testid="session-all-plays"]')) mismatches.push('all plays list is missing');
+  return mismatches;
+}
+
+
 async function parseSessionCard(ui, card, info, playerId, report, progress) {
   card.click();
-  await waitForChange(() => {
-    const hero = document.querySelector('[data-testid="session-hero"]');
-    const heroWhen = text(hero?.querySelector('.sbd-hero-when'));
-    const heroTitle = text(hero?.querySelector('.sbd-hero-title'));
-    const cardTitle = info.title.split('·')[0].trim();
-    return heroWhen.split('·')[0].trim() === 'Phoenix 2'
-      && heroTitle === cardTitle
-      && sameSessionDate(info.timestamp, heroWhen)
-      && !!document.querySelector('[data-testid="session-all-plays"]');
-  }, `session "${info.title}" to open`);
+  try {
+    await waitForChange(() => openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
+  } catch (error) {
+    console.error(`${TAG} Session "${info.title}" (${info.timestamp}) didn't open:\n  `
+      + openSessionMismatches(info).join('\n  '));
+    throw error;
+  }
 
   const showAll = document.querySelector('[data-testid="session-show-all-plays"]');
   if (showAll) {
@@ -265,9 +311,9 @@ async function parseSessionCard(ui, card, info, playerId, report, progress) {
   if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
   if (result.playerId !== playerId) throw new Error('Session player changed while scraping');
   await runSessionScores(ui, result, await syncOwnPlayerId(), true);
-  await saveSessionCheckpoint(playerId, info, result.scrapedScores);
+  await saveSessionCheckpoint(playerId, info, result.scrapedScores, info !== progress.grown);
   progress.count++;
-  report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
+  progress.results += result.scrapedScores;
   showSessionToast(
     ui.ensure(),
     playerName() || playerId,
@@ -303,6 +349,9 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
     const seenPages = new Set();
     let checkpointFound = !checkpoint;
     let reachedPhoenixBoundary = false;
+    let grown = null;
+    const countFound = () => pages.reduce((sum, page) => sum + page.length, 0);
+    const reportFound = () => report(`Searching sessions, ${countFound()} found...`);
 
     if (!checkpoint) {
       let signature = sessionCardSignature();
@@ -310,6 +359,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
         seenPages.add(signature);
         const page = currentPhoenix2Sessions();
         pages.push(page.sessions.map(({ info }) => info));
+        reportFound();
         if (page.reachedPhoenix) break;
         const next = findPageButton('older');
         if (!next) break;
@@ -317,8 +367,14 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
         signature = sessionCardSignature();
       }
     } else {
+      grown = findGrownCheckpoint(checkpoint, currentPhoenix2Sessions().sessions);
+      if (grown) {
+        pages.push([grown]);
+        checkpointFound = true;
+        reportFound();
+      }
       let signature = sessionCardSignature();
-      while (!seenPages.has(signature)) {
+      while (!grown && !seenPages.has(signature)) {
         seenPages.add(signature);
         const page = [];
         const currentPage = currentPhoenix2Sessions();
@@ -330,6 +386,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
           page.push(info);
         }
         pages.push(page);
+        reportFound();
         if (checkpointFound || currentPage.reachedPhoenix) {
           reachedPhoenixBoundary = currentPage.reachedPhoenix;
           break;
@@ -345,12 +402,13 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
       throw new Error('Saved session checkpoint was not found in the Sessions history');
     }
 
-    const progress = { count: 0 };
+    const total = countFound();
+    const progress = { count: 0, results: 0, grown };
     for (let pageIndex = pages.length - 1; pageIndex >= 0; pageIndex--) {
       for (const info of [...pages[pageIndex]].reverse()) {
         const card = findCurrentCard(info);
         if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
-        report(`Opening ${info.title} (${info.timestamp})`);
+        report(`Scrapping session ${progress.count + 1} of ${total}...`);
         await parseSessionCard(ui, card, info, playerId, report, progress);
       }
       if (pageIndex > 0) {
@@ -362,7 +420,9 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
     // Sessions are parsed oldest first, so the newest one is open now; this catches PUMBILITY
     // when it couldn't be read before scanning (e.g. an older session was open).
     if (progress.count) await syncSessionsPumbility(ui, await syncOwnPlayerId());
-    report(`Scraping complete: ${progress.count} Phoenix 2 session(s)`);
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    report(`Finished scrapping ${plural(progress.count, 'session')} with ${plural(progress.results, 'result')}`);
+    return true;
   } finally {
     isScrapingSessions = false;
   }
@@ -446,6 +506,7 @@ function countNewSessions(checkpoint) {
   const { sessions, reachedPhoenix } = currentPhoenix2Sessions();
   const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
   if (index >= 0) return { count: index, more: false };
+  if (findGrownCheckpoint(checkpoint, sessions)) return { count: 1, more: false };
   return { count: sessions.length, more: !reachedPhoenix && !!findPageButton('older') };
 }
 
