@@ -1,7 +1,7 @@
 import { showSessionToast, showToast } from '../ui/toasts.js';
 import { isScrapLevel, storageKey } from '../storage.js';
 import {
-  logPumbility, pagePlayerId, parseNumber, saveHigherScore, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
+  isKnownPlayer, logPumbility, pagePlayerId, parseNumber, saveHigherScore, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
 } from './common.js';
 
 let lastSignature = null;
@@ -232,7 +232,7 @@ async function parseSessionCard(ui, card, info, playerId, report, progress) {
   const result = scrapeSessionScores();
   if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
   if (result.playerId !== playerId) throw new Error('Session player changed while scraping');
-  await runSessionScores(ui, result, await syncOwnPlayerId());
+  await runSessionScores(ui, result, await syncOwnPlayerId(), true);
   await saveSessionCheckpoint(playerId, info);
   progress.count++;
   report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
@@ -259,7 +259,7 @@ function findCurrentCard(info) {
 
 export async function scrapePlayerSessions(ui, report = () => {}) {
   const playerId = sessionPagePlayerId();
-  if (!playerId) throw new Error('Scrap results is only available on a player Sessions page');
+  if (!playerId) throw new Error('Grabbing scores is only available on a player Sessions page');
   if (isScrapingSessions) return;
   isScrapingSessions = true;
 
@@ -333,17 +333,20 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
 }
 
 
-async function runSessionScores(ui, result, ownPlayerId) {
-  const signature = JSON.stringify({ sessions: result, ownPlayerId });
-  if (signature === lastSignature) return;
-  lastSignature = signature;
-
-  const stored = await chrome.storage.local.get(['results', 'players']);
+// Only the scrap button (allowNewPlayer) may add a player that is not stored yet.
+async function runSessionScores(ui, result, ownPlayerId, allowNewPlayer = false) {
   const playerId = result.playerId;
   if (!playerId) {
     console.warn(`${TAG} Unable to identify the player ID for session scores`);
     return;
   }
+  const stored = await chrome.storage.local.get(['results', 'players']);
+  if (!allowNewPlayer && !isKnownPlayer(stored.players, playerId, ownPlayerId)) return;
+
+  const signature = JSON.stringify({ sessions: result, ownPlayerId });
+  if (signature === lastSignature) return;
+  lastSignature = signature;
+
   const name = playerName();
   const updates = {};
   const events = [];
@@ -396,8 +399,41 @@ export function isSessionsPage() {
 }
 
 
-export function isSessionsContentLoaded() {
+function isSessionsContentLoaded() {
   return isSessionsPage() && getSessionCards().length > 0;
+}
+
+
+// Counts the Phoenix 2 sessions on the current page newer than the last scraped one; `more` is
+// set when all of them are new and older pages may hold further new sessions.
+function countNewSessions(checkpoint) {
+  const { sessions, reachedPhoenix } = currentPhoenix2Sessions();
+  const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
+  if (index >= 0) return { count: index, more: false };
+  return { count: sessions.length, more: !reachedPhoenix && !!findPageButton('older') };
+}
+
+
+// Stored players are cached so the scrap button state can be computed synchronously on every
+// DOM change; null until first loaded.
+let cachedStorage = null;
+
+
+export async function loadScrapState() {
+  const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
+  cachedStorage = { players: players || {}, ownPlayerId: typeof ownPlayerId === 'string' ? ownPlayerId : null };
+}
+
+
+// Returns { known, count, more } for the open Sessions page, or null while it can't be told yet.
+export function getScrapInfo() {
+  const playerId = sessionPagePlayerId();
+  if (!playerId || !cachedStorage || !isSessionsContentLoaded()) return null;
+  const { players, ownPlayerId } = cachedStorage;
+  return {
+    known: isKnownPlayer(players, playerId, ownPlayerId),
+    ...countNewSessions(players[playerId]?.lastScrapedSession || null),
+  };
 }
 
 

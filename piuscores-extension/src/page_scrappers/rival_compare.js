@@ -1,6 +1,6 @@
 import { showToast } from '../ui/toasts.js';
 import { delta, isScrapLevel, storageKey } from '../storage.js';
-import { pagePlayerId, saveHigherScore, TAG, text } from './common.js';
+import { isKnownPlayer, pagePlayerId, saveHigherScore, TAG, text } from './common.js';
 
 let lastSignature = null;
 
@@ -49,11 +49,13 @@ export async function runRivalCompare(ui, ownPlayerId) {
 
   const { rival, playerId } = result;
   const stored = await chrome.storage.local.get(['results', 'players']);
+  // Your own scores are always saved; the rival's only once they were added via the scrap button.
+  const rivalKnown = !!playerId && isKnownPlayer(stored.players, playerId, ownPlayerId);
   const events = [];
   const updates = {};
   const results = { ...(stored.results || {}) };
   let resultsChanged = false;
-  if (rival && playerId) {
+  if (rival && rivalKnown) {
     const players = { ...(stored.players || {}) };
     if (players[playerId]?.name !== rival) {
       players[playerId] = { ...players[playerId], name: rival };
@@ -66,7 +68,7 @@ export async function runRivalCompare(ui, ownPlayerId) {
     const scores = { ...(results[key] || {}) };
     const { track, chart } = row;
 
-    const rivalUpdate = saveHigherScore(scores, playerId, row.score);
+    const rivalUpdate = rivalKnown ? saveHigherScore(scores, playerId, row.score) : null;
     if (rivalUpdate) {
       events.push({
         kind: 'rival',

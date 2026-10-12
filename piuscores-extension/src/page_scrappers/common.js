@@ -90,6 +90,13 @@ export async function syncOwnPlayerId() {
 }
 
 
+// New players are only added by the scrap button on their Sessions page; automatic page scraping
+// only updates yourself and players that are already stored.
+export function isKnownPlayer(players, playerId, ownPlayerId) {
+  return playerId === ownPlayerId || !!players?.[playerId];
+}
+
+
 export function saveHigherScore(scores, playerId, score) {
   if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
   const prevScore = scores[playerId] ?? null;
@@ -115,6 +122,10 @@ export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId,
   if (!name && pumbility === null) return;
 
   const { players } = await chrome.storage.local.get('players');
+  if (!isKnownPlayer(players, playerId, ownPlayerId)) {
+    logPumbility(`found for ${name || playerId} (${playerId}) on ${source}: not a known player, skipping`);
+    return;
+  }
   const prev = players?.[playerId] || {};
   const player = { ...prev };
   if (name) player.name = name;

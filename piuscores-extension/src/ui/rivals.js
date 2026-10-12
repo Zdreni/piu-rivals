@@ -46,7 +46,6 @@ const TABS = [
   { id: 'you-win', label: 'You win' },
 ];
 const UI_STATE_KEY = 'piuscores.rivalScores.uiState';
-const SCRAP_RESULTS_LABEL = 'Scrap results';
 
 
 function isPlayerSessionsPage() {
@@ -191,9 +190,10 @@ const styles = `
 `;
 
 
-export function createScoresUI(exportTargets, scrapeResults, canScrapeResults) {
+export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   let uiHost = null;
   let isScraping = false;
+  let scrapStatus = null;
   const savedState = readUiState();
   let isWindowOpen = savedState.isOpen;
   let selectedLevel = savedState.selectedLevel;
@@ -207,12 +207,26 @@ export function createScoresUI(exportTargets, scrapeResults, canScrapeResults) {
     }
   }
 
-  // Scraping needs the session cards, which the Sessions page loads after navigation.
+  // The scrap info is null until the Sessions page has loaded its cards and the stored
+  // checkpoint is known, so the button stays disabled until the session count is final.
   function updateScrapButton(shadow) {
     const scrapButton = shadow.querySelector('.scrap-results');
+    const info = getScrapInfo();
     scrapButton.hidden = !isPlayerSessionsPage();
-    scrapButton.disabled = isScraping || !canScrapeResults();
+    scrapButton.disabled = isScraping || !info || info.count === 0;
+    const label = scrapStatus ?? scrapLabel(info);
+    if (scrapButton.textContent !== label) scrapButton.textContent = label;
   }
+
+  // "6+" means every session on the page is new, so older pages may hold more.
+  function scrapLabel(info) {
+    if (!info) return 'Grab scores';
+    const { count, more, known } = info;
+    if (count === 0) return 'No new sessions to grab';
+    const sessions = `${count}${more ? '+' : ''} session${count === 1 && !more ? '' : 's'}`;
+    return known ? `Grab scores from ${sessions}` : `Add player and grab scores from ${sessions}`;
+  }
+
 
   function ensure() {
     if (uiHost) {
@@ -228,7 +242,7 @@ export function createScoresUI(exportTargets, scrapeResults, canScrapeResults) {
       <style>${styles}</style>
       <div class="stack"></div>
       <div class="buttons">
-        <button class="btn scrap-results" type="button" title="Scrape Phoenix 2 sessions on this player page">Scrap results</button>
+        <button class="btn scrap-results" type="button"></button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
       </div>
       <div class="overlay" ${isWindowOpen ? '' : 'hidden'}>
@@ -256,14 +270,20 @@ export function createScoresUI(exportTargets, scrapeResults, canScrapeResults) {
       isScraping = true;
       updateScrapButton(shadow);
       try {
-        await scrapeResults((status) => { scrapButton.textContent = status; });
+        await scrapeResults((status) => {
+          scrapStatus = status;
+          updateScrapButton(shadow);
+        });
       } catch (error) {
         console.error('[piuscores] Unable to scrape player sessions', error);
-        scrapButton.textContent = 'Scraping failed';
+        scrapStatus = 'Scraping failed';
       } finally {
         isScraping = false;
         updateScrapButton(shadow);
-        setTimeout(() => { scrapButton.textContent = SCRAP_RESULTS_LABEL; }, 2500);
+        setTimeout(() => {
+          scrapStatus = null;
+          updateScrapButton(shadow);
+        }, 2500);
       }
     });
     shadow.querySelector('.show-scores').addEventListener('click', () => open());

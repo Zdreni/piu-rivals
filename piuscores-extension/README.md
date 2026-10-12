@@ -3,7 +3,8 @@
 This Chrome extension collects rival scores from player pages on
 `piuscores.arroweclip.se` and shows changes and saved scores.
 It also collects rival scores from Phoenix 2 sessions. On a player's Sessions
-page, use **Scrap results** to traverse session pages, open each new session,
+page, use **Grab scores from N sessions** (or **Add player and grab scores…** for a
+player not stored yet; disabled when there are no new sessions) to traverse session pages, open each new session,
 show all plays, and parse sessions chronologically. The latest parsed session's
 title and timestamp are saved with that player's metadata so later runs only
 process sessions newer than the checkpoint. Phoenix sessions are ignored, and

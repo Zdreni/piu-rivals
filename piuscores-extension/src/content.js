@@ -5,13 +5,13 @@ import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
 import { runRivalCompare } from './page_scrappers/rival_compare.js';
 import {
-  isSessionsContentLoaded, isSessionsPage, runSessionsPage, scrapePlayerSessions,
+  getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
 
 const ui = createScoresUI(
   exportTargets,
   (report) => scrapePlayerSessions(ui, report),
-  isSessionsContentLoaded,
+  getScrapInfo,
 );
 let timer = null;
 
@@ -39,10 +39,13 @@ async function run() {
 
 
 chrome.storage.onChanged.addListener((_, area) => {
-  if (area === 'local' && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
+  if (area !== 'local') return;
+  if (ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
+  loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
 });
 
 ui.initialize();
+loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
 
 let pending = Promise.resolve();
 const schedule = () => {

@@ -104,7 +104,6 @@
     { id: "you-win", label: "You win" }
   ];
   var UI_STATE_KEY = "piuscores.rivalScores.uiState";
-  var SCRAP_RESULTS_LABEL = "Scrap results";
   function isPlayerSessionsPage() {
     return /^\/Player\/[^/]+\/Sessions\/?$/i.test(location.pathname);
   }
@@ -240,9 +239,10 @@
   .more { color: #9AB3A3; margin-top: 2px; }
   @keyframes in { from { opacity: 0; transform: translateY(8px); } }
 `;
-  function createScoresUI(exportTargets2, scrapeResults, canScrapeResults) {
+  function createScoresUI(exportTargets2, scrapeResults, getScrapInfo2) {
     let uiHost = null;
     let isScraping = false;
+    let scrapStatus = null;
     const savedState = readUiState();
     let isWindowOpen = savedState.isOpen;
     let selectedLevel = savedState.selectedLevel;
@@ -256,8 +256,18 @@
     }
     function updateScrapButton(shadow) {
       const scrapButton = shadow.querySelector(".scrap-results");
+      const info = getScrapInfo2();
       scrapButton.hidden = !isPlayerSessionsPage();
-      scrapButton.disabled = isScraping || !canScrapeResults();
+      scrapButton.disabled = isScraping || !info || info.count === 0;
+      const label = scrapStatus ?? scrapLabel(info);
+      if (scrapButton.textContent !== label) scrapButton.textContent = label;
+    }
+    function scrapLabel(info) {
+      if (!info) return "Grab scores";
+      const { count, more, known } = info;
+      if (count === 0) return "No new sessions to grab";
+      const sessions = `${count}${more ? "+" : ""} session${count === 1 && !more ? "" : "s"}`;
+      return known ? `Grab scores from ${sessions}` : `Add player and grab scores from ${sessions}`;
     }
     function ensure() {
       if (uiHost) {
@@ -272,7 +282,7 @@
       <style>${styles}</style>
       <div class="stack"></div>
       <div class="buttons">
-        <button class="btn scrap-results" type="button" title="Scrape Phoenix 2 sessions on this player page">Scrap results</button>
+        <button class="btn scrap-results" type="button"></button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
       </div>
       <div class="overlay" ${isWindowOpen ? "" : "hidden"}>
@@ -301,16 +311,18 @@
         updateScrapButton(shadow);
         try {
           await scrapeResults((status) => {
-            scrapButton.textContent = status;
+            scrapStatus = status;
+            updateScrapButton(shadow);
           });
         } catch (error) {
           console.error("[piuscores] Unable to scrape player sessions", error);
-          scrapButton.textContent = "Scraping failed";
+          scrapStatus = "Scraping failed";
         } finally {
           isScraping = false;
           updateScrapButton(shadow);
           setTimeout(() => {
-            scrapButton.textContent = SCRAP_RESULTS_LABEL;
+            scrapStatus = null;
+            updateScrapButton(shadow);
           }, 2500);
         }
       });
@@ -634,6 +646,9 @@
     }
     return id;
   }
+  function isKnownPlayer(players, playerId, ownPlayerId) {
+    return playerId === ownPlayerId || !!players?.[playerId];
+  }
   function saveHigherScore(scores, playerId, score) {
     if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
     const prevScore = scores[playerId] ?? null;
@@ -649,6 +664,10 @@
   async function savePlayerInfo(ui2, playerId, name, pumbility, ownPlayerId, source) {
     if (!name && pumbility === null) return;
     const { players } = await chrome.storage.local.get("players");
+    if (!isKnownPlayer(players, playerId, ownPlayerId)) {
+      logPumbility(`found for ${name || playerId} (${playerId}) on ${source}: not a known player, skipping`);
+      return;
+    }
     const prev = players?.[playerId] || {};
     const player = { ...prev };
     if (name) player.name = name;
@@ -770,11 +789,12 @@
     lastSignature = signature;
     const { rival, playerId } = result;
     const stored = await chrome.storage.local.get(["results", "players"]);
+    const rivalKnown = !!playerId && isKnownPlayer(stored.players, playerId, ownPlayerId);
     const events = [];
     const updates = {};
     const results = { ...stored.results || {} };
     let resultsChanged = false;
-    if (rival && playerId) {
+    if (rival && rivalKnown) {
       const players = { ...stored.players || {} };
       if (players[playerId]?.name !== rival) {
         players[playerId] = { ...players[playerId], name: rival };
@@ -785,7 +805,7 @@
       const key = storageKey(row);
       const scores = { ...results[key] || {} };
       const { track, chart } = row;
-      const rivalUpdate = saveHigherScore(scores, playerId, row.score);
+      const rivalUpdate = rivalKnown ? saveHigherScore(scores, playerId, row.score) : null;
       if (rivalUpdate) {
         events.push({
           kind: "rival",
@@ -1006,7 +1026,7 @@
     const result = scrapeSessionScores();
     if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
     if (result.playerId !== playerId) throw new Error("Session player changed while scraping");
-    await runSessionScores(ui2, result, await syncOwnPlayerId());
+    await runSessionScores(ui2, result, await syncOwnPlayerId(), true);
     await saveSessionCheckpoint(playerId, info);
     progress.count++;
     report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
@@ -1027,7 +1047,7 @@
   async function scrapePlayerSessions(ui2, report = () => {
   }) {
     const playerId = sessionPagePlayerId();
-    if (!playerId) throw new Error("Scrap results is only available on a player Sessions page");
+    if (!playerId) throw new Error("Grabbing scores is only available on a player Sessions page");
     if (isScrapingSessions) return;
     isScrapingSessions = true;
     try {
@@ -1095,16 +1115,17 @@
       isScrapingSessions = false;
     }
   }
-  async function runSessionScores(ui2, result, ownPlayerId) {
-    const signature = JSON.stringify({ sessions: result, ownPlayerId });
-    if (signature === lastSignature2) return;
-    lastSignature2 = signature;
-    const stored = await chrome.storage.local.get(["results", "players"]);
+  async function runSessionScores(ui2, result, ownPlayerId, allowNewPlayer = false) {
     const playerId = result.playerId;
     if (!playerId) {
       console.warn(`${TAG} Unable to identify the player ID for session scores`);
       return;
     }
+    const stored = await chrome.storage.local.get(["results", "players"]);
+    if (!allowNewPlayer && !isKnownPlayer(stored.players, playerId, ownPlayerId)) return;
+    const signature = JSON.stringify({ sessions: result, ownPlayerId });
+    if (signature === lastSignature2) return;
+    lastSignature2 = signature;
     const name = playerName();
     const updates = {};
     const events = [];
@@ -1156,6 +1177,26 @@
   function isSessionsContentLoaded() {
     return isSessionsPage() && getSessionCards().length > 0;
   }
+  function countNewSessions(checkpoint) {
+    const { sessions, reachedPhoenix } = currentPhoenix2Sessions();
+    const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
+    if (index >= 0) return { count: index, more: false };
+    return { count: sessions.length, more: !reachedPhoenix && !!findPageButton("older") };
+  }
+  var cachedStorage = null;
+  async function loadScrapState() {
+    const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
+    cachedStorage = { players: players || {}, ownPlayerId: typeof ownPlayerId === "string" ? ownPlayerId : null };
+  }
+  function getScrapInfo() {
+    const playerId = sessionPagePlayerId();
+    if (!playerId || !cachedStorage || !isSessionsContentLoaded()) return null;
+    const { players, ownPlayerId } = cachedStorage;
+    return {
+      known: isKnownPlayer(players, playerId, ownPlayerId),
+      ...countNewSessions(players[playerId]?.lastScrapedSession || null)
+    };
+  }
   async function runSessionsPage(ui2, ownPlayerId) {
     await syncSessionsPumbility(ui2, ownPlayerId);
     const result = scrapeSessionScores();
@@ -1166,7 +1207,7 @@
   var ui = createScoresUI(
     exportTargets,
     (report) => scrapePlayerSessions(ui, report),
-    isSessionsContentLoaded
+    getScrapInfo
   );
   var timer = null;
   async function ensureStorageVersion() {
@@ -1188,9 +1229,12 @@
     await runRivalCompare(ui, ownPlayerId);
   }
   chrome.storage.onChanged.addListener((_, area) => {
-    if (area === "local" && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
+    if (area !== "local") return;
+    if (ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
+    loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
   });
   ui.initialize();
+  loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
   var pending = Promise.resolve();
   var schedule = () => {
     ui.ensure();
