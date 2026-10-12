@@ -1,12 +1,13 @@
-import { showToast } from './notifications.js';
+import { showSessionToast, showToast } from './notifications.js';
 import { createScoresUI } from './scores-ui.js';
 import { delta, isScrapLevel, STORAGE_VERSION, storageKey } from './storage.js';
 import { exportTargets } from './export-targets.js';
 
 const TAG = '[piuscores]';
-const ui = createScoresUI(exportTargets);
+const ui = createScoresUI(exportTargets, scrapePlayerSessions);
 let lastSignature = null;
 let timer = null;
+let isScrapingSessions = false;
 
 const text = (el) => (el ? el.textContent.trim() : '');
 
@@ -70,10 +71,17 @@ function parseSessionScore(element) {
   return Number.isNaN(n) ? null : n;
 }
 
+function isPhoenix2Chart(element) {
+  return /\/difficulty\/Phoenix2\//i.test(element?.getAttribute('src') || '');
+}
+
 function scrapeSessionScores() {
   const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
   const allPlays = document.querySelector('[data-testid="session-all-plays"]');
   if (!highlights && !allPlays) return null;
+  const mix = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'))
+    .split('·')[0].trim();
+  if (mix !== 'Phoenix 2') return null;
 
   const rowsByChart = new Map();
   const addScore = (track, chart, score) => {
@@ -84,17 +92,22 @@ function scrapeSessionScores() {
   };
 
   for (const card of highlights?.querySelectorAll('[data-testid="session-highlight-card"]') || []) {
+    const difficulty = card.querySelector('img.difficulty-bubble');
+    if (!isPhoenix2Chart(difficulty)) continue;
     addScore(
       text(card.querySelector('.hl-card-song')),
-      card.querySelector('img.difficulty-bubble')?.getAttribute('alt') || '',
+      difficulty.getAttribute('alt') || '',
       parseSessionScore(card),
     );
   }
 
-  for (const row of document.querySelectorAll('[data-testid="session-score-row"]')) {
+  const playRows = [...(allPlays?.querySelectorAll('[data-testid="session-score-row"]') || [])];
+  for (const row of playRows) {
+    const difficulty = row.querySelector('img.difficulty-bubble');
+    if (!isPhoenix2Chart(difficulty)) continue;
     addScore(
       text(row.querySelector('[data-testid="session-row-chart"]')),
-      row.querySelector('img.difficulty-bubble')?.getAttribute('alt') || '',
+      difficulty.getAttribute('alt') || '',
       parseSessionScore(row),
     );
   }
@@ -102,7 +115,266 @@ function scrapeSessionScores() {
   return {
     playerId: location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null,
     rows: [...rowsByChart.values()],
+    scannedResults: playRows.length,
   };
+}
+
+function sessionPagePlayerId() {
+  return location.pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/)?.[1] ?? null;
+}
+
+function getSessionCards() {
+  return [...document.querySelectorAll('[data-testid="session-card"]')];
+}
+
+function getSessionCardMix(card) {
+  const meta = text(card.querySelector('.sbd-card-meta')).replace(/\s+/g, ' ');
+  if (/^Phoenix 2(?:\s|$)/i.test(meta)) return 'Phoenix 2';
+  if (/^Phoenix(?:\s|$)/i.test(meta)) return 'Phoenix';
+  return null;
+}
+
+function getSessionCardInfo(card) {
+  if (getSessionCardMix(card) !== 'Phoenix 2') return null;
+  const meta = text(card.querySelector('.sbd-card-meta')).replace(/\s+/g, ' ');
+
+  const title = meta.replace(/^Phoenix 2\s*(?:·|-)?\s*/i, '').trim();
+  const timestamp = text(card.querySelector('.sbd-card-when')).replace(/\s+/g, ' ');
+  if (!title || !timestamp) return null;
+  return { title, timestamp };
+}
+
+function currentPhoenix2Sessions() {
+  const sessions = [];
+  for (const card of getSessionCards()) {
+    const mix = getSessionCardMix(card);
+    if (mix === 'Phoenix') return { sessions, reachedPhoenix: true };
+    if (mix !== 'Phoenix 2') continue;
+    const info = getSessionCardInfo(card);
+    if (info) sessions.push({ card, info });
+  }
+  return { sessions, reachedPhoenix: false };
+}
+
+function sessionCardSignature() {
+  return JSON.stringify(getSessionCards().map((card) => getSessionCardInfo(card) || text(card)));
+}
+
+function sessionCheckpointMatches(checkpoint, info) {
+  return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;
+}
+
+function findPageButton(direction) {
+  const main = document.querySelector('main') || document;
+  const controls = [...main.querySelectorAll(
+    '.mud-pagination button, [aria-label*="page" i] button, button[aria-label*="page" i]',
+  )];
+  const candidates = controls.length
+    ? controls
+    : [...main.querySelectorAll('button, a[role="button"]')];
+  const label = (button) => [
+    button.getAttribute('aria-label'),
+    button.getAttribute('title'),
+    text(button),
+  ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const patterns = {
+    older: /\bolder\b|\bnext page\b|^next$/,
+    newer: /\bnewer\b|\bprevious page\b|^previous$/,
+  };
+
+  return candidates.find((button) => {
+    const value = label(button);
+    return patterns[direction].test(value)
+      && !button.disabled
+      && button.getAttribute('aria-disabled') !== 'true';
+  }) || null;
+}
+
+function sameSessionDate(cardTimestamp, heroTimestamp) {
+  const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
+  const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)\b/i);
+  if (!cardDate || !heroDate) return false;
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  return Number(cardDate[1]) === Number(heroDate[2])
+    && months.indexOf(cardDate[2].toLowerCase()) + 1 === Number(heroDate[1])
+    && cardDate[3].replace(/\s+/g, '').toLowerCase() === heroDate[3].replace(/\s+/g, '').toLowerCase();
+}
+
+function waitForChange(predicate, description, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const observer = new MutationObserver(() => {
+      if (predicate()) {
+        observer.disconnect();
+        clearInterval(timerId);
+        resolve();
+      }
+    });
+    const timerId = setInterval(() => {
+      if (predicate()) {
+        observer.disconnect();
+        clearInterval(timerId);
+        resolve();
+      } else if (Date.now() - startedAt >= timeoutMs) {
+        observer.disconnect();
+        clearInterval(timerId);
+        reject(new Error(`Timed out waiting for ${description}`));
+      }
+    }, 100);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    if (predicate()) {
+      observer.disconnect();
+      clearInterval(timerId);
+      resolve();
+    }
+  });
+}
+
+async function clickPageButton(button, direction) {
+  if (!button) return false;
+  const before = sessionCardSignature();
+  button.click();
+  await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
+  return true;
+}
+
+async function saveSessionCheckpoint(playerId, info) {
+  const stored = await chrome.storage.local.get(['players']);
+  const players = { ...(stored.players || {}) };
+  players[playerId] = {
+    ...players[playerId],
+    lastScrapedSession: info,
+  };
+  const name = playerName();
+  if (name) players[playerId].name = name;
+  await chrome.storage.local.set({ players });
+}
+
+async function parseSessionCard(card, info, playerId, report, progress) {
+  card.click();
+  await waitForChange(() => {
+    const hero = document.querySelector('[data-testid="session-hero"]');
+    const heroWhen = text(hero?.querySelector('.sbd-hero-when'));
+    const heroTitle = text(hero?.querySelector('.sbd-hero-title'));
+    const cardTitle = info.title.split('·')[0].trim();
+    return heroWhen.split('·')[0].trim() === 'Phoenix 2'
+      && heroTitle === cardTitle
+      && sameSessionDate(info.timestamp, heroWhen)
+      && !!document.querySelector('[data-testid="session-all-plays"]');
+  }, `session "${info.title}" to open`);
+
+  const showAll = document.querySelector('[data-testid="session-show-all-plays"]');
+  if (showAll) {
+    showAll.click();
+    await waitForChange(() => {
+      if (!document.querySelector('[data-testid="session-show-all-plays"]')) return true;
+      const tally = [...document.querySelectorAll('[data-testid="session-hero"] .sbd-tally > div')]
+        .find((item) => text(item.querySelector('.sbd-tally-k')) === 'Plays');
+      const total = parseInt(text(tally?.querySelector('.sbd-tally-v')).replace(/[^\d]/g, ''), 10);
+      return Number.isFinite(total)
+        && document.querySelectorAll('[data-testid="session-score-row"]').length >= total;
+    },
+      `all plays for "${info.title}" to load`);
+  }
+
+  const result = scrapeSessionScores();
+  if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
+  if (result.playerId !== playerId) throw new Error('Session player changed while scraping');
+  await runSessionScores(result, await syncOwnPlayerId());
+  await saveSessionCheckpoint(playerId, info);
+  progress.count++;
+  report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
+  showSessionToast(
+    ui.ensure(),
+    playerName() || playerId,
+    info.title,
+    info.timestamp,
+    result.scannedResults,
+  );
+}
+
+function currentPhoenix2SessionCards() {
+  return currentPhoenix2Sessions().sessions;
+}
+
+function findCurrentCard(info) {
+  return currentPhoenix2SessionCards().find((item) =>
+    sessionCheckpointMatches(info, item.info))?.card || null;
+}
+
+async function scrapePlayerSessions(report = () => {}) {
+  const playerId = sessionPagePlayerId();
+  if (!playerId) throw new Error('Scrap results is only available on a player Sessions page');
+  if (isScrapingSessions) return;
+  isScrapingSessions = true;
+
+  try {
+    const stored = await chrome.storage.local.get(['players']);
+    const checkpoint = stored.players?.[playerId]?.lastScrapedSession || null;
+    const pages = [];
+    const seenPages = new Set();
+    let checkpointFound = !checkpoint;
+    let reachedPhoenixBoundary = false;
+
+    if (!checkpoint) {
+      let signature = sessionCardSignature();
+      while (!seenPages.has(signature)) {
+        seenPages.add(signature);
+        const page = currentPhoenix2Sessions();
+        pages.push(page.sessions.map(({ info }) => info));
+        if (page.reachedPhoenix) break;
+        const next = findPageButton('older');
+        if (!next) break;
+        await clickPageButton(next, 'older');
+        signature = sessionCardSignature();
+      }
+    } else {
+      let signature = sessionCardSignature();
+      while (!seenPages.has(signature)) {
+        seenPages.add(signature);
+        const page = [];
+        const currentPage = currentPhoenix2Sessions();
+        for (const { info } of currentPage.sessions) {
+          if (sessionCheckpointMatches(checkpoint, info)) {
+            checkpointFound = true;
+            break;
+          }
+          page.push(info);
+        }
+        pages.push(page);
+        if (checkpointFound || currentPage.reachedPhoenix) {
+          reachedPhoenixBoundary = currentPage.reachedPhoenix;
+          break;
+        }
+        const next = findPageButton('older');
+        if (!next) break;
+        await clickPageButton(next, 'older');
+        signature = sessionCardSignature();
+      }
+    }
+
+    if (checkpoint && !checkpointFound && !reachedPhoenixBoundary) {
+      throw new Error('Saved session checkpoint was not found in the Sessions history');
+    }
+
+    const progress = { count: 0 };
+    for (let pageIndex = pages.length - 1; pageIndex >= 0; pageIndex--) {
+      for (const info of [...pages[pageIndex]].reverse()) {
+        const card = findCurrentCard(info);
+        if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
+        report(`Opening ${info.title} (${info.timestamp})`);
+        await parseSessionCard(card, info, playerId, report, progress);
+      }
+      if (pageIndex > 0) {
+        const newer = findPageButton('newer');
+        if (!newer) throw new Error('Unable to return to newer Sessions pages');
+        await clickPageButton(newer, 'newer');
+      }
+    }
+    report(`Scraping complete: ${progress.count} Phoenix 2 session(s)`);
+  } finally {
+    isScrapingSessions = false;
+  }
 }
 
 function scrape() {

@@ -27,6 +27,11 @@ const TABS = [
   { id: 'you-win', label: 'You win' },
 ];
 const UI_STATE_KEY = 'piuscores.rivalScores.uiState';
+const SCRAP_RESULTS_LABEL = 'Scrap results';
+
+function isPlayerSessionsPage() {
+  return /^\/Player\/[^/]+\/Sessions\/?$/i.test(location.pathname);
+}
 
 function readUiState() {
   try {
@@ -125,7 +130,7 @@ const styles = `
   @keyframes in { from { opacity: 0; transform: translateY(8px); } }
 `;
 
-export function createScoresUI(exportTargets) {
+export function createScoresUI(exportTargets, scrapeResults) {
   let uiHost = null;
   const savedState = readUiState();
   let isWindowOpen = savedState.isOpen;
@@ -143,7 +148,9 @@ export function createScoresUI(exportTargets) {
   function ensure() {
     if (uiHost) {
       if (!uiHost.isConnected) document.body.appendChild(uiHost);
-      return uiHost.shadowRoot;
+      const shadow = uiHost.shadowRoot;
+      shadow.querySelector('.scrap-results').hidden = !isPlayerSessionsPage();
+      return shadow;
     }
 
     uiHost = document.createElement('div');
@@ -152,6 +159,7 @@ export function createScoresUI(exportTargets) {
       <style>${styles}</style>
       <div class="stack"></div>
       <div class="buttons">
+        <button class="btn scrap-results" type="button" title="Scrape Phoenix 2 sessions on this player page">Scrap results</button>
         <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
         <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
@@ -171,6 +179,20 @@ export function createScoresUI(exportTargets) {
       </div>`;
     shadow.querySelector('.export').addEventListener('click', () => {
       exportTargets().catch((error) => console.error('[piuscores]', error));
+    });
+    const scrapButton = shadow.querySelector('.scrap-results');
+    scrapButton.hidden = !isPlayerSessionsPage();
+    scrapButton.addEventListener('click', async () => {
+      scrapButton.disabled = true;
+      try {
+        await scrapeResults((status) => { scrapButton.textContent = status; });
+      } catch (error) {
+        console.error('[piuscores] Unable to scrape player sessions', error);
+        scrapButton.textContent = 'Scraping failed';
+      } finally {
+        scrapButton.disabled = false;
+        setTimeout(() => { scrapButton.textContent = SCRAP_RESULTS_LABEL; }, 2500);
+      }
     });
     shadow.querySelector('.show-scores').addEventListener('click', () => open());
     shadow.querySelector('.clear-data').addEventListener('click', async () => {

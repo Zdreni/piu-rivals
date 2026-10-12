@@ -44,3 +44,21 @@ export function showToast(shadow, rival, events) {
   setTimeout(close, TOAST_MS);
   shadow.querySelector('.stack').appendChild(toast);
 }
+
+export function showSessionToast(shadow, player, title, timestamp, scannedResults) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<div class="title">${esc(player)}: parsed new session</div>`
+    + `<div class="line">${esc(title)}</div><div class="line">${esc(timestamp)}</div>`
+    + `<div class="line">Scanned ${fmt(scannedResults)} results</div>`;
+
+  const close = () => {
+    if (toast.classList.contains('out')) return;
+    toast.classList.add('out');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    setTimeout(() => toast.remove(), 600);
+  };
+  toast.addEventListener('click', close);
+  setTimeout(close, TOAST_MS);
+  shadow.querySelector('.stack').appendChild(toast);
+}
