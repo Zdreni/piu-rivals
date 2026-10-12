@@ -1,32 +1,19 @@
-import { byTargetWeight, delta, normalize, targetWeight } from './storage.js';
+import { byTargetWeight, loadCharts, targetWeight } from './storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
 
 // Export charts where a rival is ahead or I have no score.
 export async function exportTargets() {
-  const all = await chrome.storage.local.get(null);
-  const charts = [];
-
-  for (const [key, raw] of Object.entries(all)) {
-    if (!key.startsWith('chart:')) continue;
-    const [track, chart] = key.slice('chart:'.length).split(/\|(?=[^|]*$)/);
-    const { mine, rivals } = normalize(raw);
-
-    const entries = Object.entries(rivals)
-      .map(([rival, score]) => ({ rival, score, difference: delta(mine, score) }))
+  const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
+    const entries = rivals
+      .map(({ player, score, delta }) => ({ rival: player, score, difference: delta }))
       .filter((r) => r.difference === null || r.difference < 0)
       .sort((a, b) => b.score - a.score);
 
-    if (entries.length) {
-      charts.push({
-        track,
-        chart,
-        entries,
-        unplayed: mine === null || mine === undefined,
-        weight: targetWeight(entries.map((r) => r.difference)),
-      });
-    }
-  }
+    return entries.length
+      ? [{ track, chart, entries, unplayed, weight: targetWeight(entries.map((r) => r.difference)) }]
+      : [];
+  });
 
   charts.sort(byTargetWeight);
 

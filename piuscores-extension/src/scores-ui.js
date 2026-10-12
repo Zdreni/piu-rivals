@@ -51,6 +51,8 @@ const styles = `
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .btn:hover { background: #1C2B22; }
+  .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
+  .btn.clear-data:hover { background: #2B1C1C; }
   .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
              display: flex; align-items: center; justify-content: center;
              font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
@@ -94,10 +96,12 @@ const styles = `
   .track { width: 420px; min-width: 420px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mine { color: #FFC433; font-weight: 600; }
   .won { opacity: .4; }
+  .player-link { color: inherit; text-decoration: underline; text-decoration-color: #4FE33F66; }
+  .player-link:hover { color: #4FE33F; }
   th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; }
-  tr.alt { background: rgba(255,255,255,.05); }
+  tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
   tr.group td { border-top: 1px solid #2B4034; padding-top: 14px; }
   tbody tr.group:not(:first-child) td { border-top-width: 2px; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -150,6 +154,7 @@ export function createScoresUI(exportTargets) {
       <div class="buttons">
         <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
+        <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
       </div>
       <div class="overlay" ${isWindowOpen ? '' : 'hidden'}>
         <div class="dialog" role="dialog" aria-label="Rival scores">
@@ -168,6 +173,18 @@ export function createScoresUI(exportTargets) {
       exportTargets().catch((error) => console.error('[piuscores]', error));
     });
     shadow.querySelector('.show-scores').addEventListener('click', () => open());
+    shadow.querySelector('.clear-data').addEventListener('click', async () => {
+      if (!window.confirm('Clear all PIU Scores data saved by this extension? This cannot be undone.')) return;
+
+      try {
+        await chrome.storage.local.clear();
+        selectedLevel = null;
+        selectedTab = 'rivals-win';
+        await render();
+      } catch (error) {
+        console.error('[piuscores] Unable to clear saved data', error);
+      }
+    });
     shadow.querySelector('.dlg-close').addEventListener('click', () => close());
     shadow.querySelector('.filters').addEventListener('click', (event) => {
       const chip = event.target.closest('.chip');
@@ -197,12 +214,16 @@ export function createScoresUI(exportTargets) {
         ? `<td class="track" rowspan="${list.length}" title="${esc(chart.track)}">${esc(chart.track)}</td>
            <td rowspan="${list.length}"><b>${esc(chart.chart)}</b></td>`
         : '';
-      const tr = i === 0 ? '<tr class="group">' : i % 2 ? '<tr class="alt">' : '<tr>';
+      const tr = i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>';
       if (rival.me) {
         return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt(rival.score)}</td><td></td></tr>`;
       }
       const won = rival.delta !== null && rival.delta > 0 ? ' won' : '';
-      return `${tr}${head}<td class="${won}">${esc(rival.player)}</td><td class="num${won}">${fmt(rival.score)}</td><td class="num${won}">${fmtDelta(rival.delta)}</td></tr>`;
+      const playerId = rival.playerId;
+      const name = playerId
+        ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(rival.player)}</a>`
+        : esc(rival.player);
+      return `${tr}${head}<td class="${won}">${name}</td><td class="num${won}">${fmt(rival.score)}</td><td class="num${won}">${fmtDelta(rival.delta)}</td></tr>`;
     });
   }
 

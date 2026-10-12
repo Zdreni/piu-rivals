@@ -1,10 +1,14 @@
-// Stored in chrome.storage.local, one entry per chart:
-//   "chart:<track>|<chart>" -> { mine: <score|null>, rivals: { <name>: <score> } }
-// `mine` is null when there is no score, and absent when it was never seen.
-export const storageKey = (row) => `chart:${row.track}|${row.chart}`;
+// Player metadata is stored as { players: { <playerId>: { name } } }.
+// Scores are stored as results["<track>|<chart>"][playerId] = score.
+export const STORAGE_VERSION = 1;
+export const MIN_SCRAPE_LEVEL = 10;
 
-export const normalize = (entry) =>
-  entry && entry.rivals ? { ...entry, rivals: { ...entry.rivals } } : { rivals: {} };
+export const storageKey = (row) => `${row.track}|${row.chart}`;
+
+export const isScrapLevel = (chart) => {
+  const level = chart.match(/\d+/);
+  return level !== null && Number(level[0]) >= MIN_SCRAPE_LEVEL;
+};
 
 // Positive = I'm ahead, same sign convention as the site.
 export const delta = (mine, theirs) =>
@@ -25,24 +29,40 @@ export const byLeadWeight = (a, b) =>
 
 export async function loadCharts() {
   const all = await chrome.storage.local.get(null);
+  const players = all.players && typeof all.players === 'object' ? all.players : {};
+  const playerName = (playerId) => {
+    const player = players[playerId];
+    if (player && typeof player === 'object' && typeof player.name === 'string') return player.name;
+    return playerId;
+  };
+  const ownPlayerId = typeof all.ownPlayerId === 'string' ? all.ownPlayerId : null;
+  const results = all.results && typeof all.results === 'object' ? all.results : {};
   const charts = [];
 
-  for (const [key, raw] of Object.entries(all)) {
-    if (!key.startsWith('chart:')) continue;
-    const [track, chart] = key.slice('chart:'.length).split(/\|(?=[^|]*$)/);
-    const { mine, rivals } = normalize(raw);
-    const list = Object.entries(rivals)
-      .map(([player, score]) => ({ player, score, delta: delta(mine, score) }))
-      .sort((a, b) => b.score - a.score);
+  for (const [key, rawScores] of Object.entries(results)) {
+    if (!rawScores || typeof rawScores !== 'object') continue;
+    const [track, chart] = key.split(/\|(?=[^|]*$)/);
+    const scores = rawScores;
+    const mine = ownPlayerId ? scores[ownPlayerId] ?? null : null;
+    const rivals = [
+      ...Object.entries(scores)
+        .filter(([playerId]) => playerId !== ownPlayerId)
+        .map(([playerId, score]) => ({
+          player: playerName(playerId),
+          playerId,
+          score,
+          delta: delta(mine, score),
+        })),
+    ].sort((a, b) => b.score - a.score);
 
-    if (list.length) {
+    if (rivals.length) {
       charts.push({
         track,
         chart,
-        mine: mine ?? null,
-        rivals: list,
-        unplayed: mine === null || mine === undefined,
-        weight: targetWeight(list.map((r) => r.delta)),
+        mine,
+        rivals,
+        unplayed: mine === null,
+        weight: targetWeight(rivals.map((rival) => rival.delta)),
       });
     }
   }

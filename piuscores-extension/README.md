@@ -2,6 +2,16 @@
 
 This Chrome extension collects rival scores from player pages on
 `piuscores.arroweclip.se` and shows changes and saved scores.
+It also collects rival scores from the Highlights and All plays sections on
+Sessions pages. Scraped scores only replace a stored score when they are higher,
+so older session results cannot lower a saved best.
+Scores are associated with player IDs. The extension identifies your own ID
+from the account menu's “My Sessions” link so your scores can be compared with
+the rival scores collected from player pages. Player display names are stored
+in `chrome.storage.local` as `players: { "<playerId>": { "name": "<name>" } }`.
+Chart scores are stored as `results: { "<track>|<chart>": { "<playerId>": <score> } }`.
+The storage schema version is recorded as `storageVersion: 1`.
+Scraping is limited to chart levels 10 and above (`MIN_SCRAPE_LEVEL`).
 
 ## Build
 

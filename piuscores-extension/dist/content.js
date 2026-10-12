@@ -40,8 +40,13 @@
   }
 
   // src/storage.js
-  var storageKey = (row) => `chart:${row.track}|${row.chart}`;
-  var normalize = (entry) => entry && entry.rivals ? { ...entry, rivals: { ...entry.rivals } } : { rivals: {} };
+  var STORAGE_VERSION = 1;
+  var MIN_SCRAPE_LEVEL = 10;
+  var storageKey = (row) => `${row.track}|${row.chart}`;
+  var isScrapLevel = (chart) => {
+    const level = chart.match(/\d+/);
+    return level !== null && Number(level[0]) >= MIN_SCRAPE_LEVEL;
+  };
   var delta = (mine, theirs) => mine === null || mine === void 0 || theirs === null ? null : mine - theirs;
   var targetWeight = (diffs) => diffs.reduce((acc, d) => acc + (d !== null && d < 0 ? Math.sqrt(-d) : 0), 0);
   var byTargetWeight = (a, b) => b.weight - a.weight || Number(b.unplayed) - Number(a.unplayed) || a.track.localeCompare(b.track);
@@ -49,20 +54,36 @@
   var byLeadWeight = (a, b) => leadWeight(b) - leadWeight(a) || a.track.localeCompare(b.track);
   async function loadCharts() {
     const all = await chrome.storage.local.get(null);
+    const players = all.players && typeof all.players === "object" ? all.players : {};
+    const playerName2 = (playerId) => {
+      const player = players[playerId];
+      if (player && typeof player === "object" && typeof player.name === "string") return player.name;
+      return playerId;
+    };
+    const ownPlayerId = typeof all.ownPlayerId === "string" ? all.ownPlayerId : null;
+    const results = all.results && typeof all.results === "object" ? all.results : {};
     const charts = [];
-    for (const [key, raw] of Object.entries(all)) {
-      if (!key.startsWith("chart:")) continue;
-      const [track, chart] = key.slice("chart:".length).split(/\|(?=[^|]*$)/);
-      const { mine, rivals } = normalize(raw);
-      const list = Object.entries(rivals).map(([player, score]) => ({ player, score, delta: delta(mine, score) })).sort((a, b) => b.score - a.score);
-      if (list.length) {
+    for (const [key, rawScores] of Object.entries(results)) {
+      if (!rawScores || typeof rawScores !== "object") continue;
+      const [track, chart] = key.split(/\|(?=[^|]*$)/);
+      const scores = rawScores;
+      const mine = ownPlayerId ? scores[ownPlayerId] ?? null : null;
+      const rivals = [
+        ...Object.entries(scores).filter(([playerId]) => playerId !== ownPlayerId).map(([playerId, score]) => ({
+          player: playerName2(playerId),
+          playerId,
+          score,
+          delta: delta(mine, score)
+        }))
+      ].sort((a, b) => b.score - a.score);
+      if (rivals.length) {
         charts.push({
           track,
           chart,
-          mine: mine ?? null,
-          rivals: list,
-          unplayed: mine === null || mine === void 0,
-          weight: targetWeight(list.map((r) => r.delta))
+          mine,
+          rivals,
+          unplayed: mine === null,
+          weight: targetWeight(rivals.map((rival) => rival.delta))
         });
       }
     }
@@ -112,6 +133,8 @@
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .btn:hover { background: #1C2B22; }
+  .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
+  .btn.clear-data:hover { background: #2B1C1C; }
   .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
              display: flex; align-items: center; justify-content: center;
              font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
@@ -155,10 +178,12 @@
   .track { width: 420px; min-width: 420px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mine { color: #FFC433; font-weight: 600; }
   .won { opacity: .4; }
+  .player-link { color: inherit; text-decoration: underline; text-decoration-color: #4FE33F66; }
+  .player-link:hover { color: #4FE33F; }
   th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; }
-  tr.alt { background: rgba(255,255,255,.05); }
+  tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
   tr.group td { border-top: 1px solid #2B4034; padding-top: 14px; }
   tbody tr.group:not(:first-child) td { border-top-width: 2px; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -207,6 +232,7 @@
       <div class="buttons">
         <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
         <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
+        <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
       </div>
       <div class="overlay" ${isWindowOpen ? "" : "hidden"}>
         <div class="dialog" role="dialog" aria-label="Rival scores">
@@ -225,6 +251,17 @@
         exportTargets2().catch((error) => console.error("[piuscores]", error));
       });
       shadow.querySelector(".show-scores").addEventListener("click", () => open());
+      shadow.querySelector(".clear-data").addEventListener("click", async () => {
+        if (!window.confirm("Clear all PIU Scores data saved by this extension? This cannot be undone.")) return;
+        try {
+          await chrome.storage.local.clear();
+          selectedLevel = null;
+          selectedTab = "rivals-win";
+          await render();
+        } catch (error) {
+          console.error("[piuscores] Unable to clear saved data", error);
+        }
+      });
       shadow.querySelector(".dlg-close").addEventListener("click", () => close());
       shadow.querySelector(".filters").addEventListener("click", (event) => {
         const chip = event.target.closest(".chip");
@@ -250,12 +287,14 @@
       return list.map((rival, i) => {
         const head = i === 0 ? `<td class="track" rowspan="${list.length}" title="${esc2(chart.track)}">${esc2(chart.track)}</td>
            <td rowspan="${list.length}"><b>${esc2(chart.chart)}</b></td>` : "";
-        const tr = i === 0 ? '<tr class="group">' : i % 2 ? '<tr class="alt">' : "<tr>";
+        const tr = i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : "<tr>";
         if (rival.me) {
           return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt2(rival.score)}</td><td></td></tr>`;
         }
         const won = rival.delta !== null && rival.delta > 0 ? " won" : "";
-        return `${tr}${head}<td class="${won}">${esc2(rival.player)}</td><td class="num${won}">${fmt2(rival.score)}</td><td class="num${won}">${fmtDelta2(rival.delta)}</td></tr>`;
+        const playerId = rival.playerId;
+        const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc2(rival.player)}</a>` : esc2(rival.player);
+        return `${tr}${head}<td class="${won}">${name}</td><td class="num${won}">${fmt2(rival.score)}</td><td class="num${won}">${fmtDelta2(rival.delta)}</td></tr>`;
       });
     }
     async function render() {
@@ -324,23 +363,10 @@
   // src/export-targets.js
   var fmt3 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
   async function exportTargets() {
-    const all = await chrome.storage.local.get(null);
-    const charts = [];
-    for (const [key, raw] of Object.entries(all)) {
-      if (!key.startsWith("chart:")) continue;
-      const [track, chart] = key.slice("chart:".length).split(/\|(?=[^|]*$)/);
-      const { mine, rivals } = normalize(raw);
-      const entries = Object.entries(rivals).map(([rival, score]) => ({ rival, score, difference: delta(mine, score) })).filter((r) => r.difference === null || r.difference < 0).sort((a2, b) => b.score - a2.score);
-      if (entries.length) {
-        charts.push({
-          track,
-          chart,
-          entries,
-          unplayed: mine === null || mine === void 0,
-          weight: targetWeight(entries.map((r) => r.difference))
-        });
-      }
-    }
+    const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
+      const entries = rivals.map(({ player, score, delta: delta2 }) => ({ rival: player, score, difference: delta2 })).filter((r) => r.difference === null || r.difference < 0).sort((a2, b) => b.score - a2.score);
+      return entries.length ? [{ track, chart, entries, unplayed, weight: targetWeight(entries.map((r) => r.difference)) }] : [];
+    });
     charts.sort(byTargetWeight);
     const lines = [`PIU Scores targets \u2014 ${(/* @__PURE__ */ new Date()).toLocaleString()}`, `${charts.length} chart(s)`, ""];
     for (const { track, chart, entries } of charts) {
@@ -368,84 +394,234 @@
   var lastSignature = null;
   var timer = null;
   var text = (el) => el ? el.textContent.trim() : "";
+  function findOwnPlayerId() {
+    for (const link of document.querySelectorAll("a[href]")) {
+      if (text(link).replace(/\s+/g, " ") !== "My Sessions") continue;
+      const url = new URL(link.href, location.href);
+      if (url.hostname !== location.hostname) continue;
+      const match = url.pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/);
+      if (match) return match[1];
+    }
+    return null;
+  }
+  async function syncOwnPlayerId() {
+    const scrapedId = findOwnPlayerId();
+    const { ownPlayerId } = await chrome.storage.local.get("ownPlayerId");
+    if (scrapedId && scrapedId !== ownPlayerId) {
+      await chrome.storage.local.set({ ownPlayerId: scrapedId });
+      return scrapedId;
+    }
+    return typeof ownPlayerId === "string" ? ownPlayerId : null;
+  }
+  async function ensureStorageVersion() {
+    const { storageVersion } = await chrome.storage.local.get("storageVersion");
+    if (storageVersion === void 0) {
+      await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
+    } else if (storageVersion !== STORAGE_VERSION) {
+      console.warn(`${TAG} Stored data version ${storageVersion} differs from supported version ${STORAGE_VERSION}`);
+    }
+  }
+  function playerName() {
+    return text(document.querySelector("main h5")).replace(/\s+[—–-]\s+Sessions$/i, "").trim();
+  }
+  function playerDisplayName(players, playerId) {
+    return players[playerId]?.name || playerId;
+  }
+  function saveHigherScore(scores, playerId, score) {
+    if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
+    const prevScore = scores[playerId] ?? null;
+    scores[playerId] = score;
+    return { prevScore, change: prevScore === null ? "new" : "upd" };
+  }
   function parseScore(cell) {
     const p = cell && cell.querySelector(".rvl-cmp-score p");
     if (!p) return null;
     const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
     return Number.isNaN(n) ? null : n;
   }
+  function parseSessionScore(element) {
+    const p = element?.querySelector('[data-testid="peer-score"] p');
+    if (!p) return null;
+    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  function scrapeSessionScores() {
+    const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
+    const allPlays = document.querySelector('[data-testid="session-all-plays"]');
+    if (!highlights && !allPlays) return null;
+    const rowsByChart = /* @__PURE__ */ new Map();
+    const addScore = (track, chart, score) => {
+      if (!track || !isScrapLevel(chart) || score === null) return;
+      const row = { track, chart, score };
+      const key = storageKey(row);
+      if (score > (rowsByChart.get(key)?.score ?? -1)) rowsByChart.set(key, row);
+    };
+    for (const card of highlights?.querySelectorAll('[data-testid="session-highlight-card"]') || []) {
+      addScore(
+        text(card.querySelector(".hl-card-song")),
+        card.querySelector("img.difficulty-bubble")?.getAttribute("alt") || "",
+        parseSessionScore(card)
+      );
+    }
+    for (const row of document.querySelectorAll('[data-testid="session-score-row"]')) {
+      addScore(
+        text(row.querySelector('[data-testid="session-row-chart"]')),
+        row.querySelector("img.difficulty-bubble")?.getAttribute("alt") || "",
+        parseSessionScore(row)
+      );
+    }
+    return {
+      playerId: location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null,
+      rows: [...rowsByChart.values()]
+    };
+  }
   function scrape() {
+    const playerId = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null;
     const table = document.querySelector('[data-testid="rival-compare-table"]');
-    if (!table) return null;
-    const headers = table.querySelectorAll("thead th");
-    const rival = text(headers[2]) || text(document.querySelector('[data-testid="player-hero"] h5'));
+    const headers = table?.querySelectorAll("thead th");
+    const rival = text(headers?.[2]) || text(document.querySelector('[data-testid="player-hero"] h5'));
     const rows = [];
-    for (const tr of table.querySelectorAll("tbody tr")) {
+    for (const tr of table?.querySelectorAll("tbody tr") || []) {
       const cells = tr.querySelectorAll("td");
       if (cells.length < 3) continue;
       const songEl = cells[0].querySelector(".rvl-cmp-song");
       const track = songEl ? songEl.getAttribute("title") || text(songEl) : "";
       const chart = cells[0].querySelector("img.difficulty-bubble")?.getAttribute("alt") || "";
+      if (!isScrapLevel(chart)) continue;
       rows.push({ track, chart, mine: parseScore(cells[1]), score: parseScore(cells[2]) });
     }
-    return { rival, rows };
+    return { rival, playerId, rows };
   }
-  async function run() {
-    const result = scrape();
-    if (!result || result.rows.length === 0) return;
-    const signature = JSON.stringify(result);
+  async function runSessionScores(result, ownPlayerId) {
+    const signature = JSON.stringify({ sessions: result, ownPlayerId });
     if (signature === lastSignature) return;
     lastSignature = signature;
-    const { rival } = result;
-    const keys = [...new Set(result.rows.map(storageKey))];
-    const stored = await chrome.storage.local.get(keys);
-    const events = [];
+    const stored = await chrome.storage.local.get(["results", "players"]);
+    const playerId = result.playerId;
+    if (!playerId) {
+      console.warn(`${TAG} Unable to identify the player ID for session scores`);
+      return;
+    }
+    const name = playerName();
     const updates = {};
+    const events = [];
+    const results = { ...stored.results || {} };
+    let resultsChanged = false;
+    if (name) {
+      const players = { ...stored.players || {} };
+      if (players[playerId]?.name !== name) {
+        players[playerId] = { ...players[playerId], name };
+        updates.players = players;
+      }
+    }
     for (const row of result.rows) {
       const key = storageKey(row);
-      const entry = updates[key] || normalize(stored[key]);
-      const before = JSON.stringify(entry);
-      const { track, chart } = row;
-      if (row.score !== null && entry.rivals[rival] !== row.score) {
-        const prevScore = entry.rivals[rival] ?? null;
-        entry.rivals[rival] = row.score;
-        events.push({
-          kind: "rival",
-          change: prevScore === null ? "new" : "upd",
-          track,
-          chart,
-          player: rival,
-          score: row.score,
-          prevScore,
-          delta: delta(row.mine, row.score)
-        });
-      }
-      if (entry.mine !== row.mine) {
-        const prevScore = entry.mine ?? null;
-        entry.mine = row.mine;
-        if (row.mine !== null) {
-          const deltas = Object.entries(entry.rivals).map(([player, score]) => ({ player, score, delta: delta(row.mine, score) })).sort((a, b) => a.delta - b.delta);
-          events.push({
-            kind: "mine",
-            change: prevScore === null ? "new" : "upd",
-            track,
-            chart,
-            score: row.mine,
-            prevScore,
-            deltas
-          });
-        }
-      }
-      if (JSON.stringify(entry) !== before) updates[key] = entry;
+      const scores = { ...results[key] || {} };
+      const scoreUpdate = saveHigherScore(scores, playerId, row.score);
+      if (!scoreUpdate) continue;
+      results[key] = scores;
+      resultsChanged = true;
+      if (scoreUpdate) events.push({
+        kind: "rival",
+        change: scoreUpdate.change,
+        track: row.track,
+        chart: row.chart,
+        player: playerId === ownPlayerId ? "You" : name || playerId,
+        score: row.score,
+        prevScore: scoreUpdate.prevScore,
+        delta: null
+      });
     }
+    if (resultsChanged) updates.results = results;
     if (Object.keys(updates).length) await chrome.storage.local.set(updates);
     if (events.length === 0) return;
-    console.log(`${TAG} rival: ${rival}, ${events.length} change(s)`);
+    const player = playerId === ownPlayerId ? "You" : name || playerId;
+    console.log(`${TAG} sessions: ${player}, ${events.length} best-score update(s)`);
+    console.table(events.map((event) => ({
+      type: event.change,
+      track: event.track,
+      chart: event.chart,
+      player,
+      score: event.score,
+      prevScore: event.prevScore
+    })));
+    showToast(ui.ensure(), player, events);
+  }
+  async function run() {
+    await ensureStorageVersion();
+    const ownPlayerId = await syncOwnPlayerId();
+    const sessionResult = scrapeSessionScores();
+    if (sessionResult) {
+      await runSessionScores(sessionResult, ownPlayerId);
+      return;
+    }
+    const result = scrape();
+    if (!result) return;
+    const signature = JSON.stringify({ result, ownPlayerId });
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    const { rival, playerId } = result;
+    const stored = await chrome.storage.local.get(["results", "players"]);
+    const events = [];
+    const updates = {};
+    const results = { ...stored.results || {} };
+    let resultsChanged = false;
+    if (rival && playerId) {
+      const players = { ...stored.players || {} };
+      if (players[playerId]?.name !== rival) {
+        players[playerId] = { ...players[playerId], name: rival };
+        updates.players = players;
+      }
+    }
+    for (const row of result.rows) {
+      const key = storageKey(row);
+      const scores = { ...results[key] || {} };
+      const { track, chart } = row;
+      const rivalUpdate = saveHigherScore(scores, playerId, row.score);
+      if (rivalUpdate) {
+        events.push({
+          kind: "rival",
+          change: rivalUpdate.change,
+          track,
+          chart,
+          player: playerId === ownPlayerId ? "You" : rival,
+          score: row.score,
+          prevScore: rivalUpdate.prevScore,
+          delta: delta(scores[ownPlayerId] ?? null, row.score)
+        });
+      }
+      const mineUpdate = saveHigherScore(scores, ownPlayerId, row.mine);
+      if (mineUpdate) {
+        const deltas = Object.entries(scores).filter(([id]) => id !== ownPlayerId).map(([id, score]) => ({
+          player: playerDisplayName(stored.players || {}, id),
+          score,
+          delta: delta(row.mine, score)
+        })).sort((a, b) => a.delta - b.delta);
+        events.push({
+          kind: "mine",
+          change: mineUpdate.change,
+          track,
+          chart,
+          score: row.mine,
+          prevScore: mineUpdate.prevScore,
+          deltas
+        });
+      }
+      if (rivalUpdate || mineUpdate) {
+        results[key] = scores;
+        resultsChanged = true;
+      }
+    }
+    if (resultsChanged) updates.results = results;
+    if (Object.keys(updates).length) await chrome.storage.local.set(updates);
+    if (events.length === 0) return;
+    const player = playerId === ownPlayerId ? "You" : rival;
+    console.log(`${TAG} rival: ${player}, ${events.length} change(s)`);
     console.table(events.flatMap((event) => event.kind === "rival" ? [{ type: event.change, track: event.track, chart: event.chart, player: event.player, score: event.score, prevScore: event.prevScore, delta: event.delta }] : [
       { type: `mine ${event.change}`, track: event.track, chart: event.chart, player: "You", score: event.score, prevScore: event.prevScore, delta: null },
       ...event.deltas.map((d) => ({ type: "delta", track: event.track, chart: event.chart, player: d.player, score: d.score, prevScore: null, delta: d.delta }))
     ]));
-    showToast(ui.ensure(), rival, events);
+    showToast(ui.ensure(), player, events);
   }
   chrome.storage.onChanged.addListener((_, area) => {
     if (area === "local" && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
