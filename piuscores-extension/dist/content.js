@@ -171,8 +171,8 @@
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
   .filters { display: flex; gap: 6px; padding: 10px; border-right: 1px solid #2B4034;
              overflow-y: auto; flex-shrink: 0; align-items: flex-start; }
-  .filter-row { display: flex; flex-direction: column; gap: 6px; }
-  .filter-row .chip { width: 100%; }
+  .filter-grid { display: grid; gap: 6px; }
+  .filter-grid .chip { width: 100%; }
   .chip { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 999px;
           padding: 3px 10px; font: inherit; cursor: pointer; }
   .chip:hover { color: #EAF5EC; }
@@ -357,7 +357,12 @@
         return `<button class="chip${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc2(label)}"><span>${esc2(label)}</span><span class="chip-stats" title="charts: losing / not played / best">${stat("neg", counts.lose)} / ${stat("blue", counts.unplayed)} / ${stat("pos", counts.win)}</span></button>`;
       };
       const types = [...new Set(levels.map(levelType))];
-      shadow.querySelector(".filters").innerHTML = types.map((type) => `<div class="filter-row" role="radiogroup">${levels.filter((level) => levelType(level) === type).map(chip).join("")}</div>`).join("");
+      const nums = [...new Set(levels.map(levelNum))].sort((a, b) => a - b);
+      const cell = (type, num) => {
+        const level = levels.find((l) => levelType(l) === type && levelNum(l) === num);
+        return level ? chip(level) : "<span></span>";
+      };
+      shadow.querySelector(".filters").innerHTML = `<div class="filter-grid" role="radiogroup" style="grid-template-columns: repeat(${types.length}, auto)">${nums.map((num) => types.map((type) => cell(type, num)).join("")).join("")}</div>`;
       const levelCharts = charts.filter((chart) => chart.chart === selectedLevel);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
