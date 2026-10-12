@@ -69,3 +69,31 @@ export async function loadCharts() {
 
   return charts;
 }
+
+export async function loadPlayers() {
+  const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
+  return {
+    players: players && typeof players === 'object' ? players : {},
+    ownPlayerId: typeof ownPlayerId === 'string' ? ownPlayerId : null,
+  };
+}
+
+// Preferences are stored as { preferences: { hiddenRivals: [<playerId>, ...] } }.
+export async function loadPreferences() {
+  const { preferences } = await chrome.storage.local.get('preferences');
+  const prefs = preferences && typeof preferences === 'object' ? preferences : {};
+  return { hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [] };
+}
+
+export async function savePreferences(changes) {
+  const { preferences } = await chrome.storage.local.get('preferences');
+  await chrome.storage.local.set({ preferences: { ...(preferences || {}), ...changes } });
+}
+
+// Returns the chart limited to rivals passing `keep`, or null when none remain.
+export function withRivals(chart, keep) {
+  const rivals = chart.rivals.filter(keep);
+  if (rivals.length === chart.rivals.length) return chart;
+  if (!rivals.length) return null;
+  return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
+}

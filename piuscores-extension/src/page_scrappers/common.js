@@ -21,14 +21,66 @@ function findOwnPlayerId() {
   return null;
 }
 
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let knownOwnPlayerId = null;
+
+// The account menu caption reads "<username> (<in-game name>)".
+function accountUsername() {
+  return text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1] ?? null;
+}
+
+// Player pages can be addressed by GUID or by account username (e.g. /Player/Dino for your
+// own profile). Only GUIDs are used as player IDs; your username maps to your own ID.
+export function pagePlayerId() {
+  const segment = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1];
+  if (!segment) return null;
+  const id = decodeURIComponent(segment);
+  if (GUID_RE.test(id)) return id;
+  const username = accountUsername();
+  return username && id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
+}
+
+// Merges data saved under the username alias (by older versions) into the own GUID.
+async function mergeOwnAlias(ownPlayerId) {
+  const alias = accountUsername();
+  if (!ownPlayerId || !alias) return;
+  const { players, results, preferences } = await chrome.storage.local.get(['players', 'results', 'preferences']);
+  const updates = {};
+  if (players?.[alias]) {
+    const { [alias]: aliasInfo, ...rest } = players;
+    updates.players = { ...rest, [ownPlayerId]: { ...aliasInfo, ...rest[ownPlayerId] } };
+  }
+  let resultsChanged = false;
+  const merged = { ...(results || {}) };
+  for (const [key, scores] of Object.entries(merged)) {
+    if (!scores || !(alias in scores)) continue;
+    const { [alias]: aliasScore, ...rest } = scores;
+    rest[ownPlayerId] = Math.max(aliasScore, rest[ownPlayerId] ?? -1);
+    merged[key] = rest;
+    resultsChanged = true;
+  }
+  if (resultsChanged) updates.results = merged;
+  if (preferences?.hiddenRivals?.includes(alias)) {
+    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== alias) };
+  }
+  if (Object.keys(updates).length) {
+    console.log(`${TAG} Merged data saved under "${alias}" into own player ID ${ownPlayerId}`);
+    await chrome.storage.local.set(updates);
+  }
+}
+
 export async function syncOwnPlayerId() {
   const scrapedId = findOwnPlayerId();
   const { ownPlayerId } = await chrome.storage.local.get('ownPlayerId');
   if (scrapedId && scrapedId !== ownPlayerId) {
     await chrome.storage.local.set({ ownPlayerId: scrapedId });
-    return scrapedId;
   }
-  return typeof ownPlayerId === 'string' ? ownPlayerId : null;
+  const id = scrapedId || (typeof ownPlayerId === 'string' ? ownPlayerId : null);
+  if (id && id !== knownOwnPlayerId) {
+    knownOwnPlayerId = id;
+    await mergeOwnAlias(id);
+  }
+  return id;
 }
 
 export function saveHigherScore(scores, playerId, score) {

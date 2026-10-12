@@ -16,6 +16,8 @@ the rival scores collected from player pages. Player display names are stored
 in `chrome.storage.local` as `players: { "<playerId>": { "name": "<name>", "lastScrapedSession": { "title": "<title>", "timestamp": "<timestamp>" } } }`.
 Chart scores are stored as `results: { "<track>|<chart>": { "<playerId>": <score> } }`.
 The storage schema version is recorded as `storageVersion: 1`.
+UI preferences are stored as `preferences: { "hiddenRivals": ["<playerId>", ...] }`;
+rivals unchecked in the Rival scores window are excluded from its statistics.
 Scraping is limited to chart levels 10 and above (`MIN_SCRAPE_LEVEL`).
 
 ## Build

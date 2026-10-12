@@ -1,6 +1,6 @@
 import { showToast } from '../ui/toasts.js';
 import { delta, isScrapLevel, storageKey } from '../storage.js';
-import { saveHigherScore, TAG, text } from './common.js';
+import { pagePlayerId, saveHigherScore, TAG, text } from './common.js';
 
 let lastSignature = null;
 
@@ -16,7 +16,7 @@ function parseScore(cell) {
 }
 
 function scrape() {
-  const playerId = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null;
+  const playerId = pagePlayerId();
   const table = document.querySelector('[data-testid="rival-compare-table"]');
 
   const headers = table?.querySelectorAll('thead th');

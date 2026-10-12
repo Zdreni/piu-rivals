@@ -1,7 +1,7 @@
-import { parseNumber, savePlayerInfo, text } from './common.js';
+import { pagePlayerId, parseNumber, savePlayerInfo, text } from './common.js';
 
 function profilePlayerId() {
-  return location.pathname.match(/^\/Player\/([^/]+)\/?$/)?.[1] ?? null;
+  return /^\/Player\/[^/]+\/?$/.test(location.pathname) ? pagePlayerId() : null;
 }
 
 function addSessionsButton(playerId) {

@@ -1,7 +1,7 @@
 import { showSessionToast, showToast } from '../ui/toasts.js';
 import { isScrapLevel, storageKey } from '../storage.js';
 import {
-  logPumbility, parseNumber, saveHigherScore, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
+  logPumbility, pagePlayerId, parseNumber, saveHigherScore, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
 } from './common.js';
 
 let lastSignature = null;
@@ -78,14 +78,14 @@ function scrapeSessionScores() {
   }
 
   return {
-    playerId: location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null,
+    playerId: pagePlayerId(),
     rows: [...rowsByChart.values()],
     scannedResults: playRows.length,
   };
 }
 
 function sessionPagePlayerId() {
-  return location.pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/)?.[1] ?? null;
+  return isSessionsPage() ? pagePlayerId() : null;
 }
 
 function getSessionCards() {
@@ -371,7 +371,7 @@ async function runSessionScores(ui, result, ownPlayerId) {
 
 
 export function isSessionsPage() {
-  return sessionPagePlayerId() !== null;
+  return /^\/Player\/[^/]+\/Sessions\/?$/.test(location.pathname);
 }
 
 export async function runSessionsPage(ui, ownPlayerId) {
