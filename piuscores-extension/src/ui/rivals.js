@@ -1,4 +1,4 @@
-import { byLeadWeight, byTargetWeight, loadCharts } from './storage.js';
+import { byLeadWeight, byTargetWeight, loadCharts } from '../storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
 const fmtDelta = (n) => {

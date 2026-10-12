@@ -1,60 +1,4 @@
 (() => {
-  // src/notifications.js
-  var MAX_LINES = 8;
-  var TOAST_MS = 5e3;
-  var fmt = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
-  var fmtDelta = (n) => {
-    if (n === null || n === void 0) return "<span>\u2014</span>";
-    const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
-    return `<span class="${cls}">${n > 0 ? "+" : ""}${fmt(n)}</span>`;
-  };
-  var fmtScore = (score, prev) => prev === null || prev === score ? fmt(score) : `${fmt(prev)} \u2192 ${fmt(score)}`;
-  var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  function eventLines(event) {
-    const name = `${esc(event.track)} <b>${esc(event.chart)}</b>`;
-    const badge = event.change === "new" ? '<span class="new">NEW</span>' : '<span class="upd">UPD</span>';
-    if (event.kind === "rival") {
-      return [`${badge} ${name} ${esc(event.player)}: ${fmtScore(event.score, event.prevScore)} (${fmtDelta(event.delta)})`];
-    }
-    return [
-      `${badge} ${name} You: ${fmtScore(event.score, event.prevScore)}`,
-      ...event.deltas.map((d) => `<span class="sub">${esc(d.player)}: ${fmt(d.score)} (${fmtDelta(d.delta)})</span>`)
-    ];
-  }
-  function pushToast(shadow, toast) {
-    const close = () => {
-      if (toast.classList.contains("out")) return;
-      toast.classList.add("out");
-      toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-      setTimeout(() => toast.remove(), 600);
-    };
-    toast.addEventListener("click", close);
-    setTimeout(close, TOAST_MS);
-    shadow.querySelector(".stack").appendChild(toast);
-  }
-  function showToast(shadow, rival, events) {
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    const all = events.flatMap(eventLines);
-    const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join("");
-    const more = all.length > MAX_LINES ? `<div class="more">\u2026and ${all.length - MAX_LINES} more line(s) (see console)</div>` : "";
-    toast.innerHTML = `<div class="title">${esc(rival)}: ${events.length} change(s)</div>${lines}${more}`;
-    pushToast(shadow, toast);
-  }
-  function showSessionToast(shadow, player, title, timestamp, scannedResults) {
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.innerHTML = `<div class="title">${esc(player)}: parsed new session</div><div class="line">${esc(title)}</div><div class="line">${esc(timestamp)}</div><div class="line">Scanned ${fmt(scannedResults)} results</div>`;
-    pushToast(shadow, toast);
-  }
-  function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    const change = prevPumbility === null ? '<span class="new">NEW</span>' : fmtDelta(pumbility - prevPumbility);
-    toast.innerHTML = `<div class="title">${esc(player)}: PUMBILITY</div><div class="line">${fmtScore(pumbility, prevPumbility)} (${change})</div>`;
-    pushToast(shadow, toast);
-  }
-
   // src/storage.js
   var STORAGE_VERSION = 1;
   var MIN_SCRAPE_LEVEL = 10;
@@ -106,14 +50,14 @@
     return charts;
   }
 
-  // src/scores-ui.js
-  var fmt2 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
-  var fmtDelta2 = (n) => {
+  // src/ui/rivals.js
+  var fmt = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
+  var fmtDelta = (n) => {
     if (n === null || n === void 0) return "<span>\u2014</span>";
     const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
-    return `<span class="${cls}">${n > 0 ? "+" : ""}${fmt2(n)}</span>`;
+    return `<span class="${cls}">${n > 0 ? "+" : ""}${fmt(n)}</span>`;
   };
-  var esc2 = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var levelType = (level) => (level.match(/^[A-Za-z]+/) || [level])[0];
   var levelNum = (level) => parseInt((level.match(/\d+/) || ["0"])[0], 10);
   var TYPE_ORDER = { S: 0, D: 1 };
@@ -326,16 +270,16 @@
       if (chart.mine !== null) list.push({ player: "You", score: chart.mine, me: true });
       list.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
       return list.map((rival, i) => {
-        const head = i === 0 ? `<td class="track" rowspan="${list.length}" title="${esc2(chart.track)}">${esc2(chart.track)}</td>
-           <td rowspan="${list.length}"><b>${esc2(chart.chart)}</b></td>` : "";
+        const head = i === 0 ? `<td class="track" rowspan="${list.length}" title="${esc(chart.track)}">${esc(chart.track)}</td>
+           <td rowspan="${list.length}"><b>${esc(chart.chart)}</b></td>` : "";
         const tr = i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : "<tr>";
         if (rival.me) {
-          return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt2(rival.score)}</td><td></td></tr>`;
+          return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt(rival.score)}</td><td></td></tr>`;
         }
         const won = rival.delta !== null && rival.delta > 0 ? " won" : "";
         const playerId = rival.playerId;
-        const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc2(rival.player)}</a>` : esc2(rival.player);
-        return `${tr}${head}<td class="${won}">${name}</td><td class="num${won}">${fmt2(rival.score)}</td><td class="num${won}">${fmtDelta2(rival.delta)}</td></tr>`;
+        const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(rival.player)}</a>` : esc(rival.player);
+        return `${tr}${head}<td class="${won}">${name}</td><td class="num${won}">${fmt(rival.score)}</td><td class="num${won}">${fmtDelta(rival.delta)}</td></tr>`;
       });
     }
     async function render() {
@@ -356,7 +300,7 @@
       const chip = (label) => {
         const on = label === selectedLevel;
         const counts = statsFor(label);
-        return `<button class="chip${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc2(label)}"><span>${esc2(label)}</span><span class="chip-stats" title="charts: losing / not played / best">${stat("neg", counts.lose)} / ${stat("blue", counts.unplayed)} / ${stat("pos", counts.win)}</span></button>`;
+        return `<button class="chip${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(label)}"><span>${esc(label)}</span><span class="chip-stats" title="charts: losing / not played / best">${stat("neg", counts.lose)} / ${stat("blue", counts.unplayed)} / ${stat("pos", counts.win)}</span></button>`;
       };
       const types = [...new Set(levels.map(levelType))];
       const nums = [...new Set(levels.map(levelNum))].sort((a, b) => a - b);
@@ -406,8 +350,8 @@
     return { ensure, initialize, render, isOpen };
   }
 
-  // src/export-targets.js
-  var fmt3 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
+  // src/export_targets.js
+  var fmt2 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
   async function exportTargets() {
     const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
       const entries = rivals.map(({ player, score, delta: delta2 }) => ({ rival: player, score, difference: delta2 })).filter((r) => r.difference === null || r.difference < 0).sort((a2, b) => b.score - a2.score);
@@ -418,11 +362,11 @@
     for (const { track, chart, entries } of charts) {
       lines.push(`${track}  ${chart}`);
       const nameW = Math.max(...entries.map((r) => r.rival.length)) + 1;
-      const scoreW = Math.max(...entries.map((r) => fmt3(r.score).length));
-      const diffW = Math.max(0, ...entries.filter((r) => r.difference !== null).map((r) => fmt3(r.difference).length));
+      const scoreW = Math.max(...entries.map((r) => fmt2(r.score).length));
+      const diffW = Math.max(0, ...entries.filter((r) => r.difference !== null).map((r) => fmt2(r.difference).length));
       for (const r of entries) {
-        const note = (r.difference === null ? "\u2014" : fmt3(r.difference)).padStart(diffW);
-        lines.push(`  ${(r.rival + ":").padEnd(nameW)}  ${fmt3(r.score).padStart(scoreW)}  ${note}`);
+        const note = (r.difference === null ? "\u2014" : fmt2(r.difference)).padStart(diffW);
+        lines.push(`  ${(r.rival + ":").padEnd(nameW)}  ${fmt2(r.score).padStart(scoreW)}  ${note}`);
       }
       lines.push("");
     }
@@ -434,13 +378,69 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1e3);
   }
 
-  // src/content.js
+  // src/ui/toasts.js
+  var MAX_LINES = 8;
+  var TOAST_MS = 5e3;
+  var fmt3 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
+  var fmtDelta2 = (n) => {
+    if (n === null || n === void 0) return "<span>\u2014</span>";
+    const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
+    return `<span class="${cls}">${n > 0 ? "+" : ""}${fmt3(n)}</span>`;
+  };
+  var fmtScore = (score, prev) => prev === null || prev === score ? fmt3(score) : `${fmt3(prev)} \u2192 ${fmt3(score)}`;
+  var esc2 = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  function eventLines(event) {
+    const name = `${esc2(event.track)} <b>${esc2(event.chart)}</b>`;
+    const badge = event.change === "new" ? '<span class="new">NEW</span>' : '<span class="upd">UPD</span>';
+    if (event.kind === "rival") {
+      return [`${badge} ${name} ${esc2(event.player)}: ${fmtScore(event.score, event.prevScore)} (${fmtDelta2(event.delta)})`];
+    }
+    return [
+      `${badge} ${name} You: ${fmtScore(event.score, event.prevScore)}`,
+      ...event.deltas.map((d) => `<span class="sub">${esc2(d.player)}: ${fmt3(d.score)} (${fmtDelta2(d.delta)})</span>`)
+    ];
+  }
+  function pushToast(shadow, toast) {
+    const close = () => {
+      if (toast.classList.contains("out")) return;
+      toast.classList.add("out");
+      toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+      setTimeout(() => toast.remove(), 600);
+    };
+    toast.addEventListener("click", close);
+    setTimeout(close, TOAST_MS);
+    shadow.querySelector(".stack").appendChild(toast);
+  }
+  function showToast(shadow, rival, events) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    const all = events.flatMap(eventLines);
+    const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join("");
+    const more = all.length > MAX_LINES ? `<div class="more">\u2026and ${all.length - MAX_LINES} more line(s) (see console)</div>` : "";
+    toast.innerHTML = `<div class="title">${esc2(rival)}: ${events.length} change(s)</div>${lines}${more}`;
+    pushToast(shadow, toast);
+  }
+  function showSessionToast(shadow, player, title, timestamp, scannedResults) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `<div class="title">${esc2(player)}: parsed new session</div><div class="line">${esc2(title)}</div><div class="line">${esc2(timestamp)}</div><div class="line">Scanned ${fmt3(scannedResults)} results</div>`;
+    pushToast(shadow, toast);
+  }
+  function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    const change = prevPumbility === null ? '<span class="new">NEW</span>' : fmtDelta2(pumbility - prevPumbility);
+    toast.innerHTML = `<div class="title">${esc2(player)}: PUMBILITY</div><div class="line">${fmtScore(pumbility, prevPumbility)} (${change})</div>`;
+    pushToast(shadow, toast);
+  }
+
+  // src/page_scrappers/common.js
   var TAG = "[piuscores]";
-  var ui = createScoresUI(exportTargets, scrapePlayerSessions);
-  var lastSignature = null;
-  var timer = null;
-  var isScrapingSessions = false;
   var text = (el) => el ? el.textContent.trim() : "";
+  var parseNumber = (value) => {
+    const digits = value.replace(/[^\d]/g, "");
+    return digits ? Number(digits) : null;
+  };
   function findOwnPlayerId() {
     for (const link of document.querySelectorAll("a[href]")) {
       if (text(link).replace(/\s+/g, " ") !== "My Sessions") continue;
@@ -460,31 +460,19 @@
     }
     return typeof ownPlayerId === "string" ? ownPlayerId : null;
   }
-  function profilePlayerId() {
-    return location.pathname.match(/^\/Player\/([^/]+)\/?$/)?.[1] ?? null;
+  function saveHigherScore(scores, playerId, score) {
+    if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
+    const prevScore = scores[playerId] ?? null;
+    scores[playerId] = score;
+    return { prevScore, change: prevScore === null ? "new" : "upd" };
   }
-  function addSessionsButton(playerId) {
-    const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
-    if (!block || block.querySelector(".piuscores-sessions-btn")) return;
-    const link = document.createElement("a");
-    link.className = "piuscores-sessions-btn";
-    link.href = `/Player/${playerId}/Sessions`;
-    link.textContent = "Sessions \u2192";
-    link.title = "Open this player's Sessions page";
-    link.style.cssText = "align-self:flex-start;margin-left:auto;padding:2px 8px;border:1px solid #4FE33F;border-radius:4px;color:#4FE33F;font:500 12px/1.4 Roboto,Arial,sans-serif;text-decoration:none;white-space:nowrap;";
-    block.appendChild(link);
-  }
-  var parseNumber = (value) => {
-    const digits = value.replace(/[^\d]/g, "");
-    return digits ? Number(digits) : null;
-  };
   var lastPumbilityLog = null;
   function logPumbility(message) {
     if (message === lastPumbilityLog) return;
     lastPumbilityLog = message;
     console.log(`${TAG} PUMBILITY ${message}`);
   }
-  async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source) {
+  async function savePlayerInfo(ui2, playerId, name, pumbility, ownPlayerId, source) {
     if (!name && pumbility === null) return;
     const { players } = await chrome.storage.local.get("players");
     const prev = players?.[playerId] || {};
@@ -506,15 +494,61 @@
     await chrome.storage.local.set({ players: { ...players || {}, [playerId]: player } });
     if (pumbility !== null && pumbility !== prevPumbility) {
       const label = playerId === ownPlayerId ? "You" : player.name || playerId;
-      showPumbilityToast(ui.ensure(), label, pumbility, prevPumbility);
+      showPumbilityToast(ui2.ensure(), label, pumbility, prevPumbility);
     }
   }
-  async function syncProfilePlayer(ownPlayerId) {
+  function waitForChange(predicate, description, timeoutMs = 1e4) {
+    return new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const observer = new MutationObserver(() => {
+        if (predicate()) {
+          observer.disconnect();
+          clearInterval(timerId);
+          resolve();
+        }
+      });
+      const timerId = setInterval(() => {
+        if (predicate()) {
+          observer.disconnect();
+          clearInterval(timerId);
+          resolve();
+        } else if (Date.now() - startedAt >= timeoutMs) {
+          observer.disconnect();
+          clearInterval(timerId);
+          reject(new Error(`Timed out waiting for ${description}`));
+        }
+      }, 100);
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      if (predicate()) {
+        observer.disconnect();
+        clearInterval(timerId);
+        resolve();
+      }
+    });
+  }
+
+  // src/page_scrappers/profile.js
+  function profilePlayerId() {
+    return location.pathname.match(/^\/Player\/([^/]+)\/?$/)?.[1] ?? null;
+  }
+  function addSessionsButton(playerId) {
+    const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
+    if (!block || block.querySelector(".piuscores-sessions-btn")) return;
+    const link = document.createElement("a");
+    link.className = "piuscores-sessions-btn";
+    link.href = `/Player/${playerId}/Sessions`;
+    link.textContent = "Sessions \u2192";
+    link.title = "Open this player's Sessions page";
+    link.style.cssText = "align-self:flex-start;margin-left:auto;padding:2px 8px;border:1px solid #4FE33F;border-radius:4px;color:#4FE33F;font:500 12px/1.4 Roboto,Arial,sans-serif;text-decoration:none;white-space:nowrap;";
+    block.appendChild(link);
+  }
+  async function runProfilePage(ui2, ownPlayerId) {
     const playerId = profilePlayerId();
     if (!playerId) return;
     addSessionsButton(playerId);
     const hero = document.querySelector('[data-testid="player-hero"]');
     await savePlayerInfo(
+      ui2,
       playerId,
       text(hero?.querySelector("h5")),
       parseNumber(text(hero?.querySelector(".ph-pum .cmp-hero-num"))),
@@ -522,7 +556,109 @@
       "profile page"
     );
   }
-  async function syncSessionsPumbility(ownPlayerId) {
+
+  // src/page_scrappers/rival_compare.js
+  var lastSignature = null;
+  function playerDisplayName(players, playerId) {
+    return players[playerId]?.name || playerId;
+  }
+  function parseScore(cell) {
+    const p = cell && cell.querySelector(".rvl-cmp-score p");
+    if (!p) return null;
+    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  function scrape() {
+    const playerId = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null;
+    const table = document.querySelector('[data-testid="rival-compare-table"]');
+    const headers = table?.querySelectorAll("thead th");
+    const rival = text(headers?.[2]) || text(document.querySelector('[data-testid="player-hero"] h5'));
+    const rows = [];
+    for (const tr of table?.querySelectorAll("tbody tr") || []) {
+      const cells = tr.querySelectorAll("td");
+      if (cells.length < 3) continue;
+      const songEl = cells[0].querySelector(".rvl-cmp-song");
+      const track = songEl ? songEl.getAttribute("title") || text(songEl) : "";
+      const chart = cells[0].querySelector("img.difficulty-bubble")?.getAttribute("alt") || "";
+      if (!isScrapLevel(chart)) continue;
+      rows.push({ track, chart, mine: parseScore(cells[1]), score: parseScore(cells[2]) });
+    }
+    return { rival, playerId, rows };
+  }
+  async function runRivalCompare(ui2, ownPlayerId) {
+    const result = scrape();
+    if (!result) return;
+    const signature = JSON.stringify({ result, ownPlayerId });
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    const { rival, playerId } = result;
+    const stored = await chrome.storage.local.get(["results", "players"]);
+    const events = [];
+    const updates = {};
+    const results = { ...stored.results || {} };
+    let resultsChanged = false;
+    if (rival && playerId) {
+      const players = { ...stored.players || {} };
+      if (players[playerId]?.name !== rival) {
+        players[playerId] = { ...players[playerId], name: rival };
+        updates.players = players;
+      }
+    }
+    for (const row of result.rows) {
+      const key = storageKey(row);
+      const scores = { ...results[key] || {} };
+      const { track, chart } = row;
+      const rivalUpdate = saveHigherScore(scores, playerId, row.score);
+      if (rivalUpdate) {
+        events.push({
+          kind: "rival",
+          change: rivalUpdate.change,
+          track,
+          chart,
+          player: playerId === ownPlayerId ? "You" : rival,
+          score: row.score,
+          prevScore: rivalUpdate.prevScore,
+          delta: delta(scores[ownPlayerId] ?? null, row.score)
+        });
+      }
+      const mineUpdate = saveHigherScore(scores, ownPlayerId, row.mine);
+      if (mineUpdate) {
+        const deltas = Object.entries(scores).filter(([id]) => id !== ownPlayerId).map(([id, score]) => ({
+          player: playerDisplayName(stored.players || {}, id),
+          score,
+          delta: delta(row.mine, score)
+        })).sort((a, b) => a.delta - b.delta);
+        events.push({
+          kind: "mine",
+          change: mineUpdate.change,
+          track,
+          chart,
+          score: row.mine,
+          prevScore: mineUpdate.prevScore,
+          deltas
+        });
+      }
+      if (rivalUpdate || mineUpdate) {
+        results[key] = scores;
+        resultsChanged = true;
+      }
+    }
+    if (resultsChanged) updates.results = results;
+    if (Object.keys(updates).length) await chrome.storage.local.set(updates);
+    if (events.length === 0) return;
+    const player = playerId === ownPlayerId ? "You" : rival;
+    console.log(`${TAG} rival: ${player}, ${events.length} change(s)`);
+    console.table(events.flatMap((event) => event.kind === "rival" ? [{ type: event.change, track: event.track, chart: event.chart, player: event.player, score: event.score, prevScore: event.prevScore, delta: event.delta }] : [
+      { type: `mine ${event.change}`, track: event.track, chart: event.chart, player: "You", score: event.score, prevScore: event.prevScore, delta: null },
+      ...event.deltas.map((d) => ({ type: "delta", track: event.track, chart: event.chart, player: d.player, score: d.score, prevScore: null, delta: d.delta }))
+    ]));
+    showToast(ui2.ensure(), player, events);
+  }
+
+  // src/page_scrappers/sessions.js
+  var lastSignature2 = null;
+  var isScrapingSessions = false;
+  async function syncSessionsPumbility(ui2, ownPlayerId) {
     const playerId = sessionPagePlayerId();
     if (!playerId) return;
     const pumbility = parseNumber(text(document.querySelector(
@@ -534,33 +670,10 @@
       logPumbility(`found ${pumbility} for ${playerName() || playerId} (${playerId}) on Sessions page: not the newest session, ignoring`);
       return;
     }
-    await savePlayerInfo(playerId, playerName(), pumbility, ownPlayerId, "Sessions page");
-  }
-  async function ensureStorageVersion() {
-    const { storageVersion } = await chrome.storage.local.get("storageVersion");
-    if (storageVersion === void 0) {
-      await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
-    } else if (storageVersion !== STORAGE_VERSION) {
-      console.warn(`${TAG} Stored data version ${storageVersion} differs from supported version ${STORAGE_VERSION}`);
-    }
+    await savePlayerInfo(ui2, playerId, playerName(), pumbility, ownPlayerId, "Sessions page");
   }
   function playerName() {
     return text(document.querySelector("main h5")).replace(/\s+[—–-]\s+Sessions$/i, "").trim();
-  }
-  function playerDisplayName(players, playerId) {
-    return players[playerId]?.name || playerId;
-  }
-  function saveHigherScore(scores, playerId, score) {
-    if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
-    const prevScore = scores[playerId] ?? null;
-    scores[playerId] = score;
-    return { prevScore, change: prevScore === null ? "new" : "upd" };
-  }
-  function parseScore(cell) {
-    const p = cell && cell.querySelector(".rvl-cmp-score p");
-    if (!p) return null;
-    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
-    return Number.isNaN(n) ? null : n;
   }
   function parseSessionScore(element) {
     const p = element?.querySelector('[data-testid="peer-score"] p');
@@ -673,35 +786,6 @@
     const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
     return Number(cardDate[1]) === Number(heroDate[2]) && months.indexOf(cardDate[2].toLowerCase()) + 1 === Number(heroDate[1]) && cardDate[3].replace(/\s+/g, "").toLowerCase() === heroDate[3].replace(/\s+/g, "").toLowerCase();
   }
-  function waitForChange(predicate, description, timeoutMs = 1e4) {
-    return new Promise((resolve, reject) => {
-      const startedAt = Date.now();
-      const observer = new MutationObserver(() => {
-        if (predicate()) {
-          observer.disconnect();
-          clearInterval(timerId);
-          resolve();
-        }
-      });
-      const timerId = setInterval(() => {
-        if (predicate()) {
-          observer.disconnect();
-          clearInterval(timerId);
-          resolve();
-        } else if (Date.now() - startedAt >= timeoutMs) {
-          observer.disconnect();
-          clearInterval(timerId);
-          reject(new Error(`Timed out waiting for ${description}`));
-        }
-      }, 100);
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-      if (predicate()) {
-        observer.disconnect();
-        clearInterval(timerId);
-        resolve();
-      }
-    });
-  }
   async function clickPageButton(button, direction) {
     if (!button) return false;
     const before = sessionCardSignature();
@@ -720,7 +804,7 @@
     if (name) players[playerId].name = name;
     await chrome.storage.local.set({ players });
   }
-  async function parseSessionCard(card, info, playerId, report, progress) {
+  async function parseSessionCard(ui2, card, info, playerId, report, progress) {
     card.click();
     await waitForChange(() => {
       const hero = document.querySelector('[data-testid="session-hero"]');
@@ -745,12 +829,12 @@
     const result = scrapeSessionScores();
     if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
     if (result.playerId !== playerId) throw new Error("Session player changed while scraping");
-    await runSessionScores(result, await syncOwnPlayerId());
+    await runSessionScores(ui2, result, await syncOwnPlayerId());
     await saveSessionCheckpoint(playerId, info);
     progress.count++;
     report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
     showSessionToast(
-      ui.ensure(),
+      ui2.ensure(),
       playerName() || playerId,
       info.title,
       info.timestamp,
@@ -763,7 +847,7 @@
   function findCurrentCard(info) {
     return currentPhoenix2SessionCards().find((item) => sessionCheckpointMatches(info, item.info))?.card || null;
   }
-  async function scrapePlayerSessions(report = () => {
+  async function scrapePlayerSessions(ui2, report = () => {
   }) {
     const playerId = sessionPagePlayerId();
     if (!playerId) throw new Error("Scrap results is only available on a player Sessions page");
@@ -821,7 +905,7 @@
           const card = findCurrentCard(info);
           if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
           report(`Opening ${info.title} (${info.timestamp})`);
-          await parseSessionCard(card, info, playerId, report, progress);
+          await parseSessionCard(ui2, card, info, playerId, report, progress);
         }
         if (pageIndex > 0) {
           const newer = findPageButton("newer");
@@ -834,27 +918,10 @@
       isScrapingSessions = false;
     }
   }
-  function scrape() {
-    const playerId = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1] ?? null;
-    const table = document.querySelector('[data-testid="rival-compare-table"]');
-    const headers = table?.querySelectorAll("thead th");
-    const rival = text(headers?.[2]) || text(document.querySelector('[data-testid="player-hero"] h5'));
-    const rows = [];
-    for (const tr of table?.querySelectorAll("tbody tr") || []) {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length < 3) continue;
-      const songEl = cells[0].querySelector(".rvl-cmp-song");
-      const track = songEl ? songEl.getAttribute("title") || text(songEl) : "";
-      const chart = cells[0].querySelector("img.difficulty-bubble")?.getAttribute("alt") || "";
-      if (!isScrapLevel(chart)) continue;
-      rows.push({ track, chart, mine: parseScore(cells[1]), score: parseScore(cells[2]) });
-    }
-    return { rival, playerId, rows };
-  }
-  async function runSessionScores(result, ownPlayerId) {
+  async function runSessionScores(ui2, result, ownPlayerId) {
     const signature = JSON.stringify({ sessions: result, ownPlayerId });
-    if (signature === lastSignature) return;
-    lastSignature = signature;
+    if (signature === lastSignature2) return;
+    lastSignature2 = signature;
     const stored = await chrome.storage.local.get(["results", "players"]);
     const playerId = result.playerId;
     if (!playerId) {
@@ -904,85 +971,37 @@
       score: event.score,
       prevScore: event.prevScore
     })));
-    showToast(ui.ensure(), player, events);
+    showToast(ui2.ensure(), player, events);
+  }
+  function isSessionsPage() {
+    return sessionPagePlayerId() !== null;
+  }
+  async function runSessionsPage(ui2, ownPlayerId) {
+    await syncSessionsPumbility(ui2, ownPlayerId);
+    const result = scrapeSessionScores();
+    if (result) await runSessionScores(ui2, result, ownPlayerId);
+  }
+
+  // src/content.js
+  var ui = createScoresUI(exportTargets, (report) => scrapePlayerSessions(ui, report));
+  var timer = null;
+  async function ensureStorageVersion() {
+    const { storageVersion } = await chrome.storage.local.get("storageVersion");
+    if (storageVersion === void 0) {
+      await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
+    } else if (storageVersion !== STORAGE_VERSION) {
+      console.warn(`${TAG} Stored data version ${storageVersion} differs from supported version ${STORAGE_VERSION}`);
+    }
   }
   async function run() {
     await ensureStorageVersion();
     const ownPlayerId = await syncOwnPlayerId();
-    await syncProfilePlayer(ownPlayerId);
-    await syncSessionsPumbility(ownPlayerId);
-    const sessionResult = scrapeSessionScores();
-    if (sessionResult) {
-      await runSessionScores(sessionResult, ownPlayerId);
+    if (isSessionsPage()) {
+      await runSessionsPage(ui, ownPlayerId);
       return;
     }
-    const result = scrape();
-    if (!result) return;
-    const signature = JSON.stringify({ result, ownPlayerId });
-    if (signature === lastSignature) return;
-    lastSignature = signature;
-    const { rival, playerId } = result;
-    const stored = await chrome.storage.local.get(["results", "players"]);
-    const events = [];
-    const updates = {};
-    const results = { ...stored.results || {} };
-    let resultsChanged = false;
-    if (rival && playerId) {
-      const players = { ...stored.players || {} };
-      if (players[playerId]?.name !== rival) {
-        players[playerId] = { ...players[playerId], name: rival };
-        updates.players = players;
-      }
-    }
-    for (const row of result.rows) {
-      const key = storageKey(row);
-      const scores = { ...results[key] || {} };
-      const { track, chart } = row;
-      const rivalUpdate = saveHigherScore(scores, playerId, row.score);
-      if (rivalUpdate) {
-        events.push({
-          kind: "rival",
-          change: rivalUpdate.change,
-          track,
-          chart,
-          player: playerId === ownPlayerId ? "You" : rival,
-          score: row.score,
-          prevScore: rivalUpdate.prevScore,
-          delta: delta(scores[ownPlayerId] ?? null, row.score)
-        });
-      }
-      const mineUpdate = saveHigherScore(scores, ownPlayerId, row.mine);
-      if (mineUpdate) {
-        const deltas = Object.entries(scores).filter(([id]) => id !== ownPlayerId).map(([id, score]) => ({
-          player: playerDisplayName(stored.players || {}, id),
-          score,
-          delta: delta(row.mine, score)
-        })).sort((a, b) => a.delta - b.delta);
-        events.push({
-          kind: "mine",
-          change: mineUpdate.change,
-          track,
-          chart,
-          score: row.mine,
-          prevScore: mineUpdate.prevScore,
-          deltas
-        });
-      }
-      if (rivalUpdate || mineUpdate) {
-        results[key] = scores;
-        resultsChanged = true;
-      }
-    }
-    if (resultsChanged) updates.results = results;
-    if (Object.keys(updates).length) await chrome.storage.local.set(updates);
-    if (events.length === 0) return;
-    const player = playerId === ownPlayerId ? "You" : rival;
-    console.log(`${TAG} rival: ${player}, ${events.length} change(s)`);
-    console.table(events.flatMap((event) => event.kind === "rival" ? [{ type: event.change, track: event.track, chart: event.chart, player: event.player, score: event.score, prevScore: event.prevScore, delta: event.delta }] : [
-      { type: `mine ${event.change}`, track: event.track, chart: event.chart, player: "You", score: event.score, prevScore: event.prevScore, delta: null },
-      ...event.deltas.map((d) => ({ type: "delta", track: event.track, chart: event.chart, player: d.player, score: d.score, prevScore: null, delta: d.delta }))
-    ]));
-    showToast(ui.ensure(), player, events);
+    await runProfilePage(ui, ownPlayerId);
+    await runRivalCompare(ui, ownPlayerId);
   }
   chrome.storage.onChanged.addListener((_, area) => {
     if (area === "local" && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));

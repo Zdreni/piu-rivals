@@ -36,3 +36,8 @@ manifest into `dist/manifest.json` with its content-script path adjusted.
 Commit the regenerated `dist/` files along with source changes so a checkout
 remains directly installable. Run `npm run build` again after changing source
 files, or use `npm run watch` to rebuild when they change.
+
+## Conventions
+
+Use underscores, not hyphens, in folder and module names
+(for example `page_scrappers/rival_compare.js`).
