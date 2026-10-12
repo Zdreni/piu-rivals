@@ -2,6 +2,7 @@ import { byTargetWeight, loadCharts, targetWeight } from './storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
 
+
 // Export charts where a rival is ahead or I have no score.
 export async function exportTargets() {
   const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {

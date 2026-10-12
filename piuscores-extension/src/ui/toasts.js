@@ -1,3 +1,5 @@
+import { displayName } from '../storage.js';
+
 const MAX_LINES = 8;
 const TOAST_MS = 5000;
 
@@ -12,18 +14,20 @@ const fmtScore = (score, prev) =>
 const esc = (s) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+
 function eventLines(event) {
   const name = `${esc(event.track)} <b>${esc(event.chart)}</b>`;
   const badge = event.change === 'new' ? '<span class="new">NEW</span>' : '<span class="upd">UPD</span>';
   if (event.kind === 'rival') {
-    return [`${badge} ${name} ${esc(event.player)}: ${fmtScore(event.score, event.prevScore)} (${fmtDelta(event.delta)})`];
+    return [`${badge} ${name} ${esc(displayName(event.player))}: ${fmtScore(event.score, event.prevScore)} (${fmtDelta(event.delta)})`];
   }
 
   return [
     `${badge} ${name} You: ${fmtScore(event.score, event.prevScore)}`,
-    ...event.deltas.map((d) => `<span class="sub">${esc(d.player)}: ${fmt(d.score)} (${fmtDelta(d.delta)})</span>`),
+    ...event.deltas.map((d) => `<span class="sub">${esc(displayName(d.player))}: ${fmt(d.score)} (${fmtDelta(d.delta)})</span>`),
   ];
 }
+
 
 function pushToast(shadow, toast) {
   const close = () => {
@@ -37,6 +41,7 @@ function pushToast(shadow, toast) {
   shadow.querySelector('.stack').appendChild(toast);
 }
 
+
 export function showToast(shadow, rival, events) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -49,15 +54,17 @@ export function showToast(shadow, rival, events) {
   pushToast(shadow, toast);
 }
 
+
 export function showSessionToast(shadow, player, title, timestamp, scannedResults) {
   const toast = document.createElement('div');
   toast.className = 'toast';
-  toast.innerHTML = `<div class="title">${esc(player)}: parsed new session</div>`
+  toast.innerHTML = `<div class="title">${esc(displayName(player))}: parsed new session</div>`
     + `<div class="line">${esc(title)}</div><div class="line">${esc(timestamp)}</div>`
     + `<div class="line">Scanned ${fmt(scannedResults)} results</div>`;
 
   pushToast(shadow, toast);
 }
+
 
 export function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
   const toast = document.createElement('div');
@@ -65,7 +72,7 @@ export function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
   const change = prevPumbility === null
     ? '<span class="new">NEW</span>'
     : fmtDelta(pumbility - prevPumbility);
-  toast.innerHTML = `<div class="title">${esc(player)}: PUMBILITY</div>`
+  toast.innerHTML = `<div class="title">${esc(displayName(player))}: PUMBILITY</div>`
     + `<div class="line">${fmtScore(pumbility, prevPumbility)} (${change})</div>`;
   pushToast(shadow, toast);
 }

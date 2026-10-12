@@ -4,9 +4,11 @@ import { pagePlayerId, saveHigherScore, TAG, text } from './common.js';
 
 let lastSignature = null;
 
+
 function playerDisplayName(players, playerId) {
   return players[playerId]?.name || playerId;
 }
+
 
 function parseScore(cell) {
   const p = cell && cell.querySelector('.rvl-cmp-score p');
@@ -14,6 +16,7 @@ function parseScore(cell) {
   const n = parseInt(p.textContent.replace(/[^\d]/g, ''), 10);
   return Number.isNaN(n) ? null : n;
 }
+
 
 function scrape() {
   const playerId = pagePlayerId();
@@ -34,6 +37,7 @@ function scrape() {
   }
   return { rival, playerId, rows };
 }
+
 
 export async function runRivalCompare(ui, ownPlayerId) {
   const result = scrape();

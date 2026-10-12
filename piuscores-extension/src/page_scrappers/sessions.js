@@ -7,6 +7,7 @@ import {
 let lastSignature = null;
 let isScrapingSessions = false;
 
+
 // The ceremony block shows PUMBILITY as of the open session, so it is only current
 // when the newest session (first card on the first page) is the one showing.
 async function syncSessionsPumbility(ui, ownPlayerId) {
@@ -25,9 +26,11 @@ async function syncSessionsPumbility(ui, ownPlayerId) {
   await savePlayerInfo(ui, playerId, playerName(), pumbility, ownPlayerId, 'Sessions page');
 }
 
+
 function playerName() {
   return text(document.querySelector('main h5')).replace(/\s+[—–-]\s+Sessions$/i, '').trim();
 }
+
 
 function parseSessionScore(element) {
   const p = element?.querySelector('[data-testid="peer-score"] p');
@@ -36,9 +39,11 @@ function parseSessionScore(element) {
   return Number.isNaN(n) ? null : n;
 }
 
+
 function isPhoenix2Chart(element) {
   return /\/difficulty\/Phoenix2\//i.test(element?.getAttribute('src') || '');
 }
+
 
 function scrapeSessionScores() {
   const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
@@ -84,13 +89,16 @@ function scrapeSessionScores() {
   };
 }
 
+
 function sessionPagePlayerId() {
   return isSessionsPage() ? pagePlayerId() : null;
 }
 
+
 function getSessionCards() {
   return [...document.querySelectorAll('[data-testid="session-card"]')];
 }
+
 
 function getSessionCardMix(card) {
   const meta = text(card.querySelector('.sbd-card-meta')).replace(/\s+/g, ' ');
@@ -98,6 +106,7 @@ function getSessionCardMix(card) {
   if (/^Phoenix(?:\s|$)/i.test(meta)) return 'Phoenix';
   return null;
 }
+
 
 function getSessionCardInfo(card) {
   if (getSessionCardMix(card) !== 'Phoenix 2') return null;
@@ -108,6 +117,7 @@ function getSessionCardInfo(card) {
   if (!title || !timestamp) return null;
   return { title, timestamp };
 }
+
 
 function currentPhoenix2Sessions() {
   const sessions = [];
@@ -121,13 +131,16 @@ function currentPhoenix2Sessions() {
   return { sessions, reachedPhoenix: false };
 }
 
+
 function sessionCardSignature() {
   return JSON.stringify(getSessionCards().map((card) => getSessionCardInfo(card) || text(card)));
 }
 
+
 function sessionCheckpointMatches(checkpoint, info) {
   return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;
 }
+
 
 function findPageButton(direction) {
   const main = document.querySelector('main') || document;
@@ -155,6 +168,7 @@ function findPageButton(direction) {
   }) || null;
 }
 
+
 function sameSessionDate(cardTimestamp, heroTimestamp) {
   const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
   const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)\b/i);
@@ -165,6 +179,7 @@ function sameSessionDate(cardTimestamp, heroTimestamp) {
     && cardDate[3].replace(/\s+/g, '').toLowerCase() === heroDate[3].replace(/\s+/g, '').toLowerCase();
 }
 
+
 async function clickPageButton(button, direction) {
   if (!button) return false;
   const before = sessionCardSignature();
@@ -172,6 +187,7 @@ async function clickPageButton(button, direction) {
   await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
   return true;
 }
+
 
 async function saveSessionCheckpoint(playerId, info) {
   const stored = await chrome.storage.local.get(['players']);
@@ -184,6 +200,7 @@ async function saveSessionCheckpoint(playerId, info) {
   if (name) players[playerId].name = name;
   await chrome.storage.local.set({ players });
 }
+
 
 async function parseSessionCard(ui, card, info, playerId, report, progress) {
   card.click();
@@ -228,14 +245,17 @@ async function parseSessionCard(ui, card, info, playerId, report, progress) {
   );
 }
 
+
 function currentPhoenix2SessionCards() {
   return currentPhoenix2Sessions().sessions;
 }
+
 
 function findCurrentCard(info) {
   return currentPhoenix2SessionCards().find((item) =>
     sessionCheckpointMatches(info, item.info))?.card || null;
 }
+
 
 export async function scrapePlayerSessions(ui, report = () => {}) {
   const playerId = sessionPagePlayerId();
@@ -312,6 +332,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
   }
 }
 
+
 async function runSessionScores(ui, result, ownPlayerId) {
   const signature = JSON.stringify({ sessions: result, ownPlayerId });
   if (signature === lastSignature) return;
@@ -373,6 +394,12 @@ async function runSessionScores(ui, result, ownPlayerId) {
 export function isSessionsPage() {
   return /^\/Player\/[^/]+\/Sessions\/?$/.test(location.pathname);
 }
+
+
+export function isSessionsContentLoaded() {
+  return isSessionsPage() && getSessionCards().length > 0;
+}
+
 
 export async function runSessionsPage(ui, ownPlayerId) {
   await syncSessionsPumbility(ui, ownPlayerId);

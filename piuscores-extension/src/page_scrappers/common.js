@@ -9,6 +9,7 @@ export const parseNumber = (value) => {
   return digits ? Number(digits) : null;
 };
 
+
 function findOwnPlayerId() {
   for (const link of document.querySelectorAll('a[href]')) {
     if (text(link).replace(/\s+/g, ' ') !== 'My Sessions') continue;
@@ -21,13 +22,16 @@ function findOwnPlayerId() {
   return null;
 }
 
+
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let knownOwnPlayerId = null;
+
 
 // The account menu caption reads "<username> (<in-game name>)".
 function accountUsername() {
   return text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1] ?? null;
 }
+
 
 // Player pages can be addressed by GUID or by account username (e.g. /Player/Dino for your
 // own profile). Only GUIDs are used as player IDs; your username maps to your own ID.
@@ -39,6 +43,7 @@ export function pagePlayerId() {
   const username = accountUsername();
   return username && id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
 }
+
 
 // Merges data saved under the username alias (by older versions) into the own GUID.
 async function mergeOwnAlias(ownPlayerId) {
@@ -69,6 +74,7 @@ async function mergeOwnAlias(ownPlayerId) {
   }
 }
 
+
 export async function syncOwnPlayerId() {
   const scrapedId = findOwnPlayerId();
   const { ownPlayerId } = await chrome.storage.local.get('ownPlayerId');
@@ -83,6 +89,7 @@ export async function syncOwnPlayerId() {
   return id;
 }
 
+
 export function saveHigherScore(scores, playerId, score) {
   if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
   const prevScore = scores[playerId] ?? null;
@@ -90,14 +97,20 @@ export function saveHigherScore(scores, playerId, score) {
   return { prevScore, change: prevScore === null ? 'new' : 'upd' };
 }
 
+
 // The page check runs on every DOM mutation, so repeat decisions are logged only once.
 let lastPumbilityLog = null;
+
+
 export function logPumbility(message) {
   if (message === lastPumbilityLog) return;
   lastPumbilityLog = message;
   console.log(`${TAG} PUMBILITY ${message}`);
 }
 
+
+// PUMBILITY never decreases, so a lower value than the stored one must come from a history
+// record (e.g. an old session) and is ignored.
 export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId, source) {
   if (!name && pumbility === null) return;
 
@@ -105,7 +118,6 @@ export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId,
   const prev = players?.[playerId] || {};
   const player = { ...prev };
   if (name) player.name = name;
-  if (pumbility !== null) player.pumbility = pumbility;
 
   const who = `${player.name || playerId} (${playerId}) on ${source}`;
   const prevPumbility = prev.pumbility ?? null;
@@ -113,19 +125,24 @@ export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId,
     logPumbility(`not found for ${who}`);
   } else if (prevPumbility === null) {
     logPumbility(`found ${pumbility} for ${who}: new, saving`);
-  } else if (pumbility !== prevPumbility) {
-    logPumbility(`found ${pumbility} for ${who}: changed from ${prevPumbility}, saving`);
+  } else if (pumbility > prevPumbility) {
+    logPumbility(`found ${pumbility} for ${who}: raised from ${prevPumbility}, saving`);
+  } else if (pumbility < prevPumbility) {
+    logPumbility(`found ${pumbility} for ${who}: lower than ${prevPumbility}, skipping`);
   } else {
     logPumbility(`found ${pumbility} for ${who}: unchanged, skipping`);
   }
+  const raised = pumbility !== null && (prevPumbility === null || pumbility > prevPumbility);
+  if (raised) player.pumbility = pumbility;
 
   if (player.name === prev.name && player.pumbility === prev.pumbility) return;
   await chrome.storage.local.set({ players: { ...(players || {}), [playerId]: player } });
-  if (pumbility !== null && pumbility !== prevPumbility) {
+  if (raised) {
     const label = playerId === ownPlayerId ? 'You' : player.name || playerId;
     showPumbilityToast(ui.ensure(), label, pumbility, prevPumbility);
   }
 }
+
 
 export function waitForChange(predicate, description, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {

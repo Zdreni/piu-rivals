@@ -1,19 +1,35 @@
 import {
-  byLeadWeight, byTargetWeight, loadCharts, loadPlayers, loadPreferences, savePreferences, withRivals,
+  byLeadWeight, byTargetWeight, displayName, loadCharts, loadPlayers, loadPreferences, savePreferences, withRivals,
 } from '../storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
+// The last three digits are drawn smaller and dimmer, e.g. 997 + smaller ',458'.
+const fmtScore = (n, tailClass = 'tail') => {
+  const text = fmt(n);
+  const i = text.lastIndexOf(',');
+  return i === -1 ? text : `${text.slice(0, i)}<span class="${tailClass}">${text.slice(i)}</span>`;
+};
 const fmtDelta = (n) => {
   if (n === null || n === undefined) return '<span>—</span>';
   const cls = n > 0 ? 'pos' : n < 0 ? 'neg' : '';
-  return `<span class="${cls}">${n > 0 ? '+' : ''}${fmt(n)}</span>`;
+  const sign = n > 0 ? '+' : n < 0 ? '-' : '';
+  // Below a thousand every digit is dimmed, like the last three digits of bigger diffs.
+  const digits = Math.abs(n) < 1000
+    ? `<span class="tail-dim">${Math.abs(n)}</span>`
+    : fmtScore(Math.abs(n), 'tail-dim');
+  return `<span class="${cls}">${sign}${digits}</span>`;
 };
 const esc = (s) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
+const statLine = (counts) =>
+  `${stat('neg', counts.lose)} / ${stat('blue', counts.unplayed)} / ${stat('pos', counts.win)}`;
+
 const levelType = (level) => (level.match(/^[A-Za-z]+/) || [level])[0];
 const levelNum = (level) => parseInt((level.match(/\d+/) || ['0'])[0], 10);
 const TYPE_ORDER = { S: 0, D: 1 };
+
 
 function compareLevels(a, b) {
   const ta = levelType(a), tb = levelType(b);
@@ -21,6 +37,7 @@ function compareLevels(a, b) {
     || ta.localeCompare(tb)
     || levelNum(a) - levelNum(b);
 }
+
 
 const chartTier = (chart) => (chart.weight > 0 ? 'rivals-win' : chart.unplayed ? 'not-played' : 'you-win');
 const TABS = [
@@ -31,9 +48,11 @@ const TABS = [
 const UI_STATE_KEY = 'piuscores.rivalScores.uiState';
 const SCRAP_RESULTS_LABEL = 'Scrap results';
 
+
 function isPlayerSessionsPage() {
   return /^\/Player\/[^/]+\/Sessions\/?$/i.test(location.pathname);
 }
+
 
 function readUiState() {
   try {
@@ -52,12 +71,14 @@ function readUiState() {
   }
 }
 
+
 const styles = `
   .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; gap: 8px; }
   .btn { background: #14201A; color: #4FE33F; border: 1px solid #4FE33F; border-radius: 6px;
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-  .btn:hover { background: #1C2B22; }
+  .btn:hover:not(:disabled) { background: #1C2B22; }
+  .btn:disabled { opacity: .45; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   .overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,.6);
@@ -71,15 +92,22 @@ const styles = `
               border-bottom: 1px solid #2B4034; }
   .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; flex: 1; }
   .dlg-head .btn { box-shadow: none; }
+  .head-stats { font-weight: 400; color: #9AB3A3; }
+  .head-stats .blue { color: #3FA9F5; }
+  .head-stats > span, .chip-stats > span, .rival-stats > span, .tab-count { opacity: .7; }
+  .head-stats .zero { opacity: .2; }
   .dlg-close { background: none; border: none; color: #9AB3A3; font-size: 30px; line-height: 1;
                cursor: pointer; padding: 0 4px; }
   .dlg-close:hover { color: #EAF5EC; }
   .dlg-main { display: flex; flex: 1; min-height: 0; }
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
-  .rival-list { width: 280px; flex-shrink: 0; overflow-y: auto; padding: 10px 8px;
+  .rival-list, .filters, .dlg-body { scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+  .rival-list:hover, .filters:hover, .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
+  .rival-list { width: 312px; flex-shrink: 0; overflow-y: auto; padding: 10px 24px 10px 8px;
                 border-right: 1px solid #2B4034; }
-  .rival { padding: 4px; border-radius: 4px; }
-  .rival:hover { background: #1C2B22; }
+  .rival { padding: 9px 6px; border-radius: 4px; }
+  .rival:nth-child(even) { background: rgba(255,255,255,.05); }
+  .rival:hover { background: rgba(79,227,63,.12); }
   .rival-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .rival input { accent-color: #4FE33F; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
   .rival-spacer { width: 16px; flex-shrink: 0; }
@@ -87,12 +115,15 @@ const styles = `
   .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; font-weight: 600; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
-  .rival-links { display: flex; gap: 6px; margin: 2px 0 0 24px; }
-  .rival-link { color: #4FE33F; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
+  .rival-links { display: flex; align-items: center; gap: 6px; margin: 2px 0 0 24px; }
+  .rival-stats { margin-left: auto; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+  .rival-stats .blue { color: #3FA9F5; }
+  .rival-stats .zero { opacity: .2; }
+  .rival-link { color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
-  .rival-link:hover { border-color: #4FE33F; background: #14201A; }
-  .rival.off .rival-name, .rival.off .rival-pum { opacity: .45; }
-  .filters { display: flex; gap: 6px; padding: 10px; border-right: 1px solid #2B4034;
+  .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats { opacity: .45; }
+  .filters { display: flex; gap: 6px; padding: 10px 10px 10px 40px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; align-items: flex-start; }
   .filter-grid { display: grid; gap: 6px; }
   .filter-grid .chip { width: 100%; }
@@ -115,16 +146,26 @@ const styles = `
   .tab-count.rivals-win { color: #FF5A5A; }
   .tab-count.not-played { color: #3FA9F5; }
   .tab-count.you-win { color: #4FE33F; }
-  .dlg-body { overflow: auto; padding: 0 16px 12px; flex: 1; }
-  table { border-collapse: collapse; }
-  .track { width: 260px; min-width: 260px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mine { color: #FFC433; font-weight: 600; }
+  .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 0 16px 12px; flex: 1; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  th.col-chart { width: 56px; }
+  th.col-player { width: 92px; } /* 80px of text + 12px padding */
+  th.col-score { width: 70px; }
+  th.col-diff { width: 70px; }
+  .track { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mine { color: #FFC433; }
+  td.sm { font-size: 16px; vertical-align: baseline; }
+  td.score { color: #9AB3A3; }
+  .tail { font-size: .75em; opacity: .6; }
+  .tail-dim { opacity: .7; }
+  td.score.mine { color: #C9A44A; }
   .won { opacity: .4; }
-  .player-link { color: inherit; text-decoration: underline; text-decoration-color: #4FE33F66; }
+  .ahead { opacity: .8; }
+  .player-link { color: inherit; text-decoration: none; }
   .player-link:hover { color: #4FE33F; }
   th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
-  td { padding: 4px 6px; vertical-align: top; }
+  td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
   tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
   tr.group td { border-top: 1px solid #2B4034; }
   tr.gap td { height: 8px; padding: 0; }
@@ -149,8 +190,10 @@ const styles = `
   @keyframes in { from { opacity: 0; transform: translateY(8px); } }
 `;
 
-export function createScoresUI(exportTargets, scrapeResults) {
+
+export function createScoresUI(exportTargets, scrapeResults, canScrapeResults) {
   let uiHost = null;
+  let isScraping = false;
   const savedState = readUiState();
   let isWindowOpen = savedState.isOpen;
   let selectedLevel = savedState.selectedLevel;
@@ -164,11 +207,18 @@ export function createScoresUI(exportTargets, scrapeResults) {
     }
   }
 
+  // Scraping needs the session cards, which the Sessions page loads after navigation.
+  function updateScrapButton(shadow) {
+    const scrapButton = shadow.querySelector('.scrap-results');
+    scrapButton.hidden = !isPlayerSessionsPage();
+    scrapButton.disabled = isScraping || !canScrapeResults();
+  }
+
   function ensure() {
     if (uiHost) {
       if (!uiHost.isConnected) document.body.appendChild(uiHost);
       const shadow = uiHost.shadowRoot;
-      shadow.querySelector('.scrap-results').hidden = !isPlayerSessionsPage();
+      updateScrapButton(shadow);
       return shadow;
     }
 
@@ -201,16 +251,18 @@ export function createScoresUI(exportTargets, scrapeResults) {
       exportTargets().catch((error) => console.error('[piuscores]', error));
     });
     const scrapButton = shadow.querySelector('.scrap-results');
-    scrapButton.hidden = !isPlayerSessionsPage();
+    updateScrapButton(shadow);
     scrapButton.addEventListener('click', async () => {
-      scrapButton.disabled = true;
+      isScraping = true;
+      updateScrapButton(shadow);
       try {
         await scrapeResults((status) => { scrapButton.textContent = status; });
       } catch (error) {
         console.error('[piuscores] Unable to scrape player sessions', error);
         scrapButton.textContent = 'Scraping failed';
       } finally {
-        scrapButton.disabled = false;
+        isScraping = false;
+        updateScrapButton(shadow);
         setTimeout(() => { scrapButton.textContent = SCRAP_RESULTS_LABEL; }, 2500);
       }
     });
@@ -259,7 +311,7 @@ export function createScoresUI(exportTargets, scrapeResults) {
     return shadow;
   }
 
-  function chartRows(chart) {
+  function chartRows(chart, myName) {
     const list = [...chart.rivals];
     if (chart.mine !== null) list.push({ player: 'You', score: chart.mine, me: true });
     list.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
@@ -271,29 +323,40 @@ export function createScoresUI(exportTargets, scrapeResults) {
         : '';
       const tr = i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>';
       if (rival.me) {
-        return `${tr}${head}<td class="mine">You</td><td class="num mine">${fmt(rival.score)}</td><td></td></tr>`;
+        return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
       }
-      const won = rival.delta !== null && rival.delta > 0 ? ' won' : '';
+      const won = rival.delta !== null && rival.delta > 0 ? ' won' : ' ahead';
       const playerId = rival.playerId;
       const name = playerId
-        ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(rival.player)}</a>`
-        : esc(rival.player);
-      return `${tr}${head}<td class="${won}">${name}</td><td class="num${won}">${fmt(rival.score)}</td><td class="num${won}">${fmtDelta(rival.delta)}</td></tr>`;
+        ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
+        : esc(displayName(rival.player));
+      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.delta)}</td></tr>`;
     });
   }
 
-  function renderTitle(shadow, me) {
-    shadow.querySelector('.dlg-head h2').textContent = me?.name ? `Rivals for ${me.name}` : 'Rivals';
+  function renderTitle(shadow, me, totals) {
+    const title = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
+    shadow.querySelector('.dlg-head h2').innerHTML = `${esc(title)}`
+      + `<span class="head-stats"> — ${stat('neg', totals.lose)} losses, ${stat('blue', totals.unplayed)} np, `
+      + `${stat('pos', totals.win)} wins</span>`;
   }
 
   // Rivals (and you) are sorted by pumbility (highest first); those without one follow alphabetically.
+  // Each rival shows how many of their charts you lose / haven't played / win.
   function renderRivalList(shadow, charts, players, ownPlayerId, hidden) {
+    const rivalStats = {};
+    for (const chart of charts) {
+      for (const rival of chart.rivals) {
+        const counts = (rivalStats[rival.playerId] ||= { lose: 0, win: 0, unplayed: 0 });
+        counts[rival.delta === null ? 'unplayed' : rival.delta < 0 ? 'lose' : 'win']++;
+      }
+    }
     const ids = new Set(Object.keys(players));
     for (const chart of charts) for (const rival of chart.rivals) ids.add(rival.playerId);
     if (ownPlayerId) ids.add(ownPlayerId);
     const rivals = [...ids].map((playerId) => ({
       playerId,
-      name: players[playerId]?.name || playerId,
+      name: displayName(players[playerId]?.name || playerId),
       pumbility: typeof players[playerId]?.pumbility === 'number' ? players[playerId].pumbility : null,
     }));
     rivals.sort((a, b) => (b.pumbility ?? -1) - (a.pumbility ?? -1)
@@ -311,8 +374,11 @@ export function createScoresUI(exportTargets, scrapeResults) {
         return `<div class="rival${on ? '' : ' off'}${me ? ' me' : ''}">`
           + `<label class="rival-toggle" title="${esc(name)}">${toggle}`
           + `<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></label>`
-          + `<div class="rival-links"><a class="rival-link" href="${base}">${me ? 'My page' : 'Rival page'}</a>`
-          + `<a class="rival-link" href="${base}/Sessions">Sessions</a></div></div>`;
+          + `<div class="rival-links"><a class="rival-link" href="${base}">${me ? 'My page' : 'Rival'}</a>`
+          + `<a class="rival-link" href="${base}/Sessions">Sessions</a>`
+          + (me ? '' : `<span class="rival-stats" title="charts: losing / not played / best">${
+            statLine(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 })}</span>`)
+          + '</div></div>';
       }).join('')
       : '<div class="muted">No rivals yet</div>';
   }
@@ -322,7 +388,6 @@ export function createScoresUI(exportTargets, scrapeResults) {
     const [allCharts, { players, ownPlayerId }, { hiddenRivals }] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
     const hidden = new Set(hiddenRivals);
-    renderTitle(shadow, players[ownPlayerId]);
     renderRivalList(shadow, allCharts, players, ownPlayerId, hidden);
     const charts = allCharts
       .map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId)))
@@ -334,18 +399,20 @@ export function createScoresUI(exportTargets, scrapeResults) {
     }
 
     const stats = {};
+    const totals = { lose: 0, win: 0, unplayed: 0 };
     const statsFor = (key) => (stats[key] ||= { lose: 0, win: 0, unplayed: 0 });
     for (const chart of charts) {
       const statKey = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win' }[chartTier(chart)];
       statsFor(chart.chart)[statKey]++;
+      totals[statKey]++;
     }
+    renderTitle(shadow, players[ownPlayerId], totals);
 
-    const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
     const chip = (label) => {
       const on = label === selectedLevel;
       const counts = statsFor(label);
       return `<button class="chip${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" data-level="${esc(label)}"><span>${esc(label)}</span>`
-        + `<span class="chip-stats" title="charts: losing / not played / best">${stat('neg', counts.lose)} / ${stat('blue', counts.unplayed)} / ${stat('pos', counts.win)}</span></button>`;
+        + `<span class="chip-stats" title="charts: losing / not played / best">${statLine(counts)}</span></button>`;
     };
     const types = [...new Set(levels.map(levelType))];
     // Every level between the lowest and highest gets a row, so missing levels keep their place.
@@ -370,7 +437,8 @@ export function createScoresUI(exportTargets, scrapeResults) {
       + `${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join('');
 
     const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
-    visible.sort(selectedTab === 'you-win' ? byLeadWeight : byTargetWeight);
+    const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
+    visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab] || byTargetWeight);
     const body = shadow.querySelector('.dlg-body');
     if (visible.length === 0) {
       const message = allCharts.length === 0
@@ -382,10 +450,11 @@ export function createScoresUI(exportTargets, scrapeResults) {
       return;
     }
 
+    const myName = players[ownPlayerId]?.name || 'You';
     const rows = visible.flatMap((chart, i) =>
-      i === 0 ? chartRows(chart) : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartRows(chart)]);
+      i === 0 ? chartRows(chart, myName) : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartRows(chart, myName)]);
     body.innerHTML = `<table>
-      <thead><tr><th class="track">Track</th><th>Chart</th><th>Player</th><th class="num">Score</th><th class="num">Diff</th></tr></thead>
+      <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table>`;
   }
 

@@ -3,6 +3,9 @@
 export const STORAGE_VERSION = 1;
 export const MIN_SCRAPE_LEVEL = 10;
 
+// Names carry a "#1234" tag suffix; it's left out when showing them.
+export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
+
 export const storageKey = (row) => `${row.track}|${row.chart}`;
 
 export const isScrapLevel = (chart) => {
@@ -26,6 +29,7 @@ export const leadWeight = (chart) =>
 
 export const byLeadWeight = (a, b) =>
   leadWeight(b) - leadWeight(a) || a.track.localeCompare(b.track);
+
 
 export async function loadCharts() {
   const all = await chrome.storage.local.get(null);
@@ -70,6 +74,7 @@ export async function loadCharts() {
   return charts;
 }
 
+
 export async function loadPlayers() {
   const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
   return {
@@ -78,6 +83,7 @@ export async function loadPlayers() {
   };
 }
 
+
 // Preferences are stored as { preferences: { hiddenRivals: [<playerId>, ...] } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
@@ -85,10 +91,12 @@ export async function loadPreferences() {
   return { hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [] };
 }
 
+
 export async function savePreferences(changes) {
   const { preferences } = await chrome.storage.local.get('preferences');
   await chrome.storage.local.set({ preferences: { ...(preferences || {}), ...changes } });
 }
+
 
 // Returns the chart limited to rivals passing `keep`, or null when none remain.
 export function withRivals(chart, keep) {

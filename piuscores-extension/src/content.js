@@ -4,10 +4,17 @@ import { exportTargets } from './export_targets.js';
 import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
 import { runRivalCompare } from './page_scrappers/rival_compare.js';
-import { isSessionsPage, runSessionsPage, scrapePlayerSessions } from './page_scrappers/sessions.js';
+import {
+  isSessionsContentLoaded, isSessionsPage, runSessionsPage, scrapePlayerSessions,
+} from './page_scrappers/sessions.js';
 
-const ui = createScoresUI(exportTargets, (report) => scrapePlayerSessions(ui, report));
+const ui = createScoresUI(
+  exportTargets,
+  (report) => scrapePlayerSessions(ui, report),
+  isSessionsContentLoaded,
+);
 let timer = null;
+
 
 async function ensureStorageVersion() {
   const { storageVersion } = await chrome.storage.local.get('storageVersion');
@@ -17,6 +24,7 @@ async function ensureStorageVersion() {
     console.warn(`${TAG} Stored data version ${storageVersion} differs from supported version ${STORAGE_VERSION}`);
   }
 }
+
 
 async function run() {
   await ensureStorageVersion();
@@ -28,6 +36,7 @@ async function run() {
   await runProfilePage(ui, ownPlayerId);
   await runRivalCompare(ui, ownPlayerId);
 }
+
 
 chrome.storage.onChanged.addListener((_, area) => {
   if (area === 'local' && ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));

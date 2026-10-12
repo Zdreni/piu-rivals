@@ -1,8 +1,10 @@
 import { pagePlayerId, parseNumber, savePlayerInfo, text } from './common.js';
 
+
 function profilePlayerId() {
   return /^\/Player\/[^/]+\/?$/.test(location.pathname) ? pagePlayerId() : null;
 }
+
 
 function addSessionsButton(playerId) {
   const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
@@ -17,6 +19,7 @@ function addSessionsButton(playerId) {
     + 'text-decoration:none;white-space:nowrap;';
   block.appendChild(link);
 }
+
 
 export async function runProfilePage(ui, ownPlayerId) {
   const playerId = profilePlayerId();
