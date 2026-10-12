@@ -1,5 +1,5 @@
 import {
-  byLeadWeight, byTargetWeight, displayName, loadCharts, loadPlayers, loadPreferences, savePreferences, withRivals,
+  byLeadWeight, byTargetWeight, deletePlayer, displayName, loadCharts, loadPlayers, loadPreferences, savePreferences, withRivals,
 } from '../storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
@@ -25,6 +25,10 @@ const esc = (s) =>
 const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
 const statLine = (counts) =>
   `${stat('neg', counts.lose)} / ${stat('blue', counts.unplayed)} / ${stat('pos', counts.win)}`;
+const scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ''}>${fmt(n)}</span> ${label}`;
+const scrapLine = (scrapStats, best) =>
+  `${scrapCount(scrapStats?.scores || 0, 'scores')} · ${scrapCount(best || 0, 'best')} · `
+  + `${scrapCount(scrapStats?.sessions || 0, 'sessions')}`;
 
 const levelType = (level) => (level.match(/^[A-Za-z]+/) || [level])[0];
 const levelNum = (level) => parseInt((level.match(/\d+/) || ['0'])[0], 10);
@@ -126,7 +130,12 @@ const styles = `
   .rival-link { color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
   .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
-  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats { opacity: .45; }
+  .rival-delete { background: none; font: inherit; font-size: 13px; cursor: pointer; }
+  .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
+  .rival-scrap { margin: 4px 0 0 24px; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+  .rival-scrap > span { color: #9AB3A3; }
+  .rival-scrap .zero { opacity: .4; }
+  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats, .rival.off .rival-scrap { opacity: .45; }
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 40px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; align-items: flex-start; }
   .filter-grid { display: grid; gap: 6px; }
@@ -167,7 +176,7 @@ const styles = `
   .ahead { opacity: .8; }
   .player-link { color: inherit; text-decoration: none; }
   .player-link:hover { color: #4FE33F; }
-  th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
+  th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
   tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
@@ -228,13 +237,15 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     if (scrapButton.textContent !== label) scrapButton.textContent = label;
   }
 
-  // "6+" means every session on the page is new, so older pages may hold more.
+  // "6+" means every session on the page is new, so older pages may hold more. PB is left out
+  // until the PUMBILITY of the newest session can be read.
   function scrapLabel(info) {
     if (!info) return 'Grab scores';
-    const { count, more, known } = info;
+    const { count, more, known, name, pumbility } = info;
     if (count === 0) return 'No new sessions to grab';
+    if (!known) return `Add player '${name}'${pumbility === null ? '' : ` PB ${fmt(pumbility)}`} and scrap his results`;
     const sessions = `${count}${more ? '+' : ''} session${count === 1 && !more ? '' : 's'}`;
-    return known ? `Grab scores from ${sessions}` : `Add player and grab scores from ${sessions}`;
+    return `Grab scores from ${sessions}`;
   }
 
 
@@ -327,6 +338,21 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
         console.error('[piuscores] Unable to save rival selection', error);
       }
     });
+    shadow.querySelector('.rival-list').addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-delete]');
+      if (!button) return;
+      const { delete: playerId, name, own } = button.dataset;
+      const question = own
+        ? 'Delete all your saved scores? Your player record is kept. This cannot be undone.'
+        : `Delete ${name} and all their saved scores? This cannot be undone.`;
+      if (!window.confirm(question)) return;
+      try {
+        await deletePlayer(playerId);
+        await render();
+      } catch (error) {
+        console.error('[piuscores] Unable to delete player data', error);
+      }
+    });
     shadow.querySelector('.filters').addEventListener('click', (event) => {
       const chip = event.target.closest('.chip');
       if (!chip) return;
@@ -377,7 +403,8 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
 
   // Rivals (and you) are sorted by pumbility (highest first); those without one follow alphabetically.
   // Each rival shows how many of their charts you lose / haven't played / win.
-  function renderRivalList(shadow, charts, players, ownPlayerId, hidden) {
+  // Below the links: scores and sessions grabbed by the scrap button, and stored best scores.
+  function renderRivalList(shadow, charts, players, ownPlayerId, hidden, bestCounts) {
     const rivalStats = {};
     for (const chart of charts) {
       for (const rival of chart.rivals) {
@@ -410,19 +437,25 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
           + `<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></label>`
           + `<div class="rival-links"><a class="rival-link" href="${base}">${me ? 'My page' : 'Rival'}</a>`
           + `<a class="rival-link" href="${base}/Sessions">Sessions</a>`
+          + `<button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" `
+          + `data-name="${esc(name)}"${me ? ' data-own="1"' : ''} `
+          + `title="${me ? 'Delete all your saved scores' : 'Delete this player and all their saved scores'}">Delete</button>`
           + (me ? '' : `<span class="rival-stats" title="charts: losing / not played / best">${
             statLine(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 })}</span>`)
-          + '</div></div>';
+          + '</div>'
+          + `<div class="rival-scrap" title="scraped scores · best scores · scraped sessions">${
+            scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>`
+          + '</div>';
       }).join('')
       : '<div class="muted">No rivals yet</div>';
   }
 
   async function render() {
     const shadow = ensure();
-    const [allCharts, { players, ownPlayerId }, { hiddenRivals }] =
+    const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals }] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
     const hidden = new Set(hiddenRivals);
-    renderRivalList(shadow, allCharts, players, ownPlayerId, hidden);
+    renderRivalList(shadow, allCharts, players, ownPlayerId, hidden, bestCounts);
     const charts = allCharts
       .map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId)))
       .filter(Boolean);
@@ -476,7 +509,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     const body = shadow.querySelector('.dlg-body');
     if (visible.length === 0) {
       const message = allCharts.length === 0
-        ? 'No saved rival scores yet — open a rival\'s page to collect them.'
+        ? 'No saved rival scores yet — grab them on a player\'s Sessions page.'
         : charts.length === 0
           ? 'No charts for the selected rivals — check some rivals on the left.'
           : `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;

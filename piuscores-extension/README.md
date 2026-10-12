@@ -1,8 +1,8 @@
 # PIU Scores Scraper
 
-This Chrome extension collects rival scores from player pages on
-`piuscores.arroweclip.se` and shows changes and saved scores.
-It also collects rival scores from Phoenix 2 sessions. On a player's Sessions
+This Chrome extension collects rival scores from Phoenix 2 sessions on
+`piuscores.arroweclip.se` and shows changes and saved scores. Scores are only
+collected from Sessions pages; rival compare pages are not scraped. On a player's Sessions
 page, use **Grab scores from N sessions** (or **Add player and grab scores…** for a
 player not stored yet; disabled when there are no new sessions) to traverse session pages, open each new session,
 show all plays, and parse sessions chronologically. The latest parsed session's
@@ -13,8 +13,10 @@ Scraped scores only replace a stored score when they are higher, so older
 session results cannot lower a saved best.
 Scores are associated with player IDs. The extension identifies your own ID
 from the account menu's “My Sessions” link so your scores can be compared with
-the rival scores collected from player pages. Player display names are stored
-in `chrome.storage.local` as `players: { "<playerId>": { "name": "<name>", "lastScrapedSession": { "title": "<title>", "timestamp": "<timestamp>" } } }`.
+the rival scores collected from Sessions pages. Player display names are stored
+in `chrome.storage.local` as `players: { "<playerId>": { "name": "<name>", "lastScrapedSession": { "title": "<title>", "timestamp": "<timestamp>" }, "scrapStats": { "scores": <n>, "sessions": <n> } } }`.
+`scrapStats` counts the scores and sessions parsed by the grab button; the Rival
+scores window shows them per player together with the number of stored best scores.
 Chart scores are stored as `results: { "<track>|<chart>": { "<playerId>": <score> } }`.
 The storage schema version is recorded as `storageVersion: 1`.
 UI preferences are stored as `preferences: { "hiddenRivals": ["<playerId>", ...] }`;
@@ -43,7 +45,7 @@ files, or use `npm run watch` to rebuild when they change.
 ## Conventions
 
 Use underscores, not hyphens, in folder and module names
-(for example `page_scrappers/rival_compare.js`).
+(for example `page_scrappers/common.js`).
 
 Separate top-level functions in source files with two blank lines, not one.
 

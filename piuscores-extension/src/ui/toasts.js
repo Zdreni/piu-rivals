@@ -66,6 +66,16 @@ export function showSessionToast(shadow, player, title, timestamp, scannedResult
 }
 
 
+export function showPlayerAddedToast(shadow, player, playerId, pumbility) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<div class="title">${esc(displayName(player))}: <span class="new">player added</span></div>`
+    + `<div class="line">ID ${esc(playerId)}</div>`
+    + `<div class="line">PUMBILITY ${fmt(pumbility)}</div>`;
+  pushToast(shadow, toast);
+}
+
+
 export function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
   const toast = document.createElement('div');
   toast.className = 'toast';

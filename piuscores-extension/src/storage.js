@@ -1,4 +1,5 @@
-// Player metadata is stored as { players: { <playerId>: { name, pumbility } } }.
+// Player metadata is stored as
+// { players: { <playerId>: { name, pumbility, lastScrapedSession, scrapStats: { scores, sessions } } } }.
 // Scores are stored as results["<track>|<chart>"][playerId] = score.
 export const STORAGE_VERSION = 1;
 export const MIN_SCRAPE_LEVEL = 10;
@@ -75,11 +76,17 @@ export async function loadCharts() {
 }
 
 
+// bestCounts[playerId] is the number of charts with a stored best score for that player.
 export async function loadPlayers() {
-  const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
+  const { players, ownPlayerId, results } = await chrome.storage.local.get(['players', 'ownPlayerId', 'results']);
+  const bestCounts = {};
+  for (const scores of Object.values(results && typeof results === 'object' ? results : {})) {
+    for (const playerId of Object.keys(scores || {})) bestCounts[playerId] = (bestCounts[playerId] || 0) + 1;
+  }
   return {
     players: players && typeof players === 'object' ? players : {},
     ownPlayerId: typeof ownPlayerId === 'string' ? ownPlayerId : null,
+    bestCounts,
   };
 }
 
@@ -104,4 +111,28 @@ export function withRivals(chart, keep) {
   if (rivals.length === chart.rivals.length) return chart;
   if (!rivals.length) return null;
   return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
+}
+
+
+// Removes a rival's metadata, scores and hidden-rival preference. For your own ID only the
+// score data goes (scores, session checkpoint and scrap counters); the player record and
+// ownPlayerId stay.
+export async function deletePlayer(playerId) {
+  const { players, results, preferences, ownPlayerId } =
+    await chrome.storage.local.get(['players', 'results', 'preferences', 'ownPlayerId']);
+  const { [playerId]: removed, ...restPlayers } = players || {};
+  if (playerId === ownPlayerId && removed) {
+    const { lastScrapedSession, scrapStats, ...record } = removed;
+    restPlayers[playerId] = record;
+  }
+  const restResults = {};
+  for (const [key, scores] of Object.entries(results || {})) {
+    const { [playerId]: __, ...rest } = scores || {};
+    if (Object.keys(rest).length) restResults[key] = rest;
+  }
+  const updates = { players: restPlayers, results: restResults };
+  if (preferences?.hiddenRivals?.includes(playerId)) {
+    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== playerId) };
+  }
+  await chrome.storage.local.set(updates);
 }

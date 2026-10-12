@@ -3,7 +3,6 @@ import { STORAGE_VERSION } from './storage.js';
 import { exportTargets } from './export_targets.js';
 import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
-import { runRivalCompare } from './page_scrappers/rival_compare.js';
 import {
   getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
@@ -34,7 +33,6 @@ async function run() {
     return;
   }
   await runProfilePage(ui, ownPlayerId);
-  await runRivalCompare(ui, ownPlayerId);
 }
 
 

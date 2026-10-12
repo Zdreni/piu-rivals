@@ -51,10 +51,15 @@
     return charts;
   }
   async function loadPlayers() {
-    const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
+    const { players, ownPlayerId, results } = await chrome.storage.local.get(["players", "ownPlayerId", "results"]);
+    const bestCounts = {};
+    for (const scores of Object.values(results && typeof results === "object" ? results : {})) {
+      for (const playerId of Object.keys(scores || {})) bestCounts[playerId] = (bestCounts[playerId] || 0) + 1;
+    }
     return {
       players: players && typeof players === "object" ? players : {},
-      ownPlayerId: typeof ownPlayerId === "string" ? ownPlayerId : null
+      ownPlayerId: typeof ownPlayerId === "string" ? ownPlayerId : null,
+      bestCounts
     };
   }
   async function loadPreferences() {
@@ -71,6 +76,24 @@
     if (rivals.length === chart.rivals.length) return chart;
     if (!rivals.length) return null;
     return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
+  }
+  async function deletePlayer(playerId) {
+    const { players, results, preferences, ownPlayerId } = await chrome.storage.local.get(["players", "results", "preferences", "ownPlayerId"]);
+    const { [playerId]: removed, ...restPlayers } = players || {};
+    if (playerId === ownPlayerId && removed) {
+      const { lastScrapedSession, scrapStats, ...record } = removed;
+      restPlayers[playerId] = record;
+    }
+    const restResults = {};
+    for (const [key, scores] of Object.entries(results || {})) {
+      const { [playerId]: __, ...rest } = scores || {};
+      if (Object.keys(rest).length) restResults[key] = rest;
+    }
+    const updates = { players: restPlayers, results: restResults };
+    if (preferences?.hiddenRivals?.includes(playerId)) {
+      updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== playerId) };
+    }
+    await chrome.storage.local.set(updates);
   }
 
   // src/ui/rivals.js
@@ -90,6 +113,8 @@
   var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var stat = (cls, n) => `<span class="${cls}${n === 0 ? " zero" : ""}">${n}</span>`;
   var statLine = (counts) => `${stat("neg", counts.lose)} / ${stat("blue", counts.unplayed)} / ${stat("pos", counts.win)}`;
+  var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
+  var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
   var levelType = (level) => (level.match(/^[A-Za-z]+/) || [level])[0];
   var levelNum = (level) => parseInt((level.match(/\d+/) || ["0"])[0], 10);
   var TYPE_ORDER = { S: 0, D: 1 };
@@ -175,7 +200,12 @@
   .rival-link { color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
   .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
-  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats { opacity: .45; }
+  .rival-delete { background: none; font: inherit; font-size: 13px; cursor: pointer; }
+  .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
+  .rival-scrap { margin: 4px 0 0 24px; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+  .rival-scrap > span { color: #9AB3A3; }
+  .rival-scrap .zero { opacity: .4; }
+  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats, .rival.off .rival-scrap { opacity: .45; }
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 40px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; align-items: flex-start; }
   .filter-grid { display: grid; gap: 6px; }
@@ -216,7 +246,7 @@
   .ahead { opacity: .8; }
   .player-link { color: inherit; text-decoration: none; }
   .player-link:hover { color: #4FE33F; }
-  th { position: sticky; top: 0; background: #14201A; color: #9AB3A3; font-weight: 500;
+  th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
   tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
@@ -272,10 +302,11 @@
     }
     function scrapLabel(info) {
       if (!info) return "Grab scores";
-      const { count, more, known } = info;
+      const { count, more, known, name, pumbility } = info;
       if (count === 0) return "No new sessions to grab";
+      if (!known) return `Add player '${name}'${pumbility === null ? "" : ` PB ${fmt(pumbility)}`} and scrap his results`;
       const sessions = `${count}${more ? "+" : ""} session${count === 1 && !more ? "" : "s"}`;
-      return known ? `Grab scores from ${sessions}` : `Add player and grab scores from ${sessions}`;
+      return `Grab scores from ${sessions}`;
     }
     function ensure() {
       if (uiHost) {
@@ -364,6 +395,19 @@
           console.error("[piuscores] Unable to save rival selection", error);
         }
       });
+      shadow.querySelector(".rival-list").addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-delete]");
+        if (!button) return;
+        const { delete: playerId, name, own } = button.dataset;
+        const question = own ? "Delete all your saved scores? Your player record is kept. This cannot be undone." : `Delete ${name} and all their saved scores? This cannot be undone.`;
+        if (!window.confirm(question)) return;
+        try {
+          await deletePlayer(playerId);
+          await render();
+        } catch (error) {
+          console.error("[piuscores] Unable to delete player data", error);
+        }
+      });
       shadow.querySelector(".filters").addEventListener("click", (event) => {
         const chip = event.target.closest(".chip");
         if (!chip) return;
@@ -402,7 +446,7 @@
       const title = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
       shadow.querySelector(".dlg-head h2").innerHTML = `${esc(title)}<span class="head-stats"> \u2014 ${stat("neg", totals.lose)} losses, ${stat("blue", totals.unplayed)} np, ${stat("pos", totals.win)} wins</span>`;
     }
-    function renderRivalList(shadow, charts, players, ownPlayerId, hidden) {
+    function renderRivalList(shadow, charts, players, ownPlayerId, hidden, bestCounts) {
       const rivalStats = {};
       for (const chart of charts) {
         for (const rival of chart.rivals) {
@@ -425,14 +469,14 @@
         const on = me || !hidden.has(playerId);
         const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
         const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
-        return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}"><label class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></label><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a>` + (me ? "" : `<span class="rival-stats" title="charts: losing / not played / best">${statLine(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 })}</span>`) + "</div></div>";
+        return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}"><label class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></label><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button>` + (me ? "" : `<span class="rival-stats" title="charts: losing / not played / best">${statLine(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 })}</span>`) + `</div><div class="rival-scrap" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div></div>`;
       }).join("") : '<div class="muted">No rivals yet</div>';
     }
     async function render() {
       const shadow = ensure();
-      const [allCharts, { players, ownPlayerId }, { hiddenRivals }] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
+      const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals }] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
       const hidden = new Set(hiddenRivals);
-      renderRivalList(shadow, allCharts, players, ownPlayerId, hidden);
+      renderRivalList(shadow, allCharts, players, ownPlayerId, hidden, bestCounts);
       const charts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean);
       const levels = [...new Set(charts.map((chart) => chart.chart))].sort(compareLevels);
       if (!levels.includes(selectedLevel)) {
@@ -473,7 +517,7 @@
       visible.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
       const body = shadow.querySelector(".dlg-body");
       if (visible.length === 0) {
-        const message = allCharts.length === 0 ? "No saved rival scores yet \u2014 open a rival's page to collect them." : charts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
+        const message = allCharts.length === 0 ? "No saved rival scores yet \u2014 grab them on a player's Sessions page." : charts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
         body.innerHTML = `<div class="empty">${message}</div>`;
         return;
       }
@@ -580,6 +624,12 @@
     toast.innerHTML = `<div class="title">${esc2(displayName(player))}: parsed new session</div><div class="line">${esc2(title)}</div><div class="line">${esc2(timestamp)}</div><div class="line">Scanned ${fmt3(scannedResults)} results</div>`;
     pushToast(shadow, toast);
   }
+  function showPlayerAddedToast(shadow, player, playerId, pumbility) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `<div class="title">${esc2(displayName(player))}: <span class="new">player added</span></div><div class="line">ID ${esc2(playerId)}</div><div class="line">PUMBILITY ${fmt3(pumbility)}</div>`;
+    pushToast(shadow, toast);
+  }
   function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -673,10 +723,11 @@
     lastPumbilityLog = message;
     console.log(`${TAG} PUMBILITY ${message}`);
   }
-  async function savePlayerInfo(ui2, playerId, name, pumbility, ownPlayerId, source) {
+  async function savePlayerInfo(ui2, playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
     if (!name && pumbility === null) return;
     const { players } = await chrome.storage.local.get("players");
-    if (!isKnownPlayer(players, playerId, ownPlayerId)) {
+    const isNew = !isKnownPlayer(players, playerId, ownPlayerId);
+    if (!allowNewPlayer && isNew) {
       logPumbility(`found for ${name || playerId} (${playerId}) on ${source}: not a known player, skipping`);
       return;
     }
@@ -700,7 +751,9 @@
     if (raised) player.pumbility = pumbility;
     if (player.name === prev.name && player.pumbility === prev.pumbility) return;
     await chrome.storage.local.set({ players: { ...players || {}, [playerId]: player } });
-    if (raised) {
+    if (isNew) {
+      showPlayerAddedToast(ui2.ensure(), player.name || playerId, playerId, player.pumbility ?? null);
+    } else if (raised) {
       const label = playerId === ownPlayerId ? "You" : player.name || playerId;
       showPumbilityToast(ui2.ensure(), label, pumbility, prevPumbility);
     }
@@ -753,121 +806,31 @@
     );
   }
 
-  // src/page_scrappers/rival_compare.js
-  var lastSignature = null;
-  function playerDisplayName(players, playerId) {
-    return players[playerId]?.name || playerId;
-  }
-  function parseScore(cell) {
-    const p = cell && cell.querySelector(".rvl-cmp-score p");
-    if (!p) return null;
-    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
-    return Number.isNaN(n) ? null : n;
-  }
-  function scrape() {
-    const playerId = pagePlayerId();
-    const table = document.querySelector('[data-testid="rival-compare-table"]');
-    const headers = table?.querySelectorAll("thead th");
-    const rival = text(headers?.[2]) || text(document.querySelector('[data-testid="player-hero"] h5'));
-    const rows = [];
-    for (const tr of table?.querySelectorAll("tbody tr") || []) {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length < 3) continue;
-      const songEl = cells[0].querySelector(".rvl-cmp-song");
-      const track = songEl ? songEl.getAttribute("title") || text(songEl) : "";
-      const chart = cells[0].querySelector("img.difficulty-bubble")?.getAttribute("alt") || "";
-      if (!isScrapLevel(chart)) continue;
-      rows.push({ track, chart, mine: parseScore(cells[1]), score: parseScore(cells[2]) });
-    }
-    return { rival, playerId, rows };
-  }
-  async function runRivalCompare(ui2, ownPlayerId) {
-    const result = scrape();
-    if (!result) return;
-    const signature = JSON.stringify({ result, ownPlayerId });
-    if (signature === lastSignature) return;
-    lastSignature = signature;
-    const { rival, playerId } = result;
-    const stored = await chrome.storage.local.get(["results", "players"]);
-    const rivalKnown = !!playerId && isKnownPlayer(stored.players, playerId, ownPlayerId);
-    const events = [];
-    const updates = {};
-    const results = { ...stored.results || {} };
-    let resultsChanged = false;
-    if (rival && rivalKnown) {
-      const players = { ...stored.players || {} };
-      if (players[playerId]?.name !== rival) {
-        players[playerId] = { ...players[playerId], name: rival };
-        updates.players = players;
-      }
-    }
-    for (const row of result.rows) {
-      const key = storageKey(row);
-      const scores = { ...results[key] || {} };
-      const { track, chart } = row;
-      const rivalUpdate = rivalKnown ? saveHigherScore(scores, playerId, row.score) : null;
-      if (rivalUpdate) {
-        events.push({
-          kind: "rival",
-          change: rivalUpdate.change,
-          track,
-          chart,
-          player: playerId === ownPlayerId ? "You" : rival,
-          score: row.score,
-          prevScore: rivalUpdate.prevScore,
-          delta: delta(scores[ownPlayerId] ?? null, row.score)
-        });
-      }
-      const mineUpdate = saveHigherScore(scores, ownPlayerId, row.mine);
-      if (mineUpdate) {
-        const deltas = Object.entries(scores).filter(([id]) => id !== ownPlayerId).map(([id, score]) => ({
-          player: playerDisplayName(stored.players || {}, id),
-          score,
-          delta: delta(row.mine, score)
-        })).sort((a, b) => a.delta - b.delta);
-        events.push({
-          kind: "mine",
-          change: mineUpdate.change,
-          track,
-          chart,
-          score: row.mine,
-          prevScore: mineUpdate.prevScore,
-          deltas
-        });
-      }
-      if (rivalUpdate || mineUpdate) {
-        results[key] = scores;
-        resultsChanged = true;
-      }
-    }
-    if (resultsChanged) updates.results = results;
-    if (Object.keys(updates).length) await chrome.storage.local.set(updates);
-    if (events.length === 0) return;
-    const player = playerId === ownPlayerId ? "You" : rival;
-    console.log(`${TAG} rival: ${player}, ${events.length} change(s)`);
-    console.table(events.flatMap((event) => event.kind === "rival" ? [{ type: event.change, track: event.track, chart: event.chart, player: event.player, score: event.score, prevScore: event.prevScore, delta: event.delta }] : [
-      { type: `mine ${event.change}`, track: event.track, chart: event.chart, player: "You", score: event.score, prevScore: event.prevScore, delta: null },
-      ...event.deltas.map((d) => ({ type: "delta", track: event.track, chart: event.chart, player: d.player, score: d.score, prevScore: null, delta: d.delta }))
-    ]));
-    showToast(ui2.ensure(), player, events);
-  }
-
   // src/page_scrappers/sessions.js
-  var lastSignature2 = null;
+  var lastSignature = null;
   var isScrapingSessions = false;
+  var sessionsPumbility = () => parseNumber(text(document.querySelector(
+    '[data-testid="session-ceremony"] .sbd-pumb-big'
+  )));
+  var isNewestSessionOpen = () => !!document.querySelector('[data-testid="session-card"]')?.classList.contains("sbd-card-now") && !findPageButton("newer");
   async function syncSessionsPumbility(ui2, ownPlayerId) {
     const playerId = sessionPagePlayerId();
     if (!playerId) return;
-    const pumbility = parseNumber(text(document.querySelector(
-      '[data-testid="session-ceremony"] .sbd-pumb-big'
-    )));
+    const pumbility = sessionsPumbility();
     if (pumbility === null) return;
-    const newest = document.querySelector('[data-testid="session-card"]');
-    if (!newest?.classList.contains("sbd-card-now") || findPageButton("newer")) {
+    if (!isNewestSessionOpen()) {
       logPumbility(`found ${pumbility} for ${playerName() || playerId} (${playerId}) on Sessions page: not the newest session, ignoring`);
       return;
     }
     await savePlayerInfo(ui2, playerId, playerName(), pumbility, ownPlayerId, "Sessions page");
+  }
+  async function addNewPlayer(ui2, playerId, report) {
+    report("Adding player");
+    if (isNewestSessionOpen()) {
+      await waitForChange(() => sessionsPumbility() !== null, "PUMBILITY", 3e3).catch((error) => console.warn(TAG, error.message));
+    }
+    const pumbility = isNewestSessionOpen() ? sessionsPumbility() : null;
+    await savePlayerInfo(ui2, playerId, playerName(), pumbility, await syncOwnPlayerId(), "Sessions page", true);
   }
   function playerName() {
     return text(document.querySelector("main h5")).replace(/\s+[—–-]\s+Sessions$/i, "").trim();
@@ -889,10 +852,11 @@
     if (mix !== "Phoenix 2") return null;
     const rowsByChart = /* @__PURE__ */ new Map();
     const addScore = (track, chart, score) => {
-      if (!track || !isScrapLevel(chart) || score === null) return;
+      if (!track || !isScrapLevel(chart) || score === null) return false;
       const row = { track, chart, score };
       const key = storageKey(row);
       if (score > (rowsByChart.get(key)?.score ?? -1)) rowsByChart.set(key, row);
+      return true;
     };
     for (const card of highlights?.querySelectorAll('[data-testid="session-highlight-card"]') || []) {
       const difficulty = card.querySelector("img.difficulty-bubble");
@@ -904,19 +868,21 @@
       );
     }
     const playRows = [...allPlays?.querySelectorAll('[data-testid="session-score-row"]') || []];
+    let scrapedScores = 0;
     for (const row of playRows) {
       const difficulty = row.querySelector("img.difficulty-bubble");
       if (!isPhoenix2Chart(difficulty)) continue;
-      addScore(
+      if (addScore(
         text(row.querySelector('[data-testid="session-row-chart"]')),
         difficulty.getAttribute("alt") || "",
         parseSessionScore(row)
-      );
+      )) scrapedScores++;
     }
     return {
       playerId: pagePlayerId(),
       rows: [...rowsByChart.values()],
-      scannedResults: playRows.length
+      scannedResults: playRows.length,
+      scrapedScores
     };
   }
   function sessionPagePlayerId() {
@@ -990,12 +956,17 @@
     await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
     return true;
   }
-  async function saveSessionCheckpoint(playerId, info) {
+  async function saveSessionCheckpoint(playerId, info, scrapedScores) {
     const stored = await chrome.storage.local.get(["players"]);
     const players = { ...stored.players || {} };
+    const scrapStats = players[playerId]?.scrapStats || {};
     players[playerId] = {
       ...players[playerId],
-      lastScrapedSession: info
+      lastScrapedSession: info,
+      scrapStats: {
+        scores: (scrapStats.scores || 0) + scrapedScores,
+        sessions: (scrapStats.sessions || 0) + 1
+      }
     };
     const name = playerName();
     if (name) players[playerId].name = name;
@@ -1027,7 +998,7 @@
     if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
     if (result.playerId !== playerId) throw new Error("Session player changed while scraping");
     await runSessionScores(ui2, result, await syncOwnPlayerId(), true);
-    await saveSessionCheckpoint(playerId, info);
+    await saveSessionCheckpoint(playerId, info, result.scrapedScores);
     progress.count++;
     report(`Scraped ${progress.count}: ${info.title} (${info.timestamp})`);
     showSessionToast(
@@ -1051,7 +1022,8 @@
     if (isScrapingSessions) return;
     isScrapingSessions = true;
     try {
-      const stored = await chrome.storage.local.get(["players"]);
+      const stored = await chrome.storage.local.get(["players", "ownPlayerId"]);
+      if (!isKnownPlayer(stored.players, playerId, stored.ownPlayerId)) await addNewPlayer(ui2, playerId, report);
       const checkpoint = stored.players?.[playerId]?.lastScrapedSession || null;
       const pages = [];
       const seenPages = /* @__PURE__ */ new Set();
@@ -1110,6 +1082,7 @@
           await clickPageButton(newer, "newer");
         }
       }
+      if (progress.count) await syncSessionsPumbility(ui2, await syncOwnPlayerId());
       report(`Scraping complete: ${progress.count} Phoenix 2 session(s)`);
     } finally {
       isScrapingSessions = false;
@@ -1124,8 +1097,8 @@
     const stored = await chrome.storage.local.get(["results", "players"]);
     if (!allowNewPlayer && !isKnownPlayer(stored.players, playerId, ownPlayerId)) return;
     const signature = JSON.stringify({ sessions: result, ownPlayerId });
-    if (signature === lastSignature2) return;
-    lastSignature2 = signature;
+    if (signature === lastSignature) return;
+    lastSignature = signature;
     const name = playerName();
     const updates = {};
     const events = [];
@@ -1194,6 +1167,8 @@
     const { players, ownPlayerId } = cachedStorage;
     return {
       known: isKnownPlayer(players, playerId, ownPlayerId),
+      name: displayName(playerName()),
+      pumbility: isNewestSessionOpen() ? sessionsPumbility() : null,
       ...countNewSessions(players[playerId]?.lastScrapedSession || null)
     };
   }
@@ -1226,7 +1201,6 @@
       return;
     }
     await runProfilePage(ui, ownPlayerId);
-    await runRivalCompare(ui, ownPlayerId);
   }
   chrome.storage.onChanged.addListener((_, area) => {
     if (area !== "local") return;
