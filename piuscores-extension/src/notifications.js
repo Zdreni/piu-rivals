@@ -25,15 +25,7 @@ function eventLines(event) {
   ];
 }
 
-export function showToast(shadow, rival, events) {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  const all = events.flatMap(eventLines);
-  const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join('');
-  const more = all.length > MAX_LINES
-    ? `<div class="more">…and ${all.length - MAX_LINES} more line(s) (see console)</div>` : '';
-  toast.innerHTML = `<div class="title">${esc(rival)}: ${events.length} change(s)</div>${lines}${more}`;
-
+function pushToast(shadow, toast) {
   const close = () => {
     if (toast.classList.contains('out')) return;
     toast.classList.add('out');
@@ -45,6 +37,18 @@ export function showToast(shadow, rival, events) {
   shadow.querySelector('.stack').appendChild(toast);
 }
 
+export function showToast(shadow, rival, events) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const all = events.flatMap(eventLines);
+  const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join('');
+  const more = all.length > MAX_LINES
+    ? `<div class="more">…and ${all.length - MAX_LINES} more line(s) (see console)</div>` : '';
+  toast.innerHTML = `<div class="title">${esc(rival)}: ${events.length} change(s)</div>${lines}${more}`;
+
+  pushToast(shadow, toast);
+}
+
 export function showSessionToast(shadow, player, title, timestamp, scannedResults) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -52,13 +56,16 @@ export function showSessionToast(shadow, player, title, timestamp, scannedResult
     + `<div class="line">${esc(title)}</div><div class="line">${esc(timestamp)}</div>`
     + `<div class="line">Scanned ${fmt(scannedResults)} results</div>`;
 
-  const close = () => {
-    if (toast.classList.contains('out')) return;
-    toast.classList.add('out');
-    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-    setTimeout(() => toast.remove(), 600);
-  };
-  toast.addEventListener('click', close);
-  setTimeout(close, TOAST_MS);
-  shadow.querySelector('.stack').appendChild(toast);
+  pushToast(shadow, toast);
+}
+
+export function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const change = prevPumbility === null
+    ? '<span class="new">NEW</span>'
+    : fmtDelta(pumbility - prevPumbility);
+  toast.innerHTML = `<div class="title">${esc(player)}: PUMBILITY</div>`
+    + `<div class="line">${fmtScore(pumbility, prevPumbility)} (${change})</div>`;
+  pushToast(shadow, toast);
 }

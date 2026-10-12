@@ -1,4 +1,4 @@
-// Player metadata is stored as { players: { <playerId>: { name } } }.
+// Player metadata is stored as { players: { <playerId>: { name, pumbility } } }.
 // Scores are stored as results["<track>|<chart>"][playerId] = score.
 export const STORAGE_VERSION = 1;
 export const MIN_SCRAPE_LEVEL = 10;

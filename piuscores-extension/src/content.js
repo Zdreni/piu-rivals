@@ -1,4 +1,4 @@
-import { showSessionToast, showToast } from './notifications.js';
+import { showPumbilityToast, showSessionToast, showToast } from './notifications.js';
 import { createScoresUI } from './scores-ui.js';
 import { delta, isScrapLevel, STORAGE_VERSION, storageKey } from './storage.js';
 import { exportTargets } from './export-targets.js';
@@ -31,6 +31,98 @@ async function syncOwnPlayerId() {
     return scrapedId;
   }
   return typeof ownPlayerId === 'string' ? ownPlayerId : null;
+}
+
+function profilePlayerId() {
+  return location.pathname.match(/^\/Player\/([^/]+)\/?$/)?.[1] ?? null;
+}
+
+function addSessionsButton(playerId) {
+  const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
+  if (!block || block.querySelector('.piuscores-sessions-btn')) return;
+  const link = document.createElement('a');
+  link.className = 'piuscores-sessions-btn';
+  link.href = `/Player/${playerId}/Sessions`;
+  link.textContent = 'Sessions →';
+  link.title = 'Open this player\'s Sessions page';
+  link.style.cssText = 'align-self:flex-start;margin-left:auto;padding:2px 8px;border:1px solid #4FE33F;'
+    + 'border-radius:4px;color:#4FE33F;font:500 12px/1.4 Roboto,Arial,sans-serif;'
+    + 'text-decoration:none;white-space:nowrap;';
+  block.appendChild(link);
+}
+
+const parseNumber = (value) => {
+  const digits = value.replace(/[^\d]/g, '');
+  return digits ? Number(digits) : null;
+};
+
+// The page check runs on every DOM mutation, so repeat decisions are logged only once.
+let lastPumbilityLog = null;
+function logPumbility(message) {
+  if (message === lastPumbilityLog) return;
+  lastPumbilityLog = message;
+  console.log(`${TAG} PUMBILITY ${message}`);
+}
+
+async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source) {
+  if (!name && pumbility === null) return;
+
+  const { players } = await chrome.storage.local.get('players');
+  const prev = players?.[playerId] || {};
+  const player = { ...prev };
+  if (name) player.name = name;
+  if (pumbility !== null) player.pumbility = pumbility;
+
+  const who = `${player.name || playerId} (${playerId}) on ${source}`;
+  const prevPumbility = prev.pumbility ?? null;
+  if (pumbility === null) {
+    logPumbility(`not found for ${who}`);
+  } else if (prevPumbility === null) {
+    logPumbility(`found ${pumbility} for ${who}: new, saving`);
+  } else if (pumbility !== prevPumbility) {
+    logPumbility(`found ${pumbility} for ${who}: changed from ${prevPumbility}, saving`);
+  } else {
+    logPumbility(`found ${pumbility} for ${who}: unchanged, skipping`);
+  }
+
+  if (player.name === prev.name && player.pumbility === prev.pumbility) return;
+  await chrome.storage.local.set({ players: { ...(players || {}), [playerId]: player } });
+  if (pumbility !== null && pumbility !== prevPumbility) {
+    const label = playerId === ownPlayerId ? 'You' : player.name || playerId;
+    showPumbilityToast(ui.ensure(), label, pumbility, prevPumbility);
+  }
+}
+
+async function syncProfilePlayer(ownPlayerId) {
+  const playerId = profilePlayerId();
+  if (!playerId) return;
+  addSessionsButton(playerId);
+  const hero = document.querySelector('[data-testid="player-hero"]');
+  await savePlayerInfo(
+    playerId,
+    text(hero?.querySelector('h5')),
+    parseNumber(text(hero?.querySelector('.ph-pum .cmp-hero-num'))),
+    ownPlayerId,
+    'profile page',
+  );
+}
+
+// The ceremony block shows PUMBILITY as of the open session, so it is only current
+// when the newest session (first card on the first page) is the one showing.
+async function syncSessionsPumbility(ownPlayerId) {
+  const playerId = sessionPagePlayerId();
+  if (!playerId) return;
+  const pumbility = parseNumber(text(document.querySelector(
+    '[data-testid="session-ceremony"] .sbd-pumb-big',
+  )));
+  if (pumbility === null) return;
+  const newest = document.querySelector('[data-testid="session-card"]');
+  if (!newest?.classList.contains('sbd-card-now') || findPageButton('newer')) {
+    logPumbility(`found ${pumbility} for ${playerName() || playerId} (${playerId}) on Sessions page: `
+      + 'not the newest session, ignoring');
+    return;
+  }
+  await savePlayerInfo(playerId, playerName(), pumbility, ownPlayerId, 'Sessions page');
 }
 
 async function ensureStorageVersion() {
@@ -457,6 +549,8 @@ async function runSessionScores(result, ownPlayerId) {
 async function run() {
   await ensureStorageVersion();
   const ownPlayerId = await syncOwnPlayerId();
+  await syncProfilePlayer(ownPlayerId);
+  await syncSessionsPumbility(ownPlayerId);
   const sessionResult = scrapeSessionScores();
   if (sessionResult) {
     await runSessionScores(sessionResult, ownPlayerId);

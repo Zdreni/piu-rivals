@@ -21,13 +21,7 @@
       ...event.deltas.map((d) => `<span class="sub">${esc(d.player)}: ${fmt(d.score)} (${fmtDelta(d.delta)})</span>`)
     ];
   }
-  function showToast(shadow, rival, events) {
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    const all = events.flatMap(eventLines);
-    const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join("");
-    const more = all.length > MAX_LINES ? `<div class="more">\u2026and ${all.length - MAX_LINES} more line(s) (see console)</div>` : "";
-    toast.innerHTML = `<div class="title">${esc(rival)}: ${events.length} change(s)</div>${lines}${more}`;
+  function pushToast(shadow, toast) {
     const close = () => {
       if (toast.classList.contains("out")) return;
       toast.classList.add("out");
@@ -38,19 +32,27 @@
     setTimeout(close, TOAST_MS);
     shadow.querySelector(".stack").appendChild(toast);
   }
+  function showToast(shadow, rival, events) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    const all = events.flatMap(eventLines);
+    const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join("");
+    const more = all.length > MAX_LINES ? `<div class="more">\u2026and ${all.length - MAX_LINES} more line(s) (see console)</div>` : "";
+    toast.innerHTML = `<div class="title">${esc(rival)}: ${events.length} change(s)</div>${lines}${more}`;
+    pushToast(shadow, toast);
+  }
   function showSessionToast(shadow, player, title, timestamp, scannedResults) {
     const toast = document.createElement("div");
     toast.className = "toast";
     toast.innerHTML = `<div class="title">${esc(player)}: parsed new session</div><div class="line">${esc(title)}</div><div class="line">${esc(timestamp)}</div><div class="line">Scanned ${fmt(scannedResults)} results</div>`;
-    const close = () => {
-      if (toast.classList.contains("out")) return;
-      toast.classList.add("out");
-      toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-      setTimeout(() => toast.remove(), 600);
-    };
-    toast.addEventListener("click", close);
-    setTimeout(close, TOAST_MS);
-    shadow.querySelector(".stack").appendChild(toast);
+    pushToast(shadow, toast);
+  }
+  function showPumbilityToast(shadow, player, pumbility, prevPumbility) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    const change = prevPumbility === null ? '<span class="new">NEW</span>' : fmtDelta(pumbility - prevPumbility);
+    toast.innerHTML = `<div class="title">${esc(player)}: PUMBILITY</div><div class="line">${fmtScore(pumbility, prevPumbility)} (${change})</div>`;
+    pushToast(shadow, toast);
   }
 
   // src/storage.js
@@ -458,6 +460,82 @@
     }
     return typeof ownPlayerId === "string" ? ownPlayerId : null;
   }
+  function profilePlayerId() {
+    return location.pathname.match(/^\/Player\/([^/]+)\/?$/)?.[1] ?? null;
+  }
+  function addSessionsButton(playerId) {
+    const block = document.querySelector('[data-testid="player-hero"] .ph-pum');
+    if (!block || block.querySelector(".piuscores-sessions-btn")) return;
+    const link = document.createElement("a");
+    link.className = "piuscores-sessions-btn";
+    link.href = `/Player/${playerId}/Sessions`;
+    link.textContent = "Sessions \u2192";
+    link.title = "Open this player's Sessions page";
+    link.style.cssText = "align-self:flex-start;margin-left:auto;padding:2px 8px;border:1px solid #4FE33F;border-radius:4px;color:#4FE33F;font:500 12px/1.4 Roboto,Arial,sans-serif;text-decoration:none;white-space:nowrap;";
+    block.appendChild(link);
+  }
+  var parseNumber = (value) => {
+    const digits = value.replace(/[^\d]/g, "");
+    return digits ? Number(digits) : null;
+  };
+  var lastPumbilityLog = null;
+  function logPumbility(message) {
+    if (message === lastPumbilityLog) return;
+    lastPumbilityLog = message;
+    console.log(`${TAG} PUMBILITY ${message}`);
+  }
+  async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source) {
+    if (!name && pumbility === null) return;
+    const { players } = await chrome.storage.local.get("players");
+    const prev = players?.[playerId] || {};
+    const player = { ...prev };
+    if (name) player.name = name;
+    if (pumbility !== null) player.pumbility = pumbility;
+    const who = `${player.name || playerId} (${playerId}) on ${source}`;
+    const prevPumbility = prev.pumbility ?? null;
+    if (pumbility === null) {
+      logPumbility(`not found for ${who}`);
+    } else if (prevPumbility === null) {
+      logPumbility(`found ${pumbility} for ${who}: new, saving`);
+    } else if (pumbility !== prevPumbility) {
+      logPumbility(`found ${pumbility} for ${who}: changed from ${prevPumbility}, saving`);
+    } else {
+      logPumbility(`found ${pumbility} for ${who}: unchanged, skipping`);
+    }
+    if (player.name === prev.name && player.pumbility === prev.pumbility) return;
+    await chrome.storage.local.set({ players: { ...players || {}, [playerId]: player } });
+    if (pumbility !== null && pumbility !== prevPumbility) {
+      const label = playerId === ownPlayerId ? "You" : player.name || playerId;
+      showPumbilityToast(ui.ensure(), label, pumbility, prevPumbility);
+    }
+  }
+  async function syncProfilePlayer(ownPlayerId) {
+    const playerId = profilePlayerId();
+    if (!playerId) return;
+    addSessionsButton(playerId);
+    const hero = document.querySelector('[data-testid="player-hero"]');
+    await savePlayerInfo(
+      playerId,
+      text(hero?.querySelector("h5")),
+      parseNumber(text(hero?.querySelector(".ph-pum .cmp-hero-num"))),
+      ownPlayerId,
+      "profile page"
+    );
+  }
+  async function syncSessionsPumbility(ownPlayerId) {
+    const playerId = sessionPagePlayerId();
+    if (!playerId) return;
+    const pumbility = parseNumber(text(document.querySelector(
+      '[data-testid="session-ceremony"] .sbd-pumb-big'
+    )));
+    if (pumbility === null) return;
+    const newest = document.querySelector('[data-testid="session-card"]');
+    if (!newest?.classList.contains("sbd-card-now") || findPageButton("newer")) {
+      logPumbility(`found ${pumbility} for ${playerName() || playerId} (${playerId}) on Sessions page: not the newest session, ignoring`);
+      return;
+    }
+    await savePlayerInfo(playerId, playerName(), pumbility, ownPlayerId, "Sessions page");
+  }
   async function ensureStorageVersion() {
     const { storageVersion } = await chrome.storage.local.get("storageVersion");
     if (storageVersion === void 0) {
@@ -831,6 +909,8 @@
   async function run() {
     await ensureStorageVersion();
     const ownPlayerId = await syncOwnPlayerId();
+    await syncProfilePlayer(ownPlayerId);
+    await syncSessionsPumbility(ownPlayerId);
     const sessionResult = scrapeSessionScores();
     if (sessionResult) {
       await runSessionScores(sessionResult, ownPlayerId);
