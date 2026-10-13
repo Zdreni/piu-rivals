@@ -1036,6 +1036,7 @@
 
   // src/page_scrappers/rivals.js
   var SESSIONS_LINK_ATTR = "data-piuscores-sessions";
+  var STORED_ROSTER_ATTR = "data-piuscores-stored-roster";
   function isRivalsPage() {
     return /^\/Rivals\/?$/i.test(location.pathname);
   }
@@ -1067,14 +1068,60 @@
     link.innerHTML = '<span class="mud-button-label">Sessions</span>';
     return link;
   }
+  function storedOnlyRow(playerId, player) {
+    const name = typeof player?.name === "string" && player.name ? player.name : playerId;
+    const row = document.createElement("div");
+    row.className = "rvl-row";
+    row.style.opacity = "0.75";
+    const avatar = document.createElement("div");
+    avatar.className = "mud-avatar mud-avatar-medium mud-avatar-filled mud-avatar-filled-default mud-elevation-0";
+    avatar.textContent = displayName(name).charAt(0).toUpperCase();
+    const main = document.createElement("div");
+    main.className = "rvl-row-main";
+    const nameEl = document.createElement("div");
+    nameEl.className = "rvl-row-name";
+    nameEl.textContent = name;
+    const meta = document.createElement("div");
+    meta.className = "rvl-row-meta";
+    meta.textContent = typeof player?.pumbility === "number" ? `Stored only \xB7 PUMBILITY ${player.pumbility.toLocaleString("en-US")}` : "Stored only";
+    main.append(nameEl, meta);
+    row.append(avatar, main, createSessionsLink(null, playerId));
+    return row;
+  }
+  function renderStoredOnly(roster, players, ownPlayerId, rosterIds) {
+    const existing = document.querySelector(`[${STORED_ROSTER_ATTR}]`);
+    const activeTab = text(document.querySelector(".mud-tab.mud-tab-active"));
+    const storedOnly = roster && (!activeTab || activeTab === "Your rivals") ? Object.entries(players || {}).filter(([playerId]) => playerId !== ownPlayerId && !rosterIds.has(playerId)).sort(([, a], [, b]) => (b?.pumbility ?? -1) - (a?.pumbility ?? -1) || String(a?.name ?? "").localeCompare(String(b?.name ?? ""))) : [];
+    if (!storedOnly.length) {
+      existing?.remove();
+      return;
+    }
+    const signature = JSON.stringify(storedOnly.map(([playerId, p]) => [playerId, p?.name, p?.pumbility]));
+    if (existing?.getAttribute(STORED_ROSTER_ATTR) === signature && existing.previousElementSibling === roster) return;
+    existing?.remove();
+    const block = document.createElement("div");
+    block.setAttribute(STORED_ROSTER_ATTR, signature);
+    block.style.marginTop = "16px";
+    const caption = document.createElement("div");
+    caption.className = "rvl-row-meta";
+    caption.style.margin = "0 0 8px 4px";
+    caption.textContent = "Stored in piuscores, but not your rivals on the site";
+    const list = document.createElement("div");
+    list.className = "rvl-roster";
+    list.append(...storedOnly.map(([playerId, player]) => storedOnlyRow(playerId, player)));
+    block.append(caption, list);
+    roster.after(block);
+  }
   async function runRivalsPage() {
     if (!isRivalsPage()) return;
-    const rows = document.querySelectorAll('[data-testid="rival-roster"] .rvl-row');
-    if (!rows.length) return;
-    const { players } = await chrome.storage.local.get("players");
+    const roster = document.querySelector('[data-testid="rival-roster"]');
+    const rows = roster ? roster.querySelectorAll(".rvl-row") : [];
+    const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
     const rivalId = rivalIdsByName(players);
+    const rosterIds = /* @__PURE__ */ new Set();
     for (const row of rows) {
       const playerId = rivalId(text(row.querySelector(".rvl-row-name")));
+      if (playerId) rosterIds.add(playerId);
       const existing = row.querySelector(`[${SESSIONS_LINK_ATTR}]`);
       if (existing?.getAttribute(SESSIONS_LINK_ATTR) === playerId) continue;
       existing?.remove();
@@ -1084,6 +1131,7 @@
       if (compare) compare.after(link);
       else row.append(link);
     }
+    renderStoredOnly(roster, players, ownPlayerId, rosterIds);
   }
 
   // src/page_scrappers/sessions.js
