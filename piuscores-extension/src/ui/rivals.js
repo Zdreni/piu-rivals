@@ -26,7 +26,9 @@ const esc = (s) =>
 
 const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
 const statLine = (counts) =>
-  `${stat('neg', counts.lose)} / ${stat('blue', counts.unplayed)} / ${stat('pos', counts.win)}`;
+  `${stat('neg', counts.lose)} · ${stat('blue', counts.unplayed)} · ${stat('pos', counts.win)}`;
+const statWords = (counts, separator = ', ') =>
+  `${stat('neg', counts.lose)} losses${separator}${stat('blue', counts.unplayed)} np${separator}${stat('pos', counts.win)} wins`;
 const scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ''}>${fmt(n)}</span> ${label}`;
 const scrapLine = (scrapStats, best) =>
   `${scrapCount(scrapStats?.scores || 0, 'scores')} · ${scrapCount(best || 0, 'best')} · `
@@ -113,7 +115,7 @@ const styles = `
   .dlg-head .btn { box-shadow: none; }
   .head-stats { font-weight: 400; color: #9AB3A3; }
   .head-stats .blue { color: #3FA9F5; }
-  .head-stats > span, .chip-stats > span, .rival-stats > span, .tab-count { opacity: .7; }
+  .head-stats > span, .chip-stats > span, .tab-count { opacity: .7; }
   .head-stats .zero { opacity: .2; }
   .dlg-close { background: none; border: none; color: #9AB3A3; font-size: 30px; line-height: 1;
                cursor: pointer; padding: 0 4px; }
@@ -127,38 +129,42 @@ const styles = `
   .rival { padding: 9px 6px; border-radius: 4px; }
   .rival:nth-child(even) { background: rgba(255,255,255,.05); }
   .rival:hover { background: rgba(79,227,63,.12); }
-  .rival-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .rival { cursor: pointer; }
+  .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
+  .rival:not(.focused) .rival-links, .rival:not(.focused) .rival-scrap { display: none; }
+  .rival-toggle { display: flex; align-items: center; gap: 8px; }
+  .rival.focused .rival-toggle { cursor: pointer; }
   .rival input { accent-color: #4FE33F; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
   .rival-spacer { width: 16px; flex-shrink: 0; }
-  .rival.me .rival-toggle { cursor: default; }
   .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; font-weight: 600; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
-  .rival-links { display: flex; align-items: center; gap: 6px; margin: 2px 0 0 24px; }
-  .rival-stats { margin-left: auto; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+  .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+  .rival-stats { white-space: nowrap; color: #9AB3A3; }
   .rival-stats .blue { color: #3FA9F5; }
-  .rival-stats .zero { opacity: .2; }
   .rival-link { color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
   .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
-  .rival-delete { background: none; font: inherit; font-size: 13px; cursor: pointer; }
+  .rival-delete { margin-left: auto; background: none; font: inherit; font-size: 13px; cursor: pointer; }
   .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
-  .rival-scrap { margin: 4px 0 0 24px; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
-  .rival-scrap > span { color: #9AB3A3; }
-  .rival-scrap .zero { opacity: .4; }
-  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-stats, .rival.off .rival-scrap { opacity: .45; }
+  .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+  .rival-counts, .rival-stats { margin-top: 3px; }
+  .rival-counts { white-space: nowrap; }
+  .rival-counts > span { color: #9AB3A3; }
+  .rival-counts .zero { opacity: .4; }
+  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-scrap { opacity: .45; }
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 40px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; align-items: flex-start; }
   .filter-grid { display: grid; gap: 6px; }
   .filter-grid .chip { width: 100%; }
   .chip { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 999px;
-          padding: 3px 10px; font: inherit; cursor: pointer; }
+          padding: 3px 10px 2px; font: inherit; cursor: pointer; }
   .chip:hover { color: #EAF5EC; }
   .chip.on { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; font-weight: 600;
              box-shadow: 0 0 0 1px #4FE33F inset; }
   .chip { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; border-radius: 10px; }
   .chip.placeholder { visibility: hidden; }
-  .chip-stats { font-size: .6em; font-weight: 400; color: #8A9590; }
+  .chip-stats { margin-top: 5px; font-size: .6em; font-weight: 400; color: #8A9590; }
   .chip-stats .blue { color: #3FA9F5; }
   .chip-stats .zero { opacity: .2; }
   .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
@@ -190,11 +196,15 @@ const styles = `
   th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
-  tr.alt > td:not(.track):not([rowspan]) { background: rgba(255,255,255,.05); }
+  tr.alt > td:not(.track):not([rowspan]):not(.others) { background: rgba(255,255,255,.05); }
   tr.group td { border-top: 1px solid #2B4034; }
   tr.gap td { height: 8px; padding: 0; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .muted { color: #9AB3A3; }
+  td.others { text-align: right; padding: 4px 6px 6px; }
+  .show-others { background: none; color: #9AB3A3; opacity: .6; border: none; padding: 3px 12px;
+                 font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
+  .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
   .stack { position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
            display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px));
@@ -225,6 +235,10 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   let isWindowOpen = savedState.isOpen;
   let selectedLevel = savedState.selectedLevel;
   let selectedTab = savedState.selectedTab;
+  // Charts in the "Rivals win" tab whose rivals you beat are unrolled.
+  const expandedCharts = new Set();
+  // Only the focused rival in the list shows its stats and buttons.
+  let focusedRival = null;
 
   function saveUiState() {
     try {
@@ -375,7 +389,18 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     });
     shadow.querySelector('.rival-list').addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-delete]');
-      if (!button) return;
+      if (!button) {
+        const rival = event.target.closest('.rival');
+        if (!rival || event.target.closest('input, a')) return;
+        // Clicking the header of the focused rival folds it back.
+        const unfocus = rival.classList.contains('focused');
+        if (unfocus && !event.target.closest('.rival-toggle')) return;
+        focusedRival = unfocus ? null : rival.dataset.rival;
+        for (const other of shadow.querySelectorAll('.rival')) {
+          other.classList.toggle('focused', other.dataset.rival === focusedRival);
+        }
+        return;
+      }
       const { delete: playerId, name, own } = button.dataset;
       const question = own
         ? 'Delete all your saved scores? Your player record is kept. This cannot be undone.'
@@ -402,21 +427,34 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       saveUiState();
       render().catch((error) => console.error('[piuscores]', error));
     });
+    shadow.querySelector('.dlg-body').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-expand]');
+      if (!button) return;
+      expandedCharts.add(button.dataset.expand);
+      render().catch((error) => console.error('[piuscores]', error));
+    });
     document.body.appendChild(uiHost);
     return shadow;
   }
 
-  function chartRows(chart, myName) {
-    const list = [...chart.rivals];
-    if (chart.mine !== null) list.push({ player: 'You', score: chart.mine, me: true });
-    list.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+  // With `collapseWon`, rivals you beat are folded into a "show N others..." row until it is clicked.
+  function chartRows(chart, myName, collapseWon) {
+    const all = [...chart.rivals];
+    if (chart.mine !== null) all.push({ player: 'You', score: chart.mine, me: true });
+    all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+    const key = `${chart.track}|${chart.chart}`;
+    const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
+    const folded = collapseWon && !expandedCharts.has(key) ? all.filter(isWon).length : 0;
+    const list = folded ? all.filter((rival) => !isWon(rival)) : all;
+    const rowCount = list.length + (folded ? 1 : 0);
+    const rowStart = (i) => (i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>');
 
-    return list.map((rival, i) => {
+    const rows = list.map((rival, i) => {
       const head = i === 0
-        ? `<td class="track" rowspan="${list.length}" title="${esc(chart.track)}">${esc(chart.track)}</td>
-           <td rowspan="${list.length}"><b>${esc(chart.chart)}</b></td>`
+        ? `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
+           <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>`
         : '';
-      const tr = i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>';
+      const tr = rowStart(i);
       if (rival.me) {
         return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
       }
@@ -427,13 +465,17 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
         : esc(displayName(rival.player));
       return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
     });
+    if (folded) {
+      rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
+        + `data-expand="${esc(key)}">...show ${folded} other${folded === 1 ? '' : 's'}...</button></td></tr>`);
+    }
+    return rows;
   }
 
   function renderTitle(shadow, me, totals) {
     const title = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
     shadow.querySelector('.dlg-head h2').innerHTML = `${esc(title)}`
-      + `<span class="head-stats"> — ${stat('neg', totals.lose)} losses, ${stat('blue', totals.unplayed)} np, `
-      + `${stat('pos', totals.win)} wins</span>`;
+      + `<span class="head-stats"> — ${statWords(totals)}</span>`;
   }
 
   function renderScoreCap(shadow, scoreCap) {
@@ -475,19 +517,21 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
         const toggle = me
           ? '<span class="rival-spacer"></span>'
           : `<input type="checkbox" data-player="${esc(playerId)}"${on ? ' checked' : ''}>`;
-        return `<div class="rival${on ? '' : ' off'}${me ? ' me' : ''}">`
-          + `<label class="rival-toggle" title="${esc(name)}">${toggle}`
-          + `<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></label>`
+        const focused = playerId === focusedRival ? ' focused' : '';
+        return `<div class="rival${on ? '' : ' off'}${me ? ' me' : ''}${focused}" data-rival="${esc(playerId)}">`
+          + `<div class="rival-toggle" title="${esc(name)}">${toggle}`
+          + `<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></div>`
+          + `<div class="rival-scrap"><div class="rival-counts" title="scraped scores · best scores · scraped sessions">${
+            scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>`
+          + (me ? '' : `<div class="rival-stats" title="charts: losing / not played / best">${
+            statWords(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 }, ' · ')}</div>`)
+          + '</div>'
           + `<div class="rival-links"><a class="rival-link" href="${base}">${me ? 'My page' : 'Rival'}</a>`
           + `<a class="rival-link" href="${base}/Sessions">Sessions</a>`
           + `<button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" `
           + `data-name="${esc(name)}"${me ? ' data-own="1"' : ''} `
           + `title="${me ? 'Delete all your saved scores' : 'Delete this player and all their saved scores'}">Delete</button>`
-          + (me ? '' : `<span class="rival-stats" title="charts: losing / not played / best">${
-            statLine(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 })}</span>`)
           + '</div>'
-          + `<div class="rival-scrap" title="scraped scores · best scores · scraped sessions">${
-            scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>`
           + '</div>';
       }).join('')
       : '<div class="muted">No rivals yet</div>';
@@ -562,8 +606,11 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     }
 
     const myName = players[ownPlayerId]?.name || 'You';
-    const rows = visible.flatMap((chart, i) =>
-      i === 0 ? chartRows(chart, myName) : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartRows(chart, myName)]);
+    const collapseWon = selectedTab === 'rivals-win';
+    const rows = visible.flatMap((chart, i) => {
+      const chartTrs = chartRows(chart, myName, collapseWon);
+      return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
+    });
     body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table>`;
