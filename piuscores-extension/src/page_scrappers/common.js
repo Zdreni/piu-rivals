@@ -60,7 +60,7 @@ async function mergeOwnAlias(ownPlayerId) {
   for (const [key, scores] of Object.entries(merged)) {
     if (!scores || !(alias in scores)) continue;
     const { [alias]: aliasScore, ...rest } = scores;
-    rest[ownPlayerId] = Math.max(aliasScore, rest[ownPlayerId] ?? -1);
+    rest[ownPlayerId] = mergeScoreRecords(aliasScore, rest[ownPlayerId]);
     merged[key] = rest;
     resultsChanged = true;
   }
@@ -97,11 +97,41 @@ export function isKnownPlayer(players, playerId, ownPlayerId) {
 }
 
 
-export function saveHigherScore(scores, playerId, score) {
-  if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
-  const prevScore = scores[playerId] ?? null;
-  scores[playerId] = score;
+// Dates are "YYYY-MM-DD" strings, so the later one also compares greater; null is unknown.
+const laterDate = (a, b) => (!a || (b && b > a) ? b : a) ?? null;
+
+
+// Records a try of `score` on `date` (null when unknown). lastTryDate moves to every newer try,
+// while bestScore and bestScoreDate change only when the score is higher. Returns the best-score
+// change, or null when the best score stays.
+export function saveScoreTry(scores, playerId, score, date) {
+  if (!playerId || score === null) return null;
+  const prev = scores[playerId] || null;
+  const record = { ...prev };
+  const lastTryDate = laterDate(prev?.lastTryDate, date);
+  if (lastTryDate) record.lastTryDate = lastTryDate;
+  const improved = score > (prev?.bestScore ?? -1);
+  if (improved) {
+    record.bestScore = score;
+    if (date) record.bestScoreDate = date;
+    else delete record.bestScoreDate;
+  }
+  if (improved || record.lastTryDate !== prev?.lastTryDate) scores[playerId] = record;
+  if (!improved) return null;
+  const prevScore = prev?.bestScore ?? null;
   return { prevScore, change: prevScore === null ? 'new' : 'upd' };
+}
+
+
+// Combines two score records of the same player and chart.
+function mergeScoreRecords(a, b) {
+  if (!a || !b) return a || b;
+  const best = b.bestScore > a.bestScore ? b : a;
+  const record = { bestScore: best.bestScore };
+  if (best.bestScoreDate) record.bestScoreDate = best.bestScoreDate;
+  const lastTryDate = laterDate(a.lastTryDate, b.lastTryDate);
+  if (lastTryDate) record.lastTryDate = lastTryDate;
+  return record;
 }
 
 

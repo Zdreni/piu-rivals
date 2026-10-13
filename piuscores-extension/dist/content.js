@@ -1,6 +1,6 @@
 (() => {
   // src/storage.js
-  var STORAGE_VERSION = 1;
+  var STORAGE_VERSION = 2;
   var MIN_SCRAPE_LEVEL = 10;
   var MIN_SCORE_CAP = 995e3;
   var MAX_SCORE_CAP = 1e6;
@@ -16,6 +16,27 @@
   var byTargetWeight = (a, b) => b.weight - a.weight || Number(b.unplayed) - Number(a.unplayed) || a.track.localeCompare(b.track);
   var leadWeight = (chart) => chart.rivals.reduce((acc, rival) => acc + (rival.delta !== null && rival.delta > 0 ? Math.sqrt(rival.delta) : 0), 0);
   var byLeadWeight = (a, b) => leadWeight(b) - leadWeight(a) || a.track.localeCompare(b.track);
+  async function migrateStorage() {
+    const { storageVersion, results } = await chrome.storage.local.get(["storageVersion", "results"]);
+    const version = storageVersion ?? (results ? 1 : STORAGE_VERSION);
+    if (version === STORAGE_VERSION) {
+      if (storageVersion === void 0) await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
+      return;
+    }
+    if (version > STORAGE_VERSION) {
+      console.warn(`[piuscores] Stored data version ${version} is newer than supported version ${STORAGE_VERSION}`);
+      return;
+    }
+    const updates = { storageVersion: STORAGE_VERSION };
+    if (version < 2 && results) {
+      updates.results = Object.fromEntries(Object.entries(results).map(([key, scores]) => [
+        key,
+        Object.fromEntries(Object.entries(scores || {}).map(([playerId, score]) => [playerId, typeof score === "number" ? { bestScore: score } : score]))
+      ]));
+    }
+    await chrome.storage.local.set(updates);
+    console.log(`[piuscores] Migrated stored data from version ${version} to ${STORAGE_VERSION}`);
+  }
   async function loadCharts() {
     const all = await chrome.storage.local.get(null);
     const players = all.players && typeof all.players === "object" ? all.players : {};
@@ -32,12 +53,15 @@
       if (!rawScores || typeof rawScores !== "object") continue;
       const [track, chart] = key.split(/\|(?=[^|]*$)/);
       const scores = rawScores;
-      const mine = ownPlayerId ? scores[ownPlayerId] ?? null : null;
+      const myRecord = ownPlayerId ? scores[ownPlayerId] : null;
+      const mine = myRecord?.bestScore ?? null;
       const rivals = [
-        ...Object.entries(scores).filter(([playerId]) => playerId !== ownPlayerId).map(([playerId, score]) => ({
+        ...Object.entries(scores).filter(([playerId]) => playerId !== ownPlayerId).map(([playerId, { bestScore: score, bestScoreDate, lastTryDate }]) => ({
           player: playerName2(playerId),
           playerId,
           score,
+          bestScoreDate,
+          lastTryDate,
           delta: delta(mine, score, scoreCap),
           // Uncapped difference, for display only.
           realDelta: delta(mine, score)
@@ -48,6 +72,7 @@
           track,
           chart,
           mine,
+          myDates: { bestScoreDate: myRecord?.bestScoreDate, lastTryDate: myRecord?.lastTryDate },
           rivals,
           unplayed: mine === null,
           weight: targetWeight(rivals.map((rival) => rival.delta))
@@ -183,6 +208,8 @@
   .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
 `;
+  var datesTitle = ({ bestScoreDate, lastTryDate }) => `Best score: ${bestScoreDate || "unknown"}
+Last try: ${lastTryDate || "unknown"}`;
   function createChartResults(container, onSelectTab) {
     container.innerHTML = `
     <div class="tabs" role="tablist" aria-label="Score results"></div>
@@ -203,7 +230,7 @@
     });
     function chartRows(chart, myName, collapseWon) {
       const all = [...chart.rivals];
-      if (chart.mine !== null) all.push({ player: "You", score: chart.mine, me: true });
+      if (chart.mine !== null) all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
       all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
       const key = `${chart.track}|${chart.chart}`;
       const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
@@ -216,12 +243,12 @@
            <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>` : "";
         const tr = rowStart(i);
         if (rival.me) {
-          return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
+          return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
         }
         const won = rival.delta !== null && rival.delta > 0 ? " won" : " ahead";
         const playerId = rival.playerId;
         const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>` : esc(displayName(rival.player));
-        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
+        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
       });
       if (folded) {
         rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" data-expand="${esc(key)}">...show ${folded} other${folded === 1 ? "" : "s"}...</button></td></tr>`);
@@ -928,7 +955,7 @@
     for (const [key, scores] of Object.entries(merged)) {
       if (!scores || !(alias in scores)) continue;
       const { [alias]: aliasScore, ...rest } = scores;
-      rest[ownPlayerId] = Math.max(aliasScore, rest[ownPlayerId] ?? -1);
+      rest[ownPlayerId] = mergeScoreRecords(aliasScore, rest[ownPlayerId]);
       merged[key] = rest;
       resultsChanged = true;
     }
@@ -957,11 +984,32 @@
   function isKnownPlayer(players, playerId, ownPlayerId) {
     return playerId === ownPlayerId || !!players?.[playerId];
   }
-  function saveHigherScore(scores, playerId, score) {
-    if (!playerId || score === null || score <= (scores[playerId] ?? -1)) return null;
-    const prevScore = scores[playerId] ?? null;
-    scores[playerId] = score;
+  var laterDate = (a, b) => (!a || b && b > a ? b : a) ?? null;
+  function saveScoreTry(scores, playerId, score, date) {
+    if (!playerId || score === null) return null;
+    const prev = scores[playerId] || null;
+    const record = { ...prev };
+    const lastTryDate = laterDate(prev?.lastTryDate, date);
+    if (lastTryDate) record.lastTryDate = lastTryDate;
+    const improved = score > (prev?.bestScore ?? -1);
+    if (improved) {
+      record.bestScore = score;
+      if (date) record.bestScoreDate = date;
+      else delete record.bestScoreDate;
+    }
+    if (improved || record.lastTryDate !== prev?.lastTryDate) scores[playerId] = record;
+    if (!improved) return null;
+    const prevScore = prev?.bestScore ?? null;
     return { prevScore, change: prevScore === null ? "new" : "upd" };
+  }
+  function mergeScoreRecords(a, b) {
+    if (!a || !b) return a || b;
+    const best = b.bestScore > a.bestScore ? b : a;
+    const record = { bestScore: best.bestScore };
+    if (best.bestScoreDate) record.bestScoreDate = best.bestScoreDate;
+    const lastTryDate = laterDate(a.lastTryDate, b.lastTryDate);
+    if (lastTryDate) record.lastTryDate = lastTryDate;
+    return record;
   }
   var lastPumbilityLog = null;
   function logPumbility(message) {
@@ -1189,12 +1237,21 @@
   function isPhoenix2Chart(element) {
     return /\/difficulty\/Phoenix2\//i.test(element?.getAttribute("src") || "");
   }
+  function parseHeroDate(heroWhen) {
+    const match = (heroWhen.split("\xB7")[1] || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
+    if (!match) return null;
+    const [, month, day, year] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
   function scrapeSessionScores() {
     const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
     const allPlays = document.querySelector('[data-testid="session-all-plays"]');
     if (!highlights && !allPlays) return null;
-    const mix = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when')).split("\xB7")[0].trim();
+    const heroWhen = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'));
+    const mix = heroWhen.split("\xB7")[0].trim();
     if (mix !== "Phoenix 2") return null;
+    const date = parseHeroDate(heroWhen);
+    if (!date) console.warn(`${TAG} Unable to parse the session date from "${heroWhen}"`);
     const rowsByChart = /* @__PURE__ */ new Map();
     const addScore = (track, chart, score) => {
       if (!track || !isScrapLevel(chart) || score === null) return false;
@@ -1225,6 +1282,7 @@
     }
     return {
       playerId: pagePlayerId(),
+      date,
       rows: [...rowsByChart.values()],
       scannedResults: playRows.length,
       scrapedScores
@@ -1268,7 +1326,7 @@
     return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;
   }
   function parseCardTimestamp(timestamp) {
-    const match = timestamp.match(/(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M/i);
+    const match = timestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M\b/i);
     if (!match) return null;
     const [, day, month, hours, minutes, half] = match;
     return {
@@ -1505,8 +1563,8 @@
     for (const row of result.rows) {
       const key = storageKey(row);
       const scores = { ...results[key] || {} };
-      const scoreUpdate = saveHigherScore(scores, playerId, row.score);
-      if (!scoreUpdate) continue;
+      const scoreUpdate = saveScoreTry(scores, playerId, row.score, result.date);
+      if (scores[playerId] === results[key]?.[playerId]) continue;
       results[key] = scores;
       resultsChanged = true;
       if (scoreUpdate) events.push({
@@ -1570,19 +1628,9 @@
 
   // src/content.js
   var rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
-  rivalsWindow.initialize();
   var scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
   var timer = null;
-  async function ensureStorageVersion() {
-    const { storageVersion } = await chrome.storage.local.get("storageVersion");
-    if (storageVersion === void 0) {
-      await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
-    } else if (storageVersion !== STORAGE_VERSION) {
-      console.warn(`${TAG} Stored data version ${storageVersion} differs from supported version ${STORAGE_VERSION}`);
-    }
-  }
   async function run() {
-    await ensureStorageVersion();
     const ownPlayerId = await syncOwnPlayerId();
     if (isRivalsPage()) {
       await runRivalsPage();
@@ -1599,8 +1647,10 @@
     if (rivalsWindow.isOpen()) rivalsWindow.render().catch((error) => console.error(TAG, error));
     loadScrapState().then(() => scrapOverlay.update()).catch((error) => console.error(TAG, error));
   });
-  loadScrapState().then(() => scrapOverlay.update()).catch((error) => console.error(TAG, error));
-  var pending = Promise.resolve();
+  var pending = migrateStorage().then(() => {
+    rivalsWindow.initialize();
+    return loadScrapState().then(() => scrapOverlay.update());
+  }).catch((error) => console.error(TAG, error));
   var schedule = () => {
     scrapOverlay.update();
     clearTimeout(timer);

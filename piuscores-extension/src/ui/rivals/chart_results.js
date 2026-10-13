@@ -46,6 +46,12 @@ export const chartResultsStyles = `
 `;
 
 
+// Score cell tooltip; dates are missing for scores stored before they were tracked.
+const datesTitle = ({ bestScoreDate, lastTryDate }) =>
+  `Best score: ${bestScoreDate || 'unknown'}
+Last try: ${lastTryDate || 'unknown'}`;
+
+
 // The results column: tabs splitting the charts of the selected level, and their score table.
 // `onSelectTab` gets the id of the clicked tab.
 export function createChartResults(container, onSelectTab) {
@@ -72,7 +78,7 @@ export function createChartResults(container, onSelectTab) {
   // With `collapseWon`, rivals you beat are folded into a "show N others..." row until it is clicked.
   function chartRows(chart, myName, collapseWon) {
     const all = [...chart.rivals];
-    if (chart.mine !== null) all.push({ player: 'You', score: chart.mine, me: true });
+    if (chart.mine !== null) all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
     all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
     const key = `${chart.track}|${chart.chart}`;
     const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
@@ -88,14 +94,14 @@ export function createChartResults(container, onSelectTab) {
         : '';
       const tr = rowStart(i);
       if (rival.me) {
-        return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
+        return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
       }
       const won = rival.delta !== null && rival.delta > 0 ? ' won' : ' ahead';
       const playerId = rival.playerId;
       const name = playerId
         ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
         : esc(displayName(rival.player));
-      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
+      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
     });
     if (folded) {
       rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `

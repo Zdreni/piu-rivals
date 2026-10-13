@@ -1,7 +1,7 @@
 import { showSessionToast, showToast } from '../ui/toasts.js';
 import { displayName, isScrapLevel, storageKey } from '../storage.js';
 import {
-  isKnownPlayer, logPumbility, pagePlayerId, parseNumber, saveHigherScore, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
+  isKnownPlayer, logPumbility, pagePlayerId, parseNumber, saveScoreTry, savePlayerInfo, syncOwnPlayerId, TAG, text, waitForChange,
 } from './common.js';
 
 let lastSignature = null;
@@ -66,13 +66,25 @@ function isPhoenix2Chart(element) {
 }
 
 
+// The hero reads like "Phoenix 2 · 9/24/2026 8:27 PM · 740 min..."; only the date right after the
+// mix is parsed. Returns "YYYY-MM-DD", or null when the format is different.
+function parseHeroDate(heroWhen) {
+  const match = (heroWhen.split('·')[1] || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
+  if (!match) return null;
+  const [, month, day, year] = match;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+
 function scrapeSessionScores() {
   const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
   const allPlays = document.querySelector('[data-testid="session-all-plays"]');
   if (!highlights && !allPlays) return null;
-  const mix = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'))
-    .split('·')[0].trim();
+  const heroWhen = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'));
+  const mix = heroWhen.split('·')[0].trim();
   if (mix !== 'Phoenix 2') return null;
+  const date = parseHeroDate(heroWhen);
+  if (!date) console.warn(`${TAG} Unable to parse the session date from "${heroWhen}"`);
 
   const rowsByChart = new Map();
   const addScore = (track, chart, score) => {
@@ -108,6 +120,7 @@ function scrapeSessionScores() {
 
   return {
     playerId: pagePlayerId(),
+    date,
     rows: [...rowsByChart.values()],
     scannedResults: playRows.length,
     scrapedScores,
@@ -169,7 +182,7 @@ function sessionCheckpointMatches(checkpoint, info) {
 
 // Card timestamps look like "Mon 12 Oct · 6:55 PM"; returns null when the format is different.
 function parseCardTimestamp(timestamp) {
-  const match = timestamp.match(/(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M/i);
+  const match = timestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M\b/i);
   if (!match) return null;
   const [, day, month, hours, minutes, half] = match;
   return {
@@ -459,8 +472,8 @@ async function runSessionScores(result, ownPlayerId, allowNewPlayer = false) {
   for (const row of result.rows) {
     const key = storageKey(row);
     const scores = { ...(results[key] || {}) };
-    const scoreUpdate = saveHigherScore(scores, playerId, row.score);
-    if (!scoreUpdate) continue;
+    const scoreUpdate = saveScoreTry(scores, playerId, row.score, result.date);
+    if (scores[playerId] === results[key]?.[playerId]) continue;
     results[key] = scores;
     resultsChanged = true;
     if (scoreUpdate) events.push({

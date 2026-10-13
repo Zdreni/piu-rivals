@@ -1,7 +1,8 @@
 // Player metadata is stored as
 // { players: { <playerId>: { name, pumbility, lastScrapedSession, scrapStats: { scores, sessions } } } }.
-// Scores are stored as results["<track>|<chart>"][playerId] = score.
-export const STORAGE_VERSION = 1;
+// Scores are stored as results["<track>|<chart>"][playerId] = { bestScore, bestScoreDate, lastTryDate }.
+// Dates are session dates as "YYYY-MM-DD"; scores migrated from version 1 have no dates.
+export const STORAGE_VERSION = 2;
 export const MIN_SCRAPE_LEVEL = 10;
 export const MIN_SCORE_CAP = 995000;
 export const MAX_SCORE_CAP = 1000000;
@@ -35,6 +36,32 @@ export const byLeadWeight = (a, b) =>
   leadWeight(b) - leadWeight(a) || a.track.localeCompare(b.track);
 
 
+// Version 1 stored each score as a bare number.
+export async function migrateStorage() {
+  const { storageVersion, results } = await chrome.storage.local.get(['storageVersion', 'results']);
+  // Data saved before versioning has no storageVersion and is in the version 1 format.
+  const version = storageVersion ?? (results ? 1 : STORAGE_VERSION);
+  if (version === STORAGE_VERSION) {
+    if (storageVersion === undefined) await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
+    return;
+  }
+  if (version > STORAGE_VERSION) {
+    console.warn(`[piuscores] Stored data version ${version} is newer than supported version ${STORAGE_VERSION}`);
+    return;
+  }
+  const updates = { storageVersion: STORAGE_VERSION };
+  if (version < 2 && results) {
+    updates.results = Object.fromEntries(Object.entries(results).map(([key, scores]) => [
+      key,
+      Object.fromEntries(Object.entries(scores || {}).map(([playerId, score]) =>
+        [playerId, typeof score === 'number' ? { bestScore: score } : score])),
+    ]));
+  }
+  await chrome.storage.local.set(updates);
+  console.log(`[piuscores] Migrated stored data from version ${version} to ${STORAGE_VERSION}`);
+}
+
+
 export async function loadCharts() {
   const all = await chrome.storage.local.get(null);
   const players = all.players && typeof all.players === 'object' ? all.players : {};
@@ -52,14 +79,17 @@ export async function loadCharts() {
     if (!rawScores || typeof rawScores !== 'object') continue;
     const [track, chart] = key.split(/\|(?=[^|]*$)/);
     const scores = rawScores;
-    const mine = ownPlayerId ? scores[ownPlayerId] ?? null : null;
+    const myRecord = ownPlayerId ? scores[ownPlayerId] : null;
+    const mine = myRecord?.bestScore ?? null;
     const rivals = [
       ...Object.entries(scores)
         .filter(([playerId]) => playerId !== ownPlayerId)
-        .map(([playerId, score]) => ({
+        .map(([playerId, { bestScore: score, bestScoreDate, lastTryDate }]) => ({
           player: playerName(playerId),
           playerId,
           score,
+          bestScoreDate,
+          lastTryDate,
           delta: delta(mine, score, scoreCap),
           // Uncapped difference, for display only.
           realDelta: delta(mine, score),
@@ -71,6 +101,7 @@ export async function loadCharts() {
         track,
         chart,
         mine,
+        myDates: { bestScoreDate: myRecord?.bestScoreDate, lastTryDate: myRecord?.lastTryDate },
         rivals,
         unplayed: mine === null,
         weight: targetWeight(rivals.map((rival) => rival.delta)),

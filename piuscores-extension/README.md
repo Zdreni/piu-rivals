@@ -17,8 +17,12 @@ the rival scores collected from Sessions pages. Player display names are stored
 in `chrome.storage.local` as `players: { "<playerId>": { "name": "<name>", "lastScrapedSession": { "title": "<title>", "timestamp": "<timestamp>" }, "scrapStats": { "scores": <n>, "sessions": <n> } } }`.
 `scrapStats` counts the scores and sessions parsed by the grab button; the Rival
 scores window shows them per player together with the number of stored best scores.
-Chart scores are stored as `results: { "<track>|<chart>": { "<playerId>": <score> } }`.
-The storage schema version is recorded as `storageVersion: 1`.
+Chart scores are stored as `results: { "<track>|<chart>": { "<playerId>": { "bestScore": <score>, "bestScoreDate": "<YYYY-MM-DD>", "lastTryDate": "<YYYY-MM-DD>" } } }`.
+Dates are session dates: `bestScoreDate` is set when the best score is raised, and
+`lastTryDate` moves to the newest session in which the chart was played.
+The storage schema version is recorded as `storageVersion: 2`. Version 1 stored
+bare scores (`"<playerId>": <score>`); on load they are migrated to `{ "bestScore": <score> }`
+without dates.
 UI preferences are stored as `preferences: { "hiddenRivals": ["<playerId>", ...] }`;
 rivals unchecked in the Rival scores window are excluded from its statistics.
 Scraping is limited to chart levels 10 and above (`MIN_SCRAPE_LEVEL`).
