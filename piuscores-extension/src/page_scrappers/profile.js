@@ -6,12 +6,11 @@ function profilePlayerId() {
 }
 
 
-export async function runProfilePage(ui, ownPlayerId) {
+export async function runProfilePage(ownPlayerId) {
   const playerId = profilePlayerId();
   if (!playerId) return;
   const hero = document.querySelector('[data-testid="player-hero"]');
   await savePlayerInfo(
-    ui,
     playerId,
     text(hero?.querySelector('h5')),
     parseNumber(text(hero?.querySelector('.ph-pum .cmp-hero-num'))),

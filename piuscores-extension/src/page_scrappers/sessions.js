@@ -20,7 +20,7 @@ const isNewestSessionOpen = () =>
 
 // The ceremony block shows PUMBILITY as of the open session, so it is only current
 // when the newest session (first card on the first page) is the one showing.
-async function syncSessionsPumbility(ui, ownPlayerId) {
+async function syncSessionsPumbility(ownPlayerId) {
   const playerId = sessionPagePlayerId();
   if (!playerId) return;
   const pumbility = sessionsPumbility();
@@ -30,21 +30,21 @@ async function syncSessionsPumbility(ui, ownPlayerId) {
       + 'not the newest session, ignoring');
     return;
   }
-  await savePlayerInfo(ui, playerId, playerName(), pumbility, ownPlayerId, 'Sessions page');
+  await savePlayerInfo(playerId, playerName(), pumbility, ownPlayerId, 'Sessions page');
 }
 
 
 // A new player is added with their PUMBILITY before any session is opened, while the newest
 // session still shows. The ceremony block may render after the cards, so it is awaited briefly;
 // without it the player is still added and PUMBILITY is filled in after the scan.
-async function addNewPlayer(ui, playerId, report) {
+async function addNewPlayer(playerId, report) {
   report('Adding player');
   if (isNewestSessionOpen()) {
     await waitForChange(() => sessionsPumbility() !== null, 'PUMBILITY', 3000)
       .catch((error) => console.warn(TAG, error.message));
   }
   const pumbility = isNewestSessionOpen() ? sessionsPumbility() : null;
-  await savePlayerInfo(ui, playerId, playerName(), pumbility, await syncOwnPlayerId(), 'Sessions page', true);
+  await savePlayerInfo(playerId, playerName(), pumbility, await syncOwnPlayerId(), 'Sessions page', true);
 }
 
 
@@ -283,7 +283,7 @@ function openSessionMismatches(info) {
 }
 
 
-async function parseSessionCard(ui, card, info, playerId, report, progress) {
+async function parseSessionCard(card, info, playerId, report, progress) {
   card.click();
   try {
     await waitForChange(() => openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
@@ -310,12 +310,11 @@ async function parseSessionCard(ui, card, info, playerId, report, progress) {
   const result = scrapeSessionScores();
   if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
   if (result.playerId !== playerId) throw new Error('Session player changed while scraping');
-  await runSessionScores(ui, result, await syncOwnPlayerId(), true);
+  await runSessionScores(result, await syncOwnPlayerId(), true);
   await saveSessionCheckpoint(playerId, info, result.scrapedScores, info !== progress.grown);
   progress.count++;
   progress.results += result.scrapedScores;
   showSessionToast(
-    ui.ensure(),
     playerName() || playerId,
     info.title,
     info.timestamp,
@@ -335,7 +334,7 @@ function findCurrentCard(info) {
 }
 
 
-export async function scrapePlayerSessions(ui, report = () => {}) {
+export async function scrapePlayerSessions(report = () => {}) {
   const playerId = sessionPagePlayerId();
   if (!playerId) throw new Error('Grabbing scores is only available on a player Sessions page');
   if (isScrapingSessions) return;
@@ -343,7 +342,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
 
   try {
     const stored = await chrome.storage.local.get(['players', 'ownPlayerId']);
-    if (!isKnownPlayer(stored.players, playerId, stored.ownPlayerId)) await addNewPlayer(ui, playerId, report);
+    if (!isKnownPlayer(stored.players, playerId, stored.ownPlayerId)) await addNewPlayer(playerId, report);
     const checkpoint = stored.players?.[playerId]?.lastScrapedSession || null;
     const pages = [];
     const seenPages = new Set();
@@ -409,7 +408,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
         const card = findCurrentCard(info);
         if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
         report(`Scrapping session ${progress.count + 1} of ${total}...`);
-        await parseSessionCard(ui, card, info, playerId, report, progress);
+        await parseSessionCard(card, info, playerId, report, progress);
       }
       if (pageIndex > 0) {
         const newer = findPageButton('newer');
@@ -419,7 +418,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
     }
     // Sessions are parsed oldest first, so the newest one is open now; this catches PUMBILITY
     // when it couldn't be read before scanning (e.g. an older session was open).
-    if (progress.count) await syncSessionsPumbility(ui, await syncOwnPlayerId());
+    if (progress.count) await syncSessionsPumbility(await syncOwnPlayerId());
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
     report(`Finished scrapping ${plural(progress.count, 'session')} with ${plural(progress.results, 'result')}`);
     return true;
@@ -430,7 +429,7 @@ export async function scrapePlayerSessions(ui, report = () => {}) {
 
 
 // Only the scrap button (allowNewPlayer) may add a player that is not stored yet.
-async function runSessionScores(ui, result, ownPlayerId, allowNewPlayer = false) {
+async function runSessionScores(result, ownPlayerId, allowNewPlayer = false) {
   const playerId = result.playerId;
   if (!playerId) {
     console.warn(`${TAG} Unable to identify the player ID for session scores`);
@@ -486,7 +485,7 @@ async function runSessionScores(ui, result, ownPlayerId, allowNewPlayer = false)
     type: event.change, track: event.track, chart: event.chart, player,
     score: event.score, prevScore: event.prevScore,
   })));
-  showToast(ui.ensure(), player, events);
+  showToast(player, events);
 }
 
 
@@ -537,8 +536,8 @@ export function getScrapInfo() {
 }
 
 
-export async function runSessionsPage(ui, ownPlayerId) {
-  await syncSessionsPumbility(ui, ownPlayerId);
+export async function runSessionsPage(ownPlayerId) {
+  await syncSessionsPumbility(ownPlayerId);
   const result = scrapeSessionScores();
-  if (result) await runSessionScores(ui, result, ownPlayerId);
+  if (result) await runSessionScores(result, ownPlayerId);
 }

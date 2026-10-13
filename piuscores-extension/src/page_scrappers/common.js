@@ -119,7 +119,7 @@ export function logPumbility(message) {
 // PUMBILITY never decreases, so a lower value than the stored one must come from a history
 // record (e.g. an old session) and is ignored. Only the scrap button (allowNewPlayer) may add
 // a player that is not stored yet.
-export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
+export async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
   if (!name && pumbility === null) return;
 
   const { players } = await chrome.storage.local.get('players');
@@ -151,10 +151,10 @@ export async function savePlayerInfo(ui, playerId, name, pumbility, ownPlayerId,
   if (player.name === prev.name && player.pumbility === prev.pumbility) return;
   await chrome.storage.local.set({ players: { ...(players || {}), [playerId]: player } });
   if (isNew) {
-    showPlayerAddedToast(ui.ensure(), player.name || playerId, playerId, player.pumbility ?? null);
+    showPlayerAddedToast(player.name || playerId, playerId, player.pumbility ?? null);
   } else if (raised) {
     const label = playerId === ownPlayerId ? 'You' : player.name || playerId;
-    showPumbilityToast(ui.ensure(), label, pumbility, prevPumbility);
+    showPumbilityToast(label, pumbility, prevPumbility);
   }
 }
 

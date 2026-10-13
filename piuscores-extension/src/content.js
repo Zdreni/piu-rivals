@@ -1,4 +1,5 @@
-import { createScoresUI } from './ui/rivals.js';
+import { createRivalsWindow } from './ui/rivals_window.js';
+import { createScrapOverlay } from './ui/scrap_overlay.js';
 import { STORAGE_VERSION } from './storage.js';
 import { exportTargets } from './export_targets.js';
 import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
@@ -8,11 +9,9 @@ import {
   getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
 
-const ui = createScoresUI(
-  exportTargets,
-  (report) => scrapePlayerSessions(ui, report),
-  getScrapInfo,
-);
+const rivalsWindow = createRivalsWindow(exportTargets);
+rivalsWindow.initialize();
+const scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
 let timer = null;
 
 
@@ -34,25 +33,24 @@ async function run() {
     return;
   }
   if (isSessionsPage()) {
-    await runSessionsPage(ui, ownPlayerId);
+    await runSessionsPage(ownPlayerId);
     return;
   }
-  await runProfilePage(ui, ownPlayerId);
+  await runProfilePage(ownPlayerId);
 }
 
 
 chrome.storage.onChanged.addListener((_, area) => {
   if (area !== 'local') return;
-  if (ui.isOpen()) ui.render().catch((error) => console.error(TAG, error));
-  loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
+  if (rivalsWindow.isOpen()) rivalsWindow.render().catch((error) => console.error(TAG, error));
+  loadScrapState().then(() => scrapOverlay.update()).catch((error) => console.error(TAG, error));
 });
 
-ui.initialize();
-loadScrapState().then(() => ui.ensure()).catch((error) => console.error(TAG, error));
+loadScrapState().then(() => scrapOverlay.update()).catch((error) => console.error(TAG, error));
 
 let pending = Promise.resolve();
 const schedule = () => {
-  ui.ensure();
+  scrapOverlay.update();
   clearTimeout(timer);
   timer = setTimeout(() => {
     pending = pending.then(run).catch((error) => console.error(TAG, error));
