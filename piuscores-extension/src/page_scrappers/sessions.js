@@ -538,6 +538,4 @@ export function getScrapInfo() {
 
 export async function runSessionsPage(ownPlayerId) {
   await syncSessionsPumbility(ownPlayerId);
-  const result = scrapeSessionScores();
-  if (result) await runSessionScores(result, ownPlayerId);
 }
