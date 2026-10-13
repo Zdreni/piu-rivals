@@ -110,7 +110,11 @@ const styles = `
                       width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
   .score-cap button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
   .score-cap button:disabled { opacity: .35; cursor: default; }
-  .dlg-head .btn { box-shadow: none; }
+  /* Header buttons look like the rival links: grey until hovered. */
+  .dlg-head .btn { box-shadow: none; background: rgba(0,0,0,.12); color: #9AB3A3; border-color: #2B4034; border-radius: 4px;
+                   padding: 3px 10px; font: 400 13px/1.4 Roboto, Arial, sans-serif; }
+  .dlg-head .btn:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+  .dlg-head .btn.clear-data:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
   .head-stats { font-weight: 400; color: #9AB3A3; }
   .head-stats .blue { color: #3FA9F5; }
   .head-stats > span, .tab-count { opacity: .7; }
@@ -140,10 +144,10 @@ const styles = `
   .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
   .rival-stats { white-space: nowrap; color: #9AB3A3; }
   .rival-stats .blue { color: #3FA9F5; }
-  .rival-link { color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
+  .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
   .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
-  .rival-delete { margin-left: auto; background: none; font: inherit; font-size: 13px; cursor: pointer; }
+  .rival-delete { margin-left: auto; font: inherit; font-size: 13px; cursor: pointer; }
   .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
   .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
   .rival-counts, .rival-stats { margin-top: 3px; }
@@ -154,22 +158,24 @@ const styles = `
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; }
   /* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). */
-  .level-chart { display: grid; grid-template-columns: 150px 38px 150px; grid-template-rows: auto;
+  .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
                  grid-auto-rows: minmax(10px, 1fr); row-gap: 6px; font-size: 14px; }
-  .level-head { color: #9AB3A3; font-size: 13px; padding-bottom: 4px; }
+  .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 4px; }
   .level-head.single { text-align: right; }
   .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3; font-variant-numeric: tabular-nums; }
-  .level-num.on { color: #EAF5EC; font-weight: 600; }
+  .level-num.on, .level-head.on { color: #EAF5EC; font-weight: 600; }
   .level-bar { display: flex; height: 100%; padding: 0; border: none; border-radius: 3px; overflow: hidden;
                background: #1C2B22; cursor: pointer; opacity: .75; }
   .level-bar.single { flex-direction: row-reverse; }
   .level-bar:hover { opacity: 1; }
   .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
   .level-bar.placeholder { visibility: hidden; }
-  .level-bar > span { flex: 0 0 0; }
-  .level-bar .win { background: #4FE33F; }
-  .level-bar .unplayed { background: #5F6B66; }
-  .level-bar .lose { background: #FF5A5A; }
+  /* Each segment shows its count and is always wide enough for it, even if that bends the proportions. */
+  .level-bar > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
+                      justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; color: rgba(0,0,0,.55); }
+  .level-bar .win { background: #45C039; }
+  .level-bar .unplayed { background: #3E4844; color: #B8C2BD; }
+  .level-bar .lose { background: #DC5252; }
   .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
   .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
   .level-other .level-bar { grid-column: 2 / -1; }
@@ -575,7 +581,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       if (!level) return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
       const on = level === selectedLevel;
       const counts = statsFor(level);
-      const part = (cls, n) => (n ? `<span class="${cls}" style="flex-grow: ${n}"></span>` : '');
+      const part = (cls, n) => (n ? `<span class="${cls}" style="flex-grow: ${n}">${n}</span>` : '');
       return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
         + `data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses · ${counts.unplayed} np · ${counts.win} wins">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('lose', counts.lose)}</button>`;
@@ -594,8 +600,9 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     };
     const other = (level) => `<div class="level-other"><span class="level-num${level === selectedLevel ? ' on' : ''}">`
       + `${esc(level)}</span>${bar(level, 'double')}</div>`;
+    const headOn = (type) => (selectedLevel !== null && levelType(selectedLevel) === type ? ' on' : '');
     shadow.querySelector('.filters').innerHTML = `<div class="level-chart" role="radiogroup" aria-label="Levels">`
-      + '<span class="level-head single">Singles</span><span></span><span class="level-head">Doubles</span>'
+      + `<span class="level-head single${headOn('S')}">Singles</span><span></span><span class="level-head${headOn('D')}">Doubles</span>`
       + `${nums.map(row).join('')}${otherLevels.map(other).join('')}</div>`;
 
     const levelCharts = charts.filter((chart) => chart.chart === selectedLevel);
