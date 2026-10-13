@@ -46,6 +46,7 @@ const scrapLine = (scrapStats, best) =>
 export function createRivalList(container, onChange) {
   // Only the focused rival in the list shows its stats and buttons.
   let focusedRival = null;
+  let pendingScroll = false;
 
   container.addEventListener('change', async (event) => {
     const box = event.target.closest('input[data-player]');
@@ -136,7 +137,18 @@ export function createRivalList(container, onChange) {
           + '</div>';
       }).join('')
       : '<div class="muted">No rivals yet</div>';
+    if (pendingScroll) {
+      pendingScroll = false;
+      const focused = container.querySelector('.rival.focused');
+      if (focused) focused.scrollIntoView({ block: 'nearest' });
+    }
   }
 
-  return { render };
+  // Focuses `playerId` on the next render, and scrolls it into view.
+  function focus(playerId) {
+    focusedRival = playerId;
+    pendingScroll = true;
+  }
+
+  return { render, focus };
 }

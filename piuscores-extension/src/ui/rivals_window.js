@@ -22,7 +22,8 @@ const styles = windowStyles + windowHeaderStyles + rivalListStyles + levelChartS
 
 
 // The RIVALS button and the window it opens.
-export function createRivalsWindow(exportTargets) {
+// `pagePlayerId` returns the player whose page is open, if any.
+export function createRivalsWindow(exportTargets, pagePlayerId) {
   const state = readUiState();
   let showButton = null;
   let overlay = null;
@@ -125,8 +126,15 @@ export function createRivalsWindow(exportTargets) {
     showButton.hidden = isOpen;
   }
 
+  // Whenever the window opens on a player's page, that rival is focused in the list.
+  function focusPagePlayer() {
+    const playerId = pagePlayerId();
+    if (playerId) rivalList.focus(playerId);
+  }
+
   function open() {
     setOpen(true);
+    focusPagePlayer();
     rerender();
   }
 
@@ -136,7 +144,9 @@ export function createRivalsWindow(exportTargets) {
 
   function initialize() {
     ensure();
-    if (state.isOpen) rerender();
+    if (!state.isOpen) return;
+    focusPagePlayer();
+    rerender();
   }
 
   return { initialize, render, isOpen: () => state.isOpen };

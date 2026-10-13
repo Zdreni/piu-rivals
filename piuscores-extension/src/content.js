@@ -2,14 +2,14 @@ import { createRivalsWindow } from './ui/rivals_window.js';
 import { createScrapOverlay } from './ui/scrap_overlay.js';
 import { STORAGE_VERSION } from './storage.js';
 import { exportTargets } from './export_targets.js';
-import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
+import { pagePlayerId, syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
 import { isRivalsPage, runRivalsPage } from './page_scrappers/rivals.js';
 import {
   getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
 
-const rivalsWindow = createRivalsWindow(exportTargets);
+const rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
 rivalsWindow.initialize();
 const scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
 let timer = null;

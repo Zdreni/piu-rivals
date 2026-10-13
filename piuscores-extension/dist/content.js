@@ -364,6 +364,7 @@
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
   function createRivalList(container, onChange) {
     let focusedRival = null;
+    let pendingScroll = false;
     container.addEventListener("change", async (event) => {
       const box = event.target.closest("input[data-player]");
       if (!box) return;
@@ -425,8 +426,17 @@
         const focused = playerId === focusedRival ? " focused" : "";
         return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 }, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
       }).join("") : '<div class="muted">No rivals yet</div>';
+      if (pendingScroll) {
+        pendingScroll = false;
+        const focused = container.querySelector(".rival.focused");
+        if (focused) focused.scrollIntoView({ block: "nearest" });
+      }
     }
-    return { render };
+    function focus(playerId) {
+      focusedRival = playerId;
+      pendingScroll = true;
+    }
+    return { render, focus };
   }
 
   // src/ui/rivals/ui_state.js
@@ -574,7 +584,7 @@
   .dlg-main { display: flex; flex: 1; min-height: 0; }
 `;
   var styles = windowStyles + windowHeaderStyles + rivalListStyles + levelChartStyles + chartResultsStyles;
-  function createRivalsWindow(exportTargets2) {
+  function createRivalsWindow(exportTargets2, pagePlayerId2) {
     const state = readUiState();
     let showButton = null;
     let overlay = null;
@@ -660,8 +670,13 @@
       overlay.hidden = !isOpen;
       showButton.hidden = isOpen;
     }
+    function focusPagePlayer() {
+      const playerId = pagePlayerId2();
+      if (playerId) rivalList.focus(playerId);
+    }
     function open() {
       setOpen(true);
+      focusPagePlayer();
       rerender();
     }
     function close() {
@@ -669,7 +684,9 @@
     }
     function initialize() {
       ensure();
-      if (state.isOpen) rerender();
+      if (!state.isOpen) return;
+      focusPagePlayer();
+      rerender();
     }
     return { initialize, render, isOpen: () => state.isOpen };
   }
@@ -1554,7 +1571,7 @@
   }
 
   // src/content.js
-  var rivalsWindow = createRivalsWindow(exportTargets);
+  var rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
   rivalsWindow.initialize();
   var scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
   var timer = null;
