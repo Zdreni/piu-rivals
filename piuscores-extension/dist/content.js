@@ -125,7 +125,6 @@
   };
   var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var stat = (cls, n) => `<span class="${cls}${n === 0 ? " zero" : ""}">${n}</span>`;
-  var statLine = (counts) => `${stat("neg", counts.lose)} \xB7 ${stat("blue", counts.unplayed)} \xB7 ${stat("pos", counts.win)}`;
   var statWords = (counts, separator = ", ") => `${stat("neg", counts.lose)} losses${separator}${stat("blue", counts.unplayed)} np${separator}${stat("pos", counts.win)} wins`;
   var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
@@ -195,7 +194,7 @@
   .dlg-head .btn { box-shadow: none; }
   .head-stats { font-weight: 400; color: #9AB3A3; }
   .head-stats .blue { color: #3FA9F5; }
-  .head-stats > span, .chip-stats > span, .tab-count { opacity: .7; }
+  .head-stats > span, .tab-count { opacity: .7; }
   .head-stats .zero { opacity: .2; }
   .dlg-close { background: none; border: none; color: #9AB3A3; font-size: 30px; line-height: 1;
                cursor: pointer; padding: 0 4px; }
@@ -204,7 +203,7 @@
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
   .rival-list, .filters, .dlg-body { scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
   .rival-list:hover, .filters:hover, .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
-  .rival-list { width: 312px; flex-shrink: 0; overflow-y: auto; padding: 10px 24px 10px 8px;
+  .rival-list { width: 285px; flex-shrink: 0; overflow-y: auto; padding: 10px 16px 10px 8px;
                 border-right: 1px solid #2B4034; }
   .rival { padding: 9px 6px; border-radius: 4px; }
   .rival:nth-child(even) { background: rgba(255,255,255,.05); }
@@ -233,20 +232,28 @@
   .rival-counts > span { color: #9AB3A3; }
   .rival-counts .zero { opacity: .4; }
   .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-scrap { opacity: .45; }
-  .filters { display: flex; gap: 6px; padding: 10px 10px 10px 40px; border-right: 1px solid #2B4034;
-             overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; align-items: flex-start; }
-  .filter-grid { display: grid; gap: 6px; }
-  .filter-grid .chip { width: 100%; }
-  .chip { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 999px;
-          padding: 3px 10px 2px; font: inherit; cursor: pointer; }
-  .chip:hover { color: #EAF5EC; }
-  .chip.on { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; font-weight: 600;
-             box-shadow: 0 0 0 1px #4FE33F inset; }
-  .chip { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; border-radius: 10px; }
-  .chip.placeholder { visibility: hidden; }
-  .chip-stats { margin-top: 5px; font-size: .6em; font-weight: 400; color: #8A9590; }
-  .chip-stats .blue { color: #3FA9F5; }
-  .chip-stats .zero { opacity: .2; }
+  .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
+             overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0; }
+  /* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). */
+  .level-chart { display: grid; grid-template-columns: 150px 38px 150px; grid-template-rows: auto;
+                 grid-auto-rows: minmax(10px, 1fr); row-gap: 6px; font-size: 14px; }
+  .level-head { color: #9AB3A3; font-size: 13px; padding-bottom: 4px; }
+  .level-head.single { text-align: right; }
+  .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3; font-variant-numeric: tabular-nums; }
+  .level-num.on { color: #EAF5EC; font-weight: 600; }
+  .level-bar { display: flex; height: 100%; padding: 0; border: none; border-radius: 3px; overflow: hidden;
+               background: #1C2B22; cursor: pointer; opacity: .75; }
+  .level-bar.single { flex-direction: row-reverse; }
+  .level-bar:hover { opacity: 1; }
+  .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
+  .level-bar.placeholder { visibility: hidden; }
+  .level-bar > span { flex: 0 0 0; }
+  .level-bar .win { background: #4FE33F; }
+  .level-bar .unplayed { background: #5F6B66; }
+  .level-bar .lose { background: #FF5A5A; }
+  .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
+  .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
+  .level-other .level-bar { grid-column: 2 / -1; }
   .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
   .tab { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 6px;
          padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
@@ -475,9 +482,9 @@
         }
       });
       shadow.querySelector(".filters").addEventListener("click", (event) => {
-        const chip = event.target.closest(".chip");
-        if (!chip) return;
-        selectedLevel = chip.dataset.level;
+        const bar = event.target.closest(".level-bar[data-level]");
+        if (!bar) return;
+        selectedLevel = bar.dataset.level;
         saveUiState();
         render().catch((error) => console.error("[piuscores]", error));
       });
@@ -583,20 +590,26 @@
       }
       renderTitle(shadow, players[ownPlayerId], totals);
       renderScoreCap(shadow, scoreCap);
-      const chip = (label) => {
-        const on = label === selectedLevel;
-        const counts = statsFor(label);
-        return `<button class="chip${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(label)}"><span>${esc(label)}</span><span class="chip-stats" title="charts: losing / not played / best">${statLine(counts)}</span></button>`;
+      const bar = (level, side) => {
+        if (!level) return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
+        const on = level === selectedLevel;
+        const counts = statsFor(level);
+        const part = (cls, n) => n ? `<span class="${cls}" style="flex-grow: ${n}"></span>` : "";
+        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses \xB7 ${counts.unplayed} np \xB7 ${counts.win} wins">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("lose", counts.lose)}</button>`;
       };
-      const types = [...new Set(levels.map(levelType))];
-      const levelNums = levels.map(levelNum);
+      const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
+      const otherLevels = levels.filter((level) => !(levelType(level) in TYPE_ORDER));
+      const levelNums = sideLevels.map(levelNum);
       const minNum = Math.min(...levelNums), maxNum = Math.max(...levelNums);
-      const nums = levels.length ? Array.from({ length: maxNum - minNum + 1 }, (_, i) => minNum + i) : [];
-      const cell = (type, num) => {
-        const level = levels.find((l) => levelType(l) === type && levelNum(l) === num);
-        return level ? chip(level) : '<span class="chip placeholder" aria-hidden="true"><span>&nbsp;</span><span class="chip-stats">&nbsp;</span></span>';
+      const nums = sideLevels.length ? Array.from({ length: maxNum - minNum + 1 }, (_, i) => minNum + i) : [];
+      const find = (type, num) => sideLevels.find((l) => levelType(l) === type && levelNum(l) === num);
+      const row = (num) => {
+        const single = find("S", num), double = find("D", num);
+        const on = selectedLevel !== null && (selectedLevel === single || selectedLevel === double);
+        return `${bar(single, "single")}<span class="level-num${on ? " on" : ""}">${num}</span>${bar(double, "double")}`;
       };
-      shadow.querySelector(".filters").innerHTML = `<div class="filter-grid" role="radiogroup" style="grid-template-columns: repeat(${types.length}, auto)">${nums.map((num) => types.map((type) => cell(type, num)).join("")).join("")}</div>`;
+      const other = (level) => `<div class="level-other"><span class="level-num${level === selectedLevel ? " on" : ""}">${esc(level)}</span>${bar(level, "double")}</div>`;
+      shadow.querySelector(".filters").innerHTML = `<div class="level-chart" role="radiogroup" aria-label="Levels"><span class="level-head single">Singles</span><span></span><span class="level-head">Doubles</span>${nums.map(row).join("")}${otherLevels.map(other).join("")}</div>`;
       const levelCharts = charts.filter((chart) => chart.chart === selectedLevel);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
