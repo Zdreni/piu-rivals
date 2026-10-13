@@ -7,8 +7,8 @@ const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en
 export async function exportTargets() {
   const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
     const entries = rivals
-      .map(({ player, score, delta }) => ({ rival: player, score, difference: delta }))
-      .filter((r) => r.difference === null || r.difference < 0)
+      .filter(({ delta }) => delta === null || delta < 0)
+      .map(({ player, score, delta, realDelta }) => ({ rival: player, score, difference: delta, realDifference: realDelta }))
       .sort((a, b) => b.score - a.score);
 
     return entries.length
@@ -23,9 +23,9 @@ export async function exportTargets() {
     lines.push(`${track}  ${chart}`);
     const nameW = Math.max(...entries.map((r) => r.rival.length)) + 1;
     const scoreW = Math.max(...entries.map((r) => fmt(r.score).length));
-    const diffW = Math.max(0, ...entries.filter((r) => r.difference !== null).map((r) => fmt(r.difference).length));
+    const diffW = Math.max(0, ...entries.filter((r) => r.realDifference !== null).map((r) => fmt(r.realDifference).length));
     for (const r of entries) {
-      const note = (r.difference === null ? '—' : fmt(r.difference)).padStart(diffW);
+      const note = (r.realDifference === null ? '—' : fmt(r.realDifference)).padStart(diffW);
       lines.push(`  ${(r.rival + ':').padEnd(nameW)}  ${fmt(r.score).padStart(scoreW)}  ${note}`);
     }
     lines.push('');

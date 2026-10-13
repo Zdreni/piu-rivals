@@ -3,6 +3,9 @@
 // Scores are stored as results["<track>|<chart>"][playerId] = score.
 export const STORAGE_VERSION = 1;
 export const MIN_SCRAPE_LEVEL = 10;
+export const MIN_SCORE_CAP = 995000;
+export const MAX_SCORE_CAP = 1000000;
+export const SCORE_CAP_STEP = 1000;
 
 // Names carry a "#1234" tag suffix; it's left out when showing them.
 export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
@@ -14,9 +17,9 @@ export const isScrapLevel = (chart) => {
   return level !== null && Number(level[0]) >= MIN_SCRAPE_LEVEL;
 };
 
-// Positive = I'm ahead, same sign convention as the site.
-export const delta = (mine, theirs) =>
-  mine === null || mine === undefined || theirs === null ? null : mine - theirs;
+// Positive = I'm ahead, same sign convention as the site. Scores above the cap compare as equal to it.
+export const delta = (mine, theirs, cap = MAX_SCORE_CAP) =>
+  mine === null || mine === undefined || theirs === null ? null : Math.min(mine, cap) - Math.min(theirs, cap);
 
 export const targetWeight = (diffs) =>
   diffs.reduce((acc, d) => acc + (d !== null && d < 0 ? Math.sqrt(-d) : 0), 0);
@@ -42,6 +45,7 @@ export async function loadCharts() {
   };
   const ownPlayerId = typeof all.ownPlayerId === 'string' ? all.ownPlayerId : null;
   const results = all.results && typeof all.results === 'object' ? all.results : {};
+  const { scoreCap } = parsePreferences(all.preferences);
   const charts = [];
 
   for (const [key, rawScores] of Object.entries(results)) {
@@ -56,7 +60,9 @@ export async function loadCharts() {
           player: playerName(playerId),
           playerId,
           score,
-          delta: delta(mine, score),
+          delta: delta(mine, score, scoreCap),
+          // Uncapped difference, for display only.
+          realDelta: delta(mine, score),
         })),
     ].sort((a, b) => b.score - a.score);
 
@@ -91,11 +97,22 @@ export async function loadPlayers() {
 }
 
 
-// Preferences are stored as { preferences: { hiddenRivals: [<playerId>, ...] } }.
+export const clampScoreCap = (cap) =>
+  Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
+
+function parsePreferences(preferences) {
+  const prefs = preferences && typeof preferences === 'object' ? preferences : {};
+  return {
+    hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
+    scoreCap: typeof prefs.scoreCap === 'number' ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
+  };
+}
+
+
+// Preferences are stored as { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score> } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
-  const prefs = preferences && typeof preferences === 'object' ? preferences : {};
-  return { hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [] };
+  return parsePreferences(preferences);
 }
 
 

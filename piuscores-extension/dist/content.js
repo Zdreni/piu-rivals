@@ -2,13 +2,16 @@
   // src/storage.js
   var STORAGE_VERSION = 1;
   var MIN_SCRAPE_LEVEL = 10;
+  var MIN_SCORE_CAP = 995e3;
+  var MAX_SCORE_CAP = 1e6;
+  var SCORE_CAP_STEP = 1e3;
   var displayName = (name) => name.replace(/\s*#\d{4}$/, "");
   var storageKey = (row) => `${row.track}|${row.chart}`;
   var isScrapLevel = (chart) => {
     const level = chart.match(/\d+/);
     return level !== null && Number(level[0]) >= MIN_SCRAPE_LEVEL;
   };
-  var delta = (mine, theirs) => mine === null || mine === void 0 || theirs === null ? null : mine - theirs;
+  var delta = (mine, theirs, cap = MAX_SCORE_CAP) => mine === null || mine === void 0 || theirs === null ? null : Math.min(mine, cap) - Math.min(theirs, cap);
   var targetWeight = (diffs) => diffs.reduce((acc, d) => acc + (d !== null && d < 0 ? Math.sqrt(-d) : 0), 0);
   var byTargetWeight = (a, b) => b.weight - a.weight || Number(b.unplayed) - Number(a.unplayed) || a.track.localeCompare(b.track);
   var leadWeight = (chart) => chart.rivals.reduce((acc, rival) => acc + (rival.delta !== null && rival.delta > 0 ? Math.sqrt(rival.delta) : 0), 0);
@@ -23,6 +26,7 @@
     };
     const ownPlayerId = typeof all.ownPlayerId === "string" ? all.ownPlayerId : null;
     const results = all.results && typeof all.results === "object" ? all.results : {};
+    const { scoreCap } = parsePreferences(all.preferences);
     const charts = [];
     for (const [key, rawScores] of Object.entries(results)) {
       if (!rawScores || typeof rawScores !== "object") continue;
@@ -34,7 +38,9 @@
           player: playerName2(playerId),
           playerId,
           score,
-          delta: delta(mine, score)
+          delta: delta(mine, score, scoreCap),
+          // Uncapped difference, for display only.
+          realDelta: delta(mine, score)
         }))
       ].sort((a, b) => b.score - a.score);
       if (rivals.length) {
@@ -62,10 +68,17 @@
       bestCounts
     };
   }
+  var clampScoreCap = (cap) => Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
+  function parsePreferences(preferences) {
+    const prefs = preferences && typeof preferences === "object" ? preferences : {};
+    return {
+      hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
+      scoreCap: typeof prefs.scoreCap === "number" ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP
+    };
+  }
   async function loadPreferences() {
     const { preferences } = await chrome.storage.local.get("preferences");
-    const prefs = preferences && typeof preferences === "object" ? preferences : {};
-    return { hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [] };
+    return parsePreferences(preferences);
   }
   async function savePreferences(changes) {
     const { preferences } = await chrome.storage.local.get("preferences");
@@ -103,9 +116,9 @@
     const i = text2.lastIndexOf(",");
     return i === -1 ? text2 : `${text2.slice(0, i)}<span class="${tailClass}">${text2.slice(i)}</span>`;
   };
-  var fmtDelta = (n) => {
+  var fmtDelta = (n, outcome = n) => {
     if (n === null || n === void 0) return "<span>\u2014</span>";
-    const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
+    const cls = outcome > 0 ? "pos" : outcome < 0 ? "neg" : "";
     const sign = n > 0 ? "+" : n < 0 ? "-" : "";
     const digits = Math.abs(n) < 1e3 ? `<span class="tail-dim">${Math.abs(n)}</span>` : fmtScore(Math.abs(n), "tail-dim");
     return `<span class="${cls}">${sign}${digits}</span>`;
@@ -151,7 +164,8 @@
     }
   }
   var styles = `
-  .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; gap: 8px; }
+  .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647;
+             display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
   .btn { background: #14201A; color: #4FE33F; border: 1px solid #4FE33F; border-radius: 6px;
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
@@ -168,7 +182,15 @@
             display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
               border-bottom: 1px solid #2B4034; }
-  .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; flex: 1; }
+  .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
+  .score-cap { display: flex; align-items: center; gap: 4px; margin: 0 auto; color: #9AB3A3;
+               font-size: 15px; font-variant-numeric: tabular-nums; }
+  .score-cap-value { min-width: 44px; text-align: center; color: #EAF5EC; }
+  .score-cap.off .score-cap-value { color: #9AB3A3; }
+  .score-cap button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                      width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .score-cap button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+  .score-cap button:disabled { opacity: .35; cursor: default; }
   .dlg-head .btn { box-shadow: none; }
   .head-stats { font-weight: 400; color: #9AB3A3; }
   .head-stats .blue { color: #3FA9F5; }
@@ -326,12 +348,16 @@
       <style>${styles}</style>
       <div class="stack"></div>
       <div class="buttons">
+        <button class="btn show-scores" type="button" title="Show all saved rival scores" ${isWindowOpen ? "hidden" : ""}>RIVALS</button>
         <button class="btn scrap-results" type="button"></button>
-        <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
       </div>
       <div class="overlay" ${isWindowOpen ? "" : "hidden"}>
         <div class="dialog" role="dialog" aria-label="Rival scores">
           <div class="dlg-head"><h2>Rivals</h2>
+            <div class="score-cap" title="All scores above this cap are considered a draw with each other">Score cap
+              <button type="button" data-cap-step="-1" aria-label="Lower score cap">\u2212</button>
+              <span class="score-cap-value"></span>
+              <button type="button" data-cap-step="1" aria-label="Raise score cap">+</button></div>
             <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
             <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
             <button class="dlg-close" type="button" aria-label="Close">\xD7</button></div>
@@ -390,6 +416,17 @@
         }
       });
       shadow.querySelector(".dlg-close").addEventListener("click", () => close());
+      shadow.querySelector(".score-cap").addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-cap-step]");
+        if (!button) return;
+        try {
+          const { scoreCap } = await loadPreferences();
+          await savePreferences({ scoreCap: clampScoreCap(scoreCap + Number(button.dataset.capStep) * SCORE_CAP_STEP) });
+          await render();
+        } catch (error) {
+          console.error("[piuscores] Unable to save score cap", error);
+        }
+      });
       shadow.querySelector(".rival-list").addEventListener("change", async (event) => {
         const box = event.target.closest("input[data-player]");
         if (!box) return;
@@ -447,12 +484,19 @@
         const won = rival.delta !== null && rival.delta > 0 ? " won" : " ahead";
         const playerId = rival.playerId;
         const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>` : esc(displayName(rival.player));
-        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.delta)}</td></tr>`;
+        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
       });
     }
     function renderTitle(shadow, me, totals) {
       const title = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
       shadow.querySelector(".dlg-head h2").innerHTML = `${esc(title)}<span class="head-stats"> \u2014 ${stat("neg", totals.lose)} losses, ${stat("blue", totals.unplayed)} np, ${stat("pos", totals.win)} wins</span>`;
+    }
+    function renderScoreCap(shadow, scoreCap) {
+      const control = shadow.querySelector(".score-cap");
+      control.classList.toggle("off", scoreCap >= MAX_SCORE_CAP);
+      control.querySelector(".score-cap-value").textContent = `${scoreCap / 1e3}k`;
+      control.querySelector('[data-cap-step="-1"]').disabled = scoreCap <= MIN_SCORE_CAP;
+      control.querySelector('[data-cap-step="1"]').disabled = scoreCap >= MAX_SCORE_CAP;
     }
     function renderRivalList(shadow, charts, players, ownPlayerId, hidden, bestCounts) {
       const rivalStats = {};
@@ -482,7 +526,7 @@
     }
     async function render() {
       const shadow = ensure();
-      const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals }] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
+      const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals, scoreCap }] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
       const hidden = new Set(hiddenRivals);
       renderRivalList(shadow, allCharts, players, ownPlayerId, hidden, bestCounts);
       const charts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean);
@@ -500,6 +544,7 @@
         totals[statKey]++;
       }
       renderTitle(shadow, players[ownPlayerId], totals);
+      renderScoreCap(shadow, scoreCap);
       const chip = (label) => {
         const on = label === selectedLevel;
         const counts = statsFor(label);
@@ -541,13 +586,17 @@
     function open() {
       isWindowOpen = true;
       saveUiState();
-      ensure().querySelector(".overlay").hidden = false;
+      const shadow = ensure();
+      shadow.querySelector(".overlay").hidden = false;
+      shadow.querySelector(".show-scores").hidden = true;
       render().catch((error) => console.error("[piuscores]", error));
     }
     function close() {
       isWindowOpen = false;
       saveUiState();
-      ensure().querySelector(".overlay").hidden = true;
+      const shadow = ensure();
+      shadow.querySelector(".overlay").hidden = true;
+      shadow.querySelector(".show-scores").hidden = false;
     }
     function initialize() {
       ensure();
@@ -560,7 +609,7 @@
   var fmt2 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
   async function exportTargets() {
     const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
-      const entries = rivals.map(({ player, score, delta: delta2 }) => ({ rival: player, score, difference: delta2 })).filter((r) => r.difference === null || r.difference < 0).sort((a2, b) => b.score - a2.score);
+      const entries = rivals.filter(({ delta: delta2 }) => delta2 === null || delta2 < 0).map(({ player, score, delta: delta2, realDelta }) => ({ rival: player, score, difference: delta2, realDifference: realDelta })).sort((a2, b) => b.score - a2.score);
       return entries.length ? [{ track, chart, entries, unplayed, weight: targetWeight(entries.map((r) => r.difference)) }] : [];
     });
     charts.sort(byTargetWeight);
@@ -569,9 +618,9 @@
       lines.push(`${track}  ${chart}`);
       const nameW = Math.max(...entries.map((r) => r.rival.length)) + 1;
       const scoreW = Math.max(...entries.map((r) => fmt2(r.score).length));
-      const diffW = Math.max(0, ...entries.filter((r) => r.difference !== null).map((r) => fmt2(r.difference).length));
+      const diffW = Math.max(0, ...entries.filter((r) => r.realDifference !== null).map((r) => fmt2(r.realDifference).length));
       for (const r of entries) {
-        const note = (r.difference === null ? "\u2014" : fmt2(r.difference)).padStart(diffW);
+        const note = (r.realDifference === null ? "\u2014" : fmt2(r.realDifference)).padStart(diffW);
         lines.push(`  ${(r.rival + ":").padEnd(nameW)}  ${fmt2(r.score).padStart(scoreW)}  ${note}`);
       }
       lines.push("");
@@ -812,6 +861,58 @@
       ownPlayerId,
       "profile page"
     );
+  }
+
+  // src/page_scrappers/rivals.js
+  var SESSIONS_LINK_ATTR = "data-piuscores-sessions";
+  function isRivalsPage() {
+    return /^\/Rivals\/?$/i.test(location.pathname);
+  }
+  var nameKey = (name) => displayName(name).toLowerCase();
+  function rivalIdsByName(players) {
+    const exact = /* @__PURE__ */ new Map();
+    const loose = /* @__PURE__ */ new Map();
+    const add = (name, playerId) => {
+      if (!name || !playerId) return;
+      if (!exact.has(name)) exact.set(name, playerId);
+      const key = nameKey(name);
+      if (loose.has(key) && loose.get(key) !== playerId) loose.set(key, null);
+      else loose.set(key, playerId);
+    };
+    for (const link of document.querySelectorAll('[data-testid="rival-feed"] a.dash-ch-name[href]')) {
+      const playerId = new URL(link.href, location.href).pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/)?.[1];
+      if (playerId) add(text(link), decodeURIComponent(playerId));
+    }
+    for (const [playerId, player] of Object.entries(players || {})) add(player?.name, playerId);
+    return (name) => exact.get(name) ?? loose.get(nameKey(name)) ?? null;
+  }
+  function createSessionsLink(compareButton, playerId) {
+    const link = document.createElement("a");
+    link.setAttribute(SESSIONS_LINK_ATTR, playerId);
+    link.href = `/Player/${encodeURIComponent(playerId)}/Sessions`;
+    link.className = compareButton?.className || "mud-button-root mud-button mud-button-outlined mud-button-outlined-primary mud-button-outlined-size-small";
+    link.classList.remove("mud-ripple");
+    link.style.textDecoration = "none";
+    link.innerHTML = '<span class="mud-button-label">Sessions</span>';
+    return link;
+  }
+  async function runRivalsPage() {
+    if (!isRivalsPage()) return;
+    const rows = document.querySelectorAll('[data-testid="rival-roster"] .rvl-row');
+    if (!rows.length) return;
+    const { players } = await chrome.storage.local.get("players");
+    const rivalId = rivalIdsByName(players);
+    for (const row of rows) {
+      const playerId = rivalId(text(row.querySelector(".rvl-row-name")));
+      const existing = row.querySelector(`[${SESSIONS_LINK_ATTR}]`);
+      if (existing?.getAttribute(SESSIONS_LINK_ATTR) === playerId) continue;
+      existing?.remove();
+      if (!playerId) continue;
+      const compare = [...row.querySelectorAll("button")].find((button) => text(button) === "Compare");
+      const link = createSessionsLink(compare, playerId);
+      if (compare) compare.after(link);
+      else row.append(link);
+    }
   }
 
   // src/page_scrappers/sessions.js
@@ -1252,6 +1353,10 @@
   async function run() {
     await ensureStorageVersion();
     const ownPlayerId = await syncOwnPlayerId();
+    if (isRivalsPage()) {
+      await runRivalsPage();
+      return;
+    }
     if (isSessionsPage()) {
       await runSessionsPage(ui, ownPlayerId);
       return;

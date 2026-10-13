@@ -1,5 +1,6 @@
 import {
-  byLeadWeight, byTargetWeight, deletePlayer, displayName, loadCharts, loadPlayers, loadPreferences, savePreferences, withRivals,
+  byLeadWeight, byTargetWeight, clampScoreCap, deletePlayer, displayName, loadCharts, loadPlayers, loadPreferences,
+  MAX_SCORE_CAP, MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP, withRivals,
 } from '../storage.js';
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
@@ -9,9 +10,10 @@ const fmtScore = (n, tailClass = 'tail') => {
   const i = text.lastIndexOf(',');
   return i === -1 ? text : `${text.slice(0, i)}<span class="${tailClass}">${text.slice(i)}</span>`;
 };
-const fmtDelta = (n) => {
+// The colour follows `outcome` (the capped diff), so a capped tie stays neutral whatever the real diff is.
+const fmtDelta = (n, outcome = n) => {
   if (n === null || n === undefined) return '<span>—</span>';
-  const cls = n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+  const cls = outcome > 0 ? 'pos' : outcome < 0 ? 'neg' : '';
   const sign = n > 0 ? '+' : n < 0 ? '-' : '';
   // Below a thousand every digit is dimmed, like the last three digits of bigger diffs.
   const digits = Math.abs(n) < 1000
@@ -81,7 +83,8 @@ function readUiState() {
 
 
 const styles = `
-  .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; gap: 8px; }
+  .buttons { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647;
+             display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
   .btn { background: #14201A; color: #4FE33F; border: 1px solid #4FE33F; border-radius: 6px;
          padding: 8px 12px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer;
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
@@ -98,7 +101,15 @@ const styles = `
             display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
               border-bottom: 1px solid #2B4034; }
-  .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; flex: 1; }
+  .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
+  .score-cap { display: flex; align-items: center; gap: 4px; margin: 0 auto; color: #9AB3A3;
+               font-size: 15px; font-variant-numeric: tabular-nums; }
+  .score-cap-value { min-width: 44px; text-align: center; color: #EAF5EC; }
+  .score-cap.off .score-cap-value { color: #9AB3A3; }
+  .score-cap button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                      width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .score-cap button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+  .score-cap button:disabled { opacity: .35; cursor: default; }
   .dlg-head .btn { box-shadow: none; }
   .head-stats { font-weight: 400; color: #9AB3A3; }
   .head-stats .blue { color: #3FA9F5; }
@@ -269,12 +280,16 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       <style>${styles}</style>
       <div class="stack"></div>
       <div class="buttons">
+        <button class="btn show-scores" type="button" title="Show all saved rival scores" ${isWindowOpen ? 'hidden' : ''}>RIVALS</button>
         <button class="btn scrap-results" type="button"></button>
-        <button class="btn show-scores" type="button" title="Show all saved rival scores">Rival scores</button>
       </div>
       <div class="overlay" ${isWindowOpen ? '' : 'hidden'}>
         <div class="dialog" role="dialog" aria-label="Rival scores">
           <div class="dlg-head"><h2>Rivals</h2>
+            <div class="score-cap" title="All scores above this cap are considered a draw with each other">Score cap
+              <button type="button" data-cap-step="-1" aria-label="Lower score cap">−</button>
+              <span class="score-cap-value"></span>
+              <button type="button" data-cap-step="1" aria-label="Raise score cap">+</button></div>
             <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
             <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
             <button class="dlg-close" type="button" aria-label="Close">×</button></div>
@@ -334,6 +349,17 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       }
     });
     shadow.querySelector('.dlg-close').addEventListener('click', () => close());
+    shadow.querySelector('.score-cap').addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-cap-step]');
+      if (!button) return;
+      try {
+        const { scoreCap } = await loadPreferences();
+        await savePreferences({ scoreCap: clampScoreCap(scoreCap + Number(button.dataset.capStep) * SCORE_CAP_STEP) });
+        await render();
+      } catch (error) {
+        console.error('[piuscores] Unable to save score cap', error);
+      }
+    });
     shadow.querySelector('.rival-list').addEventListener('change', async (event) => {
       const box = event.target.closest('input[data-player]');
       if (!box) return;
@@ -399,7 +425,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       const name = playerId
         ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
         : esc(displayName(rival.player));
-      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.delta)}</td></tr>`;
+      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
     });
   }
 
@@ -408,6 +434,14 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
     shadow.querySelector('.dlg-head h2').innerHTML = `${esc(title)}`
       + `<span class="head-stats"> — ${stat('neg', totals.lose)} losses, ${stat('blue', totals.unplayed)} np, `
       + `${stat('pos', totals.win)} wins</span>`;
+  }
+
+  function renderScoreCap(shadow, scoreCap) {
+    const control = shadow.querySelector('.score-cap');
+    control.classList.toggle('off', scoreCap >= MAX_SCORE_CAP);
+    control.querySelector('.score-cap-value').textContent = `${scoreCap / 1000}k`;
+    control.querySelector('[data-cap-step="-1"]').disabled = scoreCap <= MIN_SCORE_CAP;
+    control.querySelector('[data-cap-step="1"]').disabled = scoreCap >= MAX_SCORE_CAP;
   }
 
   // Rivals (and you) are sorted by pumbility (highest first); those without one follow alphabetically.
@@ -461,7 +495,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
 
   async function render() {
     const shadow = ensure();
-    const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals }] =
+    const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals, scoreCap }] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
     const hidden = new Set(hiddenRivals);
     renderRivalList(shadow, allCharts, players, ownPlayerId, hidden, bestCounts);
@@ -483,6 +517,7 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
       totals[statKey]++;
     }
     renderTitle(shadow, players[ownPlayerId], totals);
+    renderScoreCap(shadow, scoreCap);
 
     const chip = (label) => {
       const on = label === selectedLevel;
@@ -541,14 +576,18 @@ export function createScoresUI(exportTargets, scrapeResults, getScrapInfo) {
   function open() {
     isWindowOpen = true;
     saveUiState();
-    ensure().querySelector('.overlay').hidden = false;
+    const shadow = ensure();
+    shadow.querySelector('.overlay').hidden = false;
+    shadow.querySelector('.show-scores').hidden = true;
     render().catch((error) => console.error('[piuscores]', error));
   }
 
   function close() {
     isWindowOpen = false;
     saveUiState();
-    ensure().querySelector('.overlay').hidden = true;
+    const shadow = ensure();
+    shadow.querySelector('.overlay').hidden = true;
+    shadow.querySelector('.show-scores').hidden = false;
   }
 
   function initialize() {

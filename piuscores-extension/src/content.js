@@ -3,6 +3,7 @@ import { STORAGE_VERSION } from './storage.js';
 import { exportTargets } from './export_targets.js';
 import { syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
+import { isRivalsPage, runRivalsPage } from './page_scrappers/rivals.js';
 import {
   getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
@@ -28,6 +29,10 @@ async function ensureStorageVersion() {
 async function run() {
   await ensureStorageVersion();
   const ownPlayerId = await syncOwnPlayerId();
+  if (isRivalsPage()) {
+    await runRivalsPage();
+    return;
+  }
   if (isSessionsPage()) {
     await runSessionsPage(ui, ownPlayerId);
     return;
