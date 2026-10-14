@@ -9,7 +9,7 @@ const baseStyles = `
          box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .btn:hover:not(:disabled) { background: #1C2B22; }
   .pos { color: #4FE33F; }
-  .neg { color: #FF5A5A; }
+  .neg { color: #FF2A00; }
 `;
 
 let host = null;

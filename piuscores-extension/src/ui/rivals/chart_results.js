@@ -11,7 +11,7 @@ export const chartResultsStyles = `
   /* Room for three digits, so tabs keep their size as the counts change. */
   .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
                font-variant-numeric: tabular-nums; }
-  .tab-count.rivals-win { color: #FF5A5A; }
+  .tab-count.rivals-win { color: #FF2A00; }
   .tab-count.not-played { color: #3FA9F5; }
   .tab-count.you-win { color: #4FE33F; }
   .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 0 16px 12px; flex: 1;
@@ -46,9 +46,9 @@ export const chartResultsStyles = `
   .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
   .tab[data-tab="hidden"] { margin-left: auto; }
-  .tab-count.hidden { color: #8C3434; }
-  td.group-title { padding: 14px 6px 6px; color: #A06060; font: 500 14px/1.2 Roboto, Arial, sans-serif;
-                   border-bottom: 1px solid #3A1E1E; }
+  .tab-count.hidden { color: #8C2E1C; }
+  td.group-title { padding: 14px 6px 6px; color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif;
+                   border-bottom: 1px solid #3A1813; }
 `;
 
 
