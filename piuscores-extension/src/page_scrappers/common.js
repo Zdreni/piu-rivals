@@ -1,8 +1,10 @@
+import { isKnownPlayer } from '../storage.js';
 import { showPlayerAddedToast, showPumbilityToast } from '../ui/toasts.js';
 
 export const TAG = '[piuscores]';
 
 export const text = (el) => (el ? el.textContent.trim() : '');
+
 
 export const parseNumber = (value) => {
   const digits = value.replace(/[^\d]/g, '');
@@ -12,13 +14,18 @@ export const parseNumber = (value) => {
 
 function findOwnPlayerId() {
   for (const link of document.querySelectorAll('a[href]')) {
-    if (text(link).replace(/\s+/g, ' ') !== 'My Sessions') continue;
+    if (text(link).replace(/\s+/g, ' ') !== 'My Sessions')
+      continue;
 
     const url = new URL(link.href, location.href);
-    if (url.hostname !== location.hostname) continue;
+    if (url.hostname !== location.hostname)
+      continue;
+
     const match = url.pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/);
-    if (match) return match[1];
+    if (match)
+      return match[1];
   }
+
   return null;
 }
 
@@ -37,37 +44,50 @@ function accountUsername() {
 // own profile). Only GUIDs are used as player IDs; your username maps to your own ID.
 export function pagePlayerId() {
   const segment = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1];
-  if (!segment) return null;
+  if (! segment)
+    return null;
+
   const id = decodeURIComponent(segment);
-  if (GUID_RE.test(id)) return id;
+  if (GUID_RE.test(id))
+    return id;
+
   const username = accountUsername();
-  return username && id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
+  return username  &&  id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
 }
 
 
 // Merges data saved under the username alias (by older versions) into the own GUID.
 async function mergeOwnAlias(ownPlayerId) {
   const alias = accountUsername();
-  if (!ownPlayerId || !alias) return;
+  if (! ownPlayerId  ||  ! alias)
+    return;
+
   const { players, results, preferences } = await chrome.storage.local.get(['players', 'results', 'preferences']);
   const updates = {};
   if (players?.[alias]) {
     const { [alias]: aliasInfo, ...rest } = players;
     updates.players = { ...rest, [ownPlayerId]: { ...aliasInfo, ...rest[ownPlayerId] } };
   }
+
   let resultsChanged = false;
-  const merged = { ...(results || {}) };
+  const merged = { ...(results  ||  {}) };
   for (const [key, scores] of Object.entries(merged)) {
-    if (!scores || !(alias in scores)) continue;
+    if (! scores  ||  ! (alias in scores))
+      continue;
+
     const { [alias]: aliasScore, ...rest } = scores;
     rest[ownPlayerId] = mergeScoreRecords(aliasScore, rest[ownPlayerId]);
     merged[key] = rest;
     resultsChanged = true;
   }
-  if (resultsChanged) updates.results = merged;
+
+  if (resultsChanged)
+    updates.results = merged;
+
   if (preferences?.hiddenRivals?.includes(alias)) {
     updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== alias) };
   }
+
   if (Object.keys(updates).length) {
     console.log(`${TAG} Merged data saved under "${alias}" into own player ID ${ownPlayerId}`);
     await chrome.storage.local.set(updates);
@@ -78,46 +98,52 @@ async function mergeOwnAlias(ownPlayerId) {
 export async function syncOwnPlayerId() {
   const scrapedId = findOwnPlayerId();
   const { ownPlayerId } = await chrome.storage.local.get('ownPlayerId');
-  if (scrapedId && scrapedId !== ownPlayerId) {
+  if (scrapedId  &&  scrapedId !== ownPlayerId) {
     await chrome.storage.local.set({ ownPlayerId: scrapedId });
   }
-  const id = scrapedId || (typeof ownPlayerId === 'string' ? ownPlayerId : null);
-  if (id && id !== knownOwnPlayerId) {
+
+  const id = scrapedId  ||  (typeof ownPlayerId === 'string' ? ownPlayerId : null);
+  if (id  &&  id !== knownOwnPlayerId) {
     knownOwnPlayerId = id;
     await mergeOwnAlias(id);
   }
+
   return id;
 }
 
 
-// New players are only added by the scrap button on their Sessions page; automatic page scraping
-// only updates yourself and players that are already stored.
-export function isKnownPlayer(players, playerId, ownPlayerId) {
-  return playerId === ownPlayerId || !!players?.[playerId];
-}
-
-
 // Dates are "YYYY-MM-DD" strings, so the later one also compares greater; null is unknown.
-const laterDate = (a, b) => (!a || (b && b > a) ? b : a) ?? null;
+const laterDate = (a, b) => (! a  ||  (b  &&  b > a) ? b : a) ?? null;
 
 
 // Records a try of `score` on `date` (null when unknown). lastTryDate moves to every newer try,
 // while bestScore and bestScoreDate change only when the score is higher. Returns the best-score
 // change, or null when the best score stays.
 export function saveScoreTry(scores, playerId, score, date) {
-  if (!playerId || score === null) return null;
-  const prev = scores[playerId] || null;
+  if (! playerId  ||  score === null)
+    return null;
+
+  const prev = scores[playerId]  ||  null;
   const record = { ...prev };
   const lastTryDate = laterDate(prev?.lastTryDate, date);
-  if (lastTryDate) record.lastTryDate = lastTryDate;
+  if (lastTryDate)
+    record.lastTryDate = lastTryDate;
+
   const improved = score > (prev?.bestScore ?? -1);
   if (improved) {
     record.bestScore = score;
-    if (date) record.bestScoreDate = date;
-    else delete record.bestScoreDate;
+    if (date)
+      record.bestScoreDate = date;
+    else
+      delete record.bestScoreDate;
   }
-  if (improved || record.lastTryDate !== prev?.lastTryDate) scores[playerId] = record;
-  if (!improved) return null;
+
+  if (improved  ||  record.lastTryDate !== prev?.lastTryDate)
+    scores[playerId] = record;
+
+  if (! improved)
+    return null;
+
   const prevScore = prev?.bestScore ?? null;
   return { prevScore, change: prevScore === null ? 'new' : 'upd' };
 }
@@ -125,12 +151,18 @@ export function saveScoreTry(scores, playerId, score, date) {
 
 // Combines two score records of the same player and chart.
 function mergeScoreRecords(a, b) {
-  if (!a || !b) return a || b;
+  if (! a  ||  ! b)
+    return a  ||  b;
+
   const best = b.bestScore > a.bestScore ? b : a;
   const record = { bestScore: best.bestScore };
-  if (best.bestScoreDate) record.bestScoreDate = best.bestScoreDate;
+  if (best.bestScoreDate)
+    record.bestScoreDate = best.bestScoreDate;
+
   const lastTryDate = laterDate(a.lastTryDate, b.lastTryDate);
-  if (lastTryDate) record.lastTryDate = lastTryDate;
+  if (lastTryDate)
+    record.lastTryDate = lastTryDate;
+
   return record;
 }
 
@@ -140,7 +172,9 @@ let lastPumbilityLog = null;
 
 
 export function logPumbility(message) {
-  if (message === lastPumbilityLog) return;
+  if (message === lastPumbilityLog)
+    return;
+
   lastPumbilityLog = message;
   console.log(`${TAG} PUMBILITY ${message}`);
 }
@@ -150,19 +184,22 @@ export function logPumbility(message) {
 // record (e.g. an old session) and is ignored. Only the scrap button (allowNewPlayer) may add
 // a player that is not stored yet.
 export async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
-  if (!name && pumbility === null) return;
+  if (! name  &&  pumbility === null)
+    return;
 
   const { players } = await chrome.storage.local.get('players');
-  const isNew = !isKnownPlayer(players, playerId, ownPlayerId);
-  if (!allowNewPlayer && isNew) {
-    logPumbility(`found for ${name || playerId} (${playerId}) on ${source}: not a known player, skipping`);
+  const isNew = ! isKnownPlayer(players, playerId, ownPlayerId);
+  if (! allowNewPlayer  &&  isNew) {
+    logPumbility(`found for ${name  ||  playerId} (${playerId}) on ${source}: not a known player, skipping`);
     return;
   }
-  const prev = players?.[playerId] || {};
-  const player = { ...prev };
-  if (name) player.name = name;
 
-  const who = `${player.name || playerId} (${playerId}) on ${source}`;
+  const prev = players?.[playerId]  ||  {};
+  const player = { ...prev };
+  if (name)
+    player.name = name;
+
+  const who = `${player.name  ||  playerId} (${playerId}) on ${source}`;
   const prevPumbility = prev.pumbility ?? null;
   if (pumbility === null) {
     logPumbility(`not found for ${who}`);
@@ -175,15 +212,19 @@ export async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, sou
   } else {
     logPumbility(`found ${pumbility} for ${who}: unchanged, skipping`);
   }
-  const raised = pumbility !== null && (prevPumbility === null || pumbility > prevPumbility);
-  if (raised) player.pumbility = pumbility;
 
-  if (player.name === prev.name && player.pumbility === prev.pumbility) return;
-  await chrome.storage.local.set({ players: { ...(players || {}), [playerId]: player } });
+  const raised = pumbility !== null  &&  (prevPumbility === null  ||  pumbility > prevPumbility);
+  if (raised)
+    player.pumbility = pumbility;
+
+  if (player.name === prev.name  &&  player.pumbility === prev.pumbility)
+    return;
+
+  await chrome.storage.local.set({ players: { ...(players  ||  {}), [playerId]: player } });
   if (isNew) {
-    showPlayerAddedToast(player.name || playerId, playerId, player.pumbility ?? null);
+    showPlayerAddedToast(player.name  ||  playerId, playerId, player.pumbility ?? null);
   } else if (raised) {
-    const label = playerId === ownPlayerId ? 'You' : player.name || playerId;
+    const label = playerId === ownPlayerId ? 'You' : player.name  ||  playerId;
     showPumbilityToast(label, pumbility, prevPumbility);
   }
 }
@@ -192,6 +233,7 @@ export async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, sou
 export function waitForChange(predicate, description, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
+
     const observer = new MutationObserver(() => {
       if (predicate()) {
         observer.disconnect();
@@ -199,6 +241,7 @@ export function waitForChange(predicate, description, timeoutMs = 10000) {
         resolve();
       }
     });
+
     const timerId = setInterval(() => {
       if (predicate()) {
         observer.disconnect();
@@ -210,6 +253,7 @@ export function waitForChange(predicate, description, timeoutMs = 10000) {
         reject(new Error(`Timed out waiting for ${description}`));
       }
     }, 100);
+
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     if (predicate()) {
       observer.disconnect();

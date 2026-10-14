@@ -30,16 +30,17 @@ export const levelChartStyles = `
   .level-other .level-bar { grid-column: 2 / -1; }
 `;
 
-const levelType = (level) => (level.match(/^[A-Za-z]+/) || [level])[0];
-const levelNum = (level) => parseInt((level.match(/\d+/) || ['0'])[0], 10);
+const levelType = (level) => (level.match(/^[A-Za-z]+/)  ||  [level])[0];
+
+const levelNum = (level) => parseInt((level.match(/\d+/)  ||  ['0'])[0], 10);
 const TYPE_ORDER = { S: 0, D: 1 };
 
 
 function compareLevels(a, b) {
   const ta = levelType(a), tb = levelType(b);
   return (TYPE_ORDER[ta] ?? 9) - (TYPE_ORDER[tb] ?? 9)
-    || ta.localeCompare(tb)
-    || levelNum(a) - levelNum(b);
+    ||  ta.localeCompare(tb)
+    ||  levelNum(a) - levelNum(b);
 }
 
 
@@ -51,7 +52,8 @@ export const sortedLevels = (charts) => [...new Set(charts.map((chart) => chart.
 export function createLevelChart(container, onSelect) {
   container.addEventListener('click', (event) => {
     const bar = event.target.closest('.level-bar[data-level]');
-    if (bar) onSelect(bar.dataset.level);
+    if (bar)
+      onSelect(bar.dataset.level);
   });
 
   // `hiddenCharts` are the losses hidden by the retry cooldown or the score cap; they get their own dark segment.
@@ -68,7 +70,9 @@ export function createLevelChart(container, onSelect) {
     // Each bar is split by the share of wins / not played / hidden losses / losses; wins sit next to
     // the level number and losses at the outer end, so singles grow to the left and doubles to the right.
     const bar = (level, side) => {
-      if (!level) return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
+      if (! level)
+        return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
+
       const on = level === selectedLevel;
       const counts = stats[level];
       // The hidden-losses segment has no number; its count is in the tooltip.
@@ -79,21 +83,25 @@ export function createLevelChart(container, onSelect) {
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`
         + `${part('lose', counts.lose)}</button>`;
     };
+
     const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
-    const otherLevels = levels.filter((level) => !(levelType(level) in TYPE_ORDER));
+    const otherLevels = levels.filter((level) => ! (levelType(level) in TYPE_ORDER));
     // Every level between the lowest and highest gets a row, so missing levels keep their place.
     const levelNums = sideLevels.map(levelNum);
     const minNum = Math.min(...levelNums), maxNum = Math.max(...levelNums);
     const nums = sideLevels.length ? Array.from({ length: maxNum - minNum + 1 }, (_, i) => minNum + i) : [];
-    const find = (type, num) => sideLevels.find((l) => levelType(l) === type && levelNum(l) === num);
+    const find = (type, num) => sideLevels.find((l) => levelType(l) === type  &&  levelNum(l) === num);
+
     const row = (num) => {
       const single = find('S', num), double = find('D', num);
-      const on = selectedLevel !== null && (selectedLevel === single || selectedLevel === double);
+      const on = selectedLevel !== null  &&  (selectedLevel === single  ||  selectedLevel === double);
       return `${bar(single, 'single')}<span class="level-num${on ? ' on' : ''}">${num}</span>${bar(double, 'double')}`;
     };
+
     const other = (level) => `<div class="level-other"><span class="level-num${level === selectedLevel ? ' on' : ''}">`
       + `${esc(level)}</span>${bar(level, 'double')}</div>`;
-    const headOn = (type) => (selectedLevel !== null && levelType(selectedLevel) === type ? ' on' : '');
+
+    const headOn = (type) => (selectedLevel !== null  &&  levelType(selectedLevel) === type ? ' on' : '');
     container.innerHTML = `<div class="level-chart" role="radiogroup" aria-label="Levels">`
       + `<span class="level-head single${headOn('S')}">Singles</span><span></span><span class="level-head${headOn('D')}">Doubles</span>`
       + `${nums.map(row).join('')}${otherLevels.map(other).join('')}</div>`;

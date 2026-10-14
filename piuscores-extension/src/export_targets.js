@@ -1,13 +1,13 @@
 import { byTargetWeight, loadCharts, targetWeight } from './storage.js';
 
-const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
+const fmt = (n) => (n === null  ||  n === undefined ? '—' : n.toLocaleString('en-US'));
 
 
 // Export charts where a rival is ahead or I have no score.
 export async function exportTargets() {
   const charts = (await loadCharts()).flatMap(({ track, chart, rivals, unplayed }) => {
     const entries = rivals
-      .filter(({ delta }) => delta === null || delta < 0)
+      .filter(({ delta }) => delta === null  ||  delta < 0)
       .map(({ player, score, delta, realDelta }) => ({ rival: player, score, difference: delta, realDifference: realDelta }))
       .sort((a, b) => b.score - a.score);
 
@@ -21,6 +21,7 @@ export async function exportTargets() {
   const lines = [`PIU Scores targets — ${new Date().toLocaleString()}`, `${charts.length} chart(s)`, ''];
   for (const { track, chart, entries } of charts) {
     lines.push(`${track}  ${chart}`);
+
     const nameW = Math.max(...entries.map((r) => r.rival.length)) + 1;
     const scoreW = Math.max(...entries.map((r) => fmt(r.score).length));
     const diffW = Math.max(0, ...entries.filter((r) => r.realDifference !== null).map((r) => fmt(r.realDifference).length));
@@ -28,6 +29,7 @@ export async function exportTargets() {
       const note = (r.realDifference === null ? '—' : fmt(r.realDifference)).padStart(diffW);
       lines.push(`  ${(r.rival + ':').padEnd(nameW)}  ${fmt(r.score).padStart(scoreW)}  ${note}`);
     }
+
     lines.push('');
   }
 

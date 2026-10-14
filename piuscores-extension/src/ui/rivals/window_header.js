@@ -55,6 +55,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
     <button class="dlg-close" type="button" aria-label="Close">×</button>`;
+
   const title = container.querySelector('h2');
   const scoreCapControl = container.querySelector('.score-cap');
   const retryCooldownControl = container.querySelector('.retry-cooldown');
@@ -62,8 +63,10 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   container.querySelector('.export').addEventListener('click', () => {
     exportTargets().catch((error) => console.error('[piuscores]', error));
   });
+
   container.querySelector('.clear-data').addEventListener('click', async () => {
-    if (!window.confirm('Clear all PIU Scores data saved by this extension? This cannot be undone.')) return;
+    if (! window.confirm('Clear all PIU Scores data saved by this extension? This cannot be undone.'))
+      return;
 
     try {
       await chrome.storage.local.clear();
@@ -72,12 +75,16 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
       console.error('[piuscores] Unable to clear saved data', error);
     }
   });
+
   container.querySelector('.dlg-close').addEventListener('click', () => onClose());
+
   // `update(preferences, step)` returns the preference changes for a −/+ click.
   function bindStepper(control, update) {
     control.addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-step]');
-      if (!button) return;
+      if (! button)
+        return;
+
       try {
         await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
         await onChange();
@@ -86,8 +93,10 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
       }
     });
   }
+
   bindStepper(scoreCapControl, ({ scoreCap }, step) =>
     ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
+
   bindStepper(retryCooldownControl, ({ retryCooldown }, step) =>
     ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
 

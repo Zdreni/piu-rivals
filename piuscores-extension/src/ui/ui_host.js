@@ -18,11 +18,14 @@ const styled = new Set();
 
 // The page may drop the host when it re-renders its body, so it is put back on every call.
 export function uiRoot() {
-  if (!host) {
+  if (! host) {
     host = document.createElement('div');
     host.attachShadow({ mode: 'open' }).innerHTML = `<style>${baseStyles}</style><div class="buttons"></div>`;
   }
-  if (!host.isConnected) document.body.appendChild(host);
+
+  if (! host.isConnected)
+    document.body.appendChild(host);
+
   return host.shadowRoot;
 }
 
@@ -30,12 +33,14 @@ export function uiRoot() {
 // Adds `css` once per `name` and returns the shadow root.
 export function useStyles(name, css) {
   const root = uiRoot();
-  if (!styled.has(name)) {
+  if (! styled.has(name)) {
     styled.add(name);
+
     const style = document.createElement('style');
     style.textContent = css;
     root.appendChild(style);
   }
+
   return root;
 }
 

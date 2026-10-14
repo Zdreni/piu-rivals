@@ -8,6 +8,9 @@
   var MAX_RETRY_COOLDOWN = 7;
   var displayName = (name) => name.replace(/\s*#\d{4}$/, "");
   var storageKey = (row) => `${row.track}|${row.chart}`;
+  function isKnownPlayer(players, playerId, ownPlayerId) {
+    return playerId === ownPlayerId || !!players?.[playerId];
+  }
   var isScrapLevel = (chart) => {
     const level = chart.match(/\d+/);
     return level !== null && Number(level[0]) >= MIN_SCRAPE_LEVEL;
@@ -21,7 +24,8 @@
     const { storageVersion, results } = await chrome.storage.local.get(["storageVersion", "results"]);
     const version = storageVersion ?? (results ? 1 : STORAGE_VERSION);
     if (version === STORAGE_VERSION) {
-      if (storageVersion === void 0) await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
+      if (storageVersion === void 0)
+        await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
       return;
     }
     if (version > STORAGE_VERSION) {
@@ -41,9 +45,10 @@
   async function loadCharts() {
     const all = await chrome.storage.local.get(null);
     const players = all.players && typeof all.players === "object" ? all.players : {};
-    const playerName2 = (playerId) => {
+    const playerName = (playerId) => {
       const player = players[playerId];
-      if (player && typeof player === "object" && typeof player.name === "string") return player.name;
+      if (player && typeof player === "object" && typeof player.name === "string")
+        return player.name;
       return playerId;
     };
     const ownPlayerId = typeof all.ownPlayerId === "string" ? all.ownPlayerId : null;
@@ -51,14 +56,15 @@
     const { scoreCap } = parsePreferences(all.preferences);
     const charts = [];
     for (const [key, rawScores] of Object.entries(results)) {
-      if (!rawScores || typeof rawScores !== "object") continue;
+      if (!rawScores || typeof rawScores !== "object")
+        continue;
       const [track, chart] = key.split(/\|(?=[^|]*$)/);
       const scores = rawScores;
       const myRecord = ownPlayerId ? scores[ownPlayerId] : null;
       const mine = myRecord?.bestScore ?? null;
       const rivals = [
         ...Object.entries(scores).filter(([playerId]) => playerId !== ownPlayerId).map(([playerId, { bestScore: score, bestScoreDate, lastTryDate }]) => ({
-          player: playerName2(playerId),
+          player: playerName(playerId),
           playerId,
           score,
           bestScoreDate,
@@ -86,7 +92,8 @@
     const { players, ownPlayerId, results } = await chrome.storage.local.get(["players", "ownPlayerId", "results"]);
     const bestCounts = {};
     for (const scores of Object.values(results && typeof results === "object" ? results : {})) {
-      for (const playerId of Object.keys(scores || {})) bestCounts[playerId] = (bestCounts[playerId] || 0) + 1;
+      for (const playerId of Object.keys(scores || {}))
+        bestCounts[playerId] = (bestCounts[playerId] || 0) + 1;
     }
     return {
       players: players && typeof players === "object" ? players : {},
@@ -96,7 +103,8 @@
   }
   var clampRetryCooldown = (days) => Math.min(MAX_RETRY_COOLDOWN, Math.max(0, Math.round(days)));
   function daysSince(date) {
-    if (!date) return null;
+    if (!date)
+      return null;
     const now = /* @__PURE__ */ new Date();
     return Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.parse(`${date}T00:00:00Z`)) / 864e5);
   }
@@ -119,8 +127,10 @@
   }
   function withRivals(chart, keep) {
     const rivals = chart.rivals.filter(keep);
-    if (rivals.length === chart.rivals.length) return chart;
-    if (!rivals.length) return null;
+    if (rivals.length === chart.rivals.length)
+      return chart;
+    if (!rivals.length)
+      return null;
     return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
   }
   async function deletePlayer(playerId) {
@@ -133,7 +143,8 @@
     const restResults = {};
     for (const [key, scores] of Object.entries(results || {})) {
       const { [playerId]: __, ...rest } = scores || {};
-      if (Object.keys(rest).length) restResults[key] = rest;
+      if (Object.keys(rest).length)
+        restResults[key] = rest;
     }
     const updates = { players: restPlayers, results: restResults };
     if (preferences?.hiddenRivals?.includes(playerId)) {
@@ -150,7 +161,8 @@
     return i === -1 ? text2 : `${text2.slice(0, i)}<span class="${tailClass}">${text2.slice(i)}</span>`;
   };
   var fmtDelta = (n, outcome = n) => {
-    if (n === null || n === void 0) return "<span>\u2014</span>";
+    if (n === null || n === void 0)
+      return "<span>\u2014</span>";
     const cls = outcome > 0 ? "pos" : outcome < 0 ? "neg" : "";
     const sign = n > 0 ? "+" : n < 0 ? "-" : "";
     const digits = Math.abs(n) < 1e3 ? `<span class="tail-dim">${Math.abs(n)}</span>` : fmtScore(Math.abs(n), "tail-dim");
@@ -170,7 +182,8 @@
   var TIER_STAT = { "rivals-win": "lose", "not-played": "unplayed", "you-win": "win" };
   function tierCounts(charts) {
     const counts = { lose: 0, win: 0, unplayed: 0 };
-    for (const chart of charts) counts[TIER_STAT[chartTier(chart)]]++;
+    for (const chart of charts)
+      counts[TIER_STAT[chartTier(chart)]]++;
     return counts;
   }
 
@@ -236,17 +249,21 @@ Last try: ${lastTryDate || "unknown"}`;
     let lastRender = null;
     tabs.addEventListener("click", (event) => {
       const tab = event.target.closest(".tab");
-      if (tab) onSelectTab(tab.dataset.tab);
+      if (tab)
+        onSelectTab(tab.dataset.tab);
     });
     body.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-expand]");
-      if (!button) return;
+      if (!button)
+        return;
       expandedCharts.add(button.dataset.expand);
-      if (lastRender) render(...lastRender);
+      if (lastRender)
+        render(...lastRender);
     });
     function chartRows(chart, myName, collapseWon, colorByRealDiff) {
       const all = [...chart.rivals];
-      if (chart.mine !== null) all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
+      if (chart.mine !== null)
+        all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
       all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
       const key = `${chart.track}|${chart.chart}`;
       const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
@@ -349,7 +366,8 @@ Last try: ${lastTryDate || "unknown"}`;
   function createLevelChart(container, onSelect) {
     container.addEventListener("click", (event) => {
       const bar = event.target.closest(".level-bar[data-level]");
-      if (bar) onSelect(bar.dataset.level);
+      if (bar)
+        onSelect(bar.dataset.level);
     });
     function render(charts, hiddenCharts, selectedLevel) {
       const levels = sortedLevels([...charts, ...hiddenCharts]);
@@ -361,7 +379,8 @@ Last try: ${lastTryDate || "unknown"}`;
         };
       }
       const bar = (level, side) => {
-        if (!level) return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
+        if (!level)
+          return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
         const on = level === selectedLevel;
         const counts = stats[level];
         const part = (cls, n, label = n) => n ? `<span class="${cls}" style="flex-grow: ${n}">${label}</span>` : "";
@@ -385,11 +404,8 @@ Last try: ${lastTryDate || "unknown"}`;
     return { render };
   }
 
-  // src/ui/rivals/rival_list.js
-  var rivalListStyles = `
-  .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
-                border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
-  .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
+  // src/ui/rivals/rivals_list_item.js
+  var rivalListItemStyles = `
   .rival { padding: 9px 6px; border-radius: 4px; }
   .rival:nth-child(even) { background: rgba(255,255,255,.05); }
   .rival:hover { background: rgba(79,227,63,.12); }
@@ -426,7 +442,6 @@ Last try: ${lastTryDate || "unknown"}`;
   .rival-counts > span { color: #9AB3A3; }
   .rival-counts .zero { opacity: .4; }
   .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-visit, .rival.off .rival-scrap { opacity: .45; }
-  .rival-list .muted { color: #9AB3A3; }
 `;
   var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
@@ -438,19 +453,36 @@ Last try: ${lastTryDate || "unknown"}`;
     const visited = new Date(visitedAt);
     const now = /* @__PURE__ */ new Date();
     const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(visited.getFullYear(), visited.getMonth(), visited.getDate())) / 864e5);
-    if (days < 3) return "";
+    if (days < 3)
+      return "";
     return `<a class="rival-visit" href="${href}" title="Sessions page last visited ${esc(visited.toLocaleString())}">${clockIcon}${days}d</a>`;
   }
+  function rivalListItem({ playerId, name, pumbility }, player, { me, on, focused, stats, best }) {
+    const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
+    const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
+    return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused ? " focused" : ""}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(player?.scrapStats, best)}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(stats, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
+  }
+
+  // src/ui/rivals/rivals_list.js
+  var rivalListStyles = `
+  .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
+                border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+  .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
+  .rival-list .muted { color: #9AB3A3; }
+` + rivalListItemStyles;
   function createRivalList(container, onChange) {
     let focusedRival = null;
     let pendingScroll = false;
     container.addEventListener("change", async (event) => {
       const box = event.target.closest("input[data-player]");
-      if (!box) return;
+      if (!box)
+        return;
       try {
         const hidden = new Set((await loadPreferences()).hiddenRivals);
-        if (box.checked) hidden.delete(box.dataset.player);
-        else hidden.add(box.dataset.player);
+        if (box.checked)
+          hidden.delete(box.dataset.player);
+        else
+          hidden.add(box.dataset.player);
         await savePreferences({ hiddenRivals: [...hidden] });
         await onChange();
       } catch (error) {
@@ -461,9 +493,11 @@ Last try: ${lastTryDate || "unknown"}`;
       const button = event.target.closest("button[data-delete]");
       if (!button) {
         const rival = event.target.closest(".rival");
-        if (!rival || event.target.closest("input, a")) return;
+        if (!rival || event.target.closest("input, a"))
+          return;
         const unfocus = rival.classList.contains("focused");
-        if (unfocus && !event.target.closest(".rival-toggle")) return;
+        if (unfocus && !event.target.closest(".rival-toggle"))
+          return;
         focusedRival = unfocus ? null : rival.dataset.rival;
         for (const other of container.querySelectorAll(".rival")) {
           other.classList.toggle("focused", other.dataset.rival === focusedRival);
@@ -472,7 +506,8 @@ Last try: ${lastTryDate || "unknown"}`;
       }
       const { delete: playerId, name, own } = button.dataset;
       const question = own ? "Delete all your saved scores? Your player record is kept. This cannot be undone." : `Delete ${name} and all their saved scores? This cannot be undone.`;
-      if (!window.confirm(question)) return;
+      if (!window.confirm(question))
+        return;
       try {
         await deletePlayer(playerId);
         await onChange();
@@ -489,26 +524,32 @@ Last try: ${lastTryDate || "unknown"}`;
         }
       }
       const ids = new Set(Object.keys(players));
-      for (const chart of charts) for (const rival of chart.rivals) ids.add(rival.playerId);
-      if (ownPlayerId) ids.add(ownPlayerId);
+      for (const chart of charts)
+        for (const rival of chart.rivals)
+          ids.add(rival.playerId);
+      if (ownPlayerId)
+        ids.add(ownPlayerId);
       const rivals = [...ids].map((playerId) => ({
         playerId,
         name: displayName(players[playerId]?.name || playerId),
         pumbility: typeof players[playerId]?.pumbility === "number" ? players[playerId].pumbility : null
       }));
       rivals.sort((a, b) => (b.pumbility ?? -1) - (a.pumbility ?? -1) || a.name.localeCompare(b.name, void 0, { sensitivity: "base" }));
-      container.innerHTML = rivals.length ? rivals.map(({ playerId, name, pumbility }) => {
-        const me = playerId === ownPlayerId;
-        const on = me || !hidden.has(playerId);
-        const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
-        const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
-        const focused = playerId === focusedRival ? " focused" : "";
-        return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(players[playerId]?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 }, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
+      container.innerHTML = rivals.length ? rivals.map((rival) => {
+        const me = rival.playerId === ownPlayerId;
+        return rivalListItem(rival, players[rival.playerId], {
+          me,
+          on: me || !hidden.has(rival.playerId),
+          focused: rival.playerId === focusedRival,
+          stats: rivalStats[rival.playerId] || { lose: 0, win: 0, unplayed: 0 },
+          best: bestCounts[rival.playerId]
+        });
       }).join("") : '<div class="muted">No rivals yet</div>';
       if (pendingScroll) {
         pendingScroll = false;
         const focused = container.querySelector(".rival.focused");
-        if (focused) focused.scrollIntoView({ block: "nearest" });
+        if (focused)
+          focused.scrollIntoView({ block: "nearest" });
       }
     }
     function focus(playerId) {
@@ -524,7 +565,8 @@ Last try: ${lastTryDate || "unknown"}`;
   function readUiState() {
     try {
       const raw = sessionStorage.getItem(UI_STATE_KEY);
-      if (!raw) return { ...DEFAULT_STATE };
+      if (!raw)
+        return { ...DEFAULT_STATE };
       const saved = JSON.parse(raw);
       return {
         isOpen: saved.isOpen === true,
@@ -599,7 +641,8 @@ Last try: ${lastTryDate || "unknown"}`;
       exportTargets2().catch((error) => console.error("[piuscores]", error));
     });
     container.querySelector(".clear-data").addEventListener("click", async () => {
-      if (!window.confirm("Clear all PIU Scores data saved by this extension? This cannot be undone.")) return;
+      if (!window.confirm("Clear all PIU Scores data saved by this extension? This cannot be undone."))
+        return;
       try {
         await chrome.storage.local.clear();
         await onCleared();
@@ -611,7 +654,8 @@ Last try: ${lastTryDate || "unknown"}`;
     function bindStepper(control, update) {
       control.addEventListener("click", async (event) => {
         const button = event.target.closest("button[data-step]");
-        if (!button) return;
+        if (!button)
+          return;
         try {
           await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
           await onChange();
@@ -662,7 +706,8 @@ Last try: ${lastTryDate || "unknown"}`;
       host = document.createElement("div");
       host.attachShadow({ mode: "open" }).innerHTML = `<style>${baseStyles}</style><div class="buttons"></div>`;
     }
-    if (!host.isConnected) document.body.appendChild(host);
+    if (!host.isConnected)
+      document.body.appendChild(host);
     return host.shadowRoot;
   }
   function useStyles(name, css) {
@@ -791,7 +836,8 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     function focusPagePlayer() {
       const playerId = pagePlayerId2();
-      if (playerId) rivalList.focus(playerId);
+      if (playerId)
+        rivalList.focus(playerId);
     }
     function open() {
       setOpen(true);
@@ -803,7 +849,8 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     function initialize() {
       ensure();
-      if (!state.isOpen) return;
+      if (!state.isOpen)
+        return;
       focusPagePlayer();
       rerender();
     }
@@ -823,14 +870,18 @@ Last try: ${lastTryDate || "unknown"}`;
     return /^\/Player\/[^/]+\/?$/i.test(location.pathname);
   }
   function scrapLabel(info) {
-    if (!info) return "Loading sessions...";
+    if (!info)
+      return "Loading sessions...";
     const { count, more, known, name, pumbility } = info;
-    if (count === 0) return "No new sessions to grab";
-    if (!known) return `Add player '${name}'${pumbility === null ? "" : ` PB ${fmt2(pumbility)}`} and scrap his results`;
+    if (count === 0)
+      return "No new sessions to grab";
+    if (!known)
+      return `Add player '${name}'${pumbility === null ? "" : ` PB ${fmt2(pumbility)}`} and scrap his results`;
     const sessions = `${count}${more ? "+" : ""} session${count === 1 && !more ? "" : "s"}`;
     return `Grab scores from ${sessions}`;
   }
-  function createScrapOverlay(scrapeResults, getScrapInfo2, onNothingToGrab) {
+  function createScrapOverlay({ scrapeResults, readSessionsPage: readSessionsPage2, countNewSessions: countNewSessions2, onNothingToGrab }) {
+    let stored = null;
     let isScraping = false;
     let scrapStatus = null;
     let finishedPath = null;
@@ -840,6 +891,23 @@ Last try: ${lastTryDate || "unknown"}`;
     button.className = "btn scrap-results";
     button.type = "button";
     buttonStack().appendChild(button);
+    async function reload() {
+      const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
+      stored = { players: players || {}, ownPlayerId: typeof ownPlayerId === "string" ? ownPlayerId : null };
+      update();
+    }
+    function getScrapInfo() {
+      const page = readSessionsPage2();
+      if (!page || !stored)
+        return null;
+      const { players, ownPlayerId } = stored;
+      return {
+        known: isKnownPlayer(players, page.playerId, ownPlayerId),
+        name: displayName(page.name),
+        pumbility: page.pumbility,
+        ...countNewSessions2(players[page.playerId]?.lastScrapedSession || null)
+      };
+    }
     function update() {
       uiRoot();
       button.hidden = !isPlayerSessionsPage() && !isPlayerProfilePage();
@@ -852,14 +920,16 @@ Last try: ${lastTryDate || "unknown"}`;
         finishedPath = null;
         scrapStatus = null;
       }
-      const info = getScrapInfo2();
+      const info = getScrapInfo();
       if (info && readyPath !== location.pathname) {
         readyPath = location.pathname;
-        if (info.count === 0) onNothingToGrab();
+        if (info.count === 0)
+          onNothingToGrab();
       }
       button.disabled = isScraping || finishedPath !== null || !info || info.count === 0;
       const label = scrapStatus ?? scrapLabel(info);
-      if (button.textContent !== label) button.textContent = label;
+      if (button.textContent !== label)
+        button.textContent = label;
     }
     button.addEventListener("click", async () => {
       if (isPlayerProfilePage()) {
@@ -873,7 +943,8 @@ Last try: ${lastTryDate || "unknown"}`;
           scrapStatus = status;
           update();
         });
-        if (finished) finishedPath = location.pathname;
+        if (finished)
+          finishedPath = location.pathname;
       } catch (error) {
         console.error("[piuscores] Unable to scrape player sessions", error);
         scrapStatus = "Scraping failed";
@@ -889,7 +960,7 @@ Last try: ${lastTryDate || "unknown"}`;
       }
     });
     update();
-    return { update };
+    return { update, reload };
   }
 
   // src/export_targets.js
@@ -941,7 +1012,8 @@ Last try: ${lastTryDate || "unknown"}`;
 `;
   var fmt4 = (n) => n === null || n === void 0 ? "\u2014" : n.toLocaleString("en-US");
   var fmtDelta2 = (n) => {
-    if (n === null || n === void 0) return "<span>\u2014</span>";
+    if (n === null || n === void 0)
+      return "<span>\u2014</span>";
     const cls = n > 0 ? "pos" : n < 0 ? "neg" : "";
     return `<span class="${cls}">${n > 0 ? "+" : ""}${fmt4(n)}</span>`;
   };
@@ -970,7 +1042,8 @@ Last try: ${lastTryDate || "unknown"}`;
   }
   function pushToast(toast) {
     const close = () => {
-      if (toast.classList.contains("out")) return;
+      if (toast.classList.contains("out"))
+        return;
       toast.classList.add("out");
       toast.addEventListener("transitionend", () => toast.remove(), { once: true });
       setTimeout(() => toast.remove(), 600);
@@ -1017,11 +1090,14 @@ Last try: ${lastTryDate || "unknown"}`;
   };
   function findOwnPlayerId() {
     for (const link of document.querySelectorAll("a[href]")) {
-      if (text(link).replace(/\s+/g, " ") !== "My Sessions") continue;
+      if (text(link).replace(/\s+/g, " ") !== "My Sessions")
+        continue;
       const url = new URL(link.href, location.href);
-      if (url.hostname !== location.hostname) continue;
+      if (url.hostname !== location.hostname)
+        continue;
       const match = url.pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/);
-      if (match) return match[1];
+      if (match)
+        return match[1];
     }
     return null;
   }
@@ -1032,15 +1108,18 @@ Last try: ${lastTryDate || "unknown"}`;
   }
   function pagePlayerId() {
     const segment = location.pathname.match(/^\/Player\/([^/]+)(?:\/|$)/)?.[1];
-    if (!segment) return null;
+    if (!segment)
+      return null;
     const id = decodeURIComponent(segment);
-    if (GUID_RE.test(id)) return id;
+    if (GUID_RE.test(id))
+      return id;
     const username = accountUsername();
     return username && id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
   }
   async function mergeOwnAlias(ownPlayerId) {
     const alias = accountUsername();
-    if (!ownPlayerId || !alias) return;
+    if (!ownPlayerId || !alias)
+      return;
     const { players, results, preferences } = await chrome.storage.local.get(["players", "results", "preferences"]);
     const updates = {};
     if (players?.[alias]) {
@@ -1050,13 +1129,15 @@ Last try: ${lastTryDate || "unknown"}`;
     let resultsChanged = false;
     const merged = { ...results || {} };
     for (const [key, scores] of Object.entries(merged)) {
-      if (!scores || !(alias in scores)) continue;
+      if (!scores || !(alias in scores))
+        continue;
       const { [alias]: aliasScore, ...rest } = scores;
       rest[ownPlayerId] = mergeScoreRecords(aliasScore, rest[ownPlayerId]);
       merged[key] = rest;
       resultsChanged = true;
     }
-    if (resultsChanged) updates.results = merged;
+    if (resultsChanged)
+      updates.results = merged;
     if (preferences?.hiddenRivals?.includes(alias)) {
       updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== alias) };
     }
@@ -1078,44 +1159,52 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     return id;
   }
-  function isKnownPlayer(players, playerId, ownPlayerId) {
-    return playerId === ownPlayerId || !!players?.[playerId];
-  }
   var laterDate = (a, b) => (!a || b && b > a ? b : a) ?? null;
   function saveScoreTry(scores, playerId, score, date) {
-    if (!playerId || score === null) return null;
+    if (!playerId || score === null)
+      return null;
     const prev = scores[playerId] || null;
     const record = { ...prev };
     const lastTryDate = laterDate(prev?.lastTryDate, date);
-    if (lastTryDate) record.lastTryDate = lastTryDate;
+    if (lastTryDate)
+      record.lastTryDate = lastTryDate;
     const improved = score > (prev?.bestScore ?? -1);
     if (improved) {
       record.bestScore = score;
-      if (date) record.bestScoreDate = date;
-      else delete record.bestScoreDate;
+      if (date)
+        record.bestScoreDate = date;
+      else
+        delete record.bestScoreDate;
     }
-    if (improved || record.lastTryDate !== prev?.lastTryDate) scores[playerId] = record;
-    if (!improved) return null;
+    if (improved || record.lastTryDate !== prev?.lastTryDate)
+      scores[playerId] = record;
+    if (!improved)
+      return null;
     const prevScore = prev?.bestScore ?? null;
     return { prevScore, change: prevScore === null ? "new" : "upd" };
   }
   function mergeScoreRecords(a, b) {
-    if (!a || !b) return a || b;
+    if (!a || !b)
+      return a || b;
     const best = b.bestScore > a.bestScore ? b : a;
     const record = { bestScore: best.bestScore };
-    if (best.bestScoreDate) record.bestScoreDate = best.bestScoreDate;
+    if (best.bestScoreDate)
+      record.bestScoreDate = best.bestScoreDate;
     const lastTryDate = laterDate(a.lastTryDate, b.lastTryDate);
-    if (lastTryDate) record.lastTryDate = lastTryDate;
+    if (lastTryDate)
+      record.lastTryDate = lastTryDate;
     return record;
   }
   var lastPumbilityLog = null;
   function logPumbility(message) {
-    if (message === lastPumbilityLog) return;
+    if (message === lastPumbilityLog)
+      return;
     lastPumbilityLog = message;
     console.log(`${TAG} PUMBILITY ${message}`);
   }
   async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
-    if (!name && pumbility === null) return;
+    if (!name && pumbility === null)
+      return;
     const { players } = await chrome.storage.local.get("players");
     const isNew = !isKnownPlayer(players, playerId, ownPlayerId);
     if (!allowNewPlayer && isNew) {
@@ -1124,7 +1213,8 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     const prev = players?.[playerId] || {};
     const player = { ...prev };
-    if (name) player.name = name;
+    if (name)
+      player.name = name;
     const who = `${player.name || playerId} (${playerId}) on ${source}`;
     const prevPumbility = prev.pumbility ?? null;
     if (pumbility === null) {
@@ -1139,8 +1229,10 @@ Last try: ${lastTryDate || "unknown"}`;
       logPumbility(`found ${pumbility} for ${who}: unchanged, skipping`);
     }
     const raised = pumbility !== null && (prevPumbility === null || pumbility > prevPumbility);
-    if (raised) player.pumbility = pumbility;
-    if (player.name === prev.name && player.pumbility === prev.pumbility) return;
+    if (raised)
+      player.pumbility = pumbility;
+    if (player.name === prev.name && player.pumbility === prev.pumbility)
+      return;
     await chrome.storage.local.set({ players: { ...players || {}, [playerId]: player } });
     if (isNew) {
       showPlayerAddedToast(player.name || playerId, playerId, player.pumbility ?? null);
@@ -1185,12 +1277,13 @@ Last try: ${lastTryDate || "unknown"}`;
   }
   async function runProfilePage(ownPlayerId) {
     const playerId = profilePlayerId();
-    if (!playerId) return;
-    const hero = document.querySelector('[data-testid="player-hero"]');
+    if (!playerId)
+      return;
+    const profileHeader = document.querySelector('[data-testid="player-hero"]');
     await savePlayerInfo(
       playerId,
-      text(hero?.querySelector("h5")),
-      parseNumber(text(hero?.querySelector(".ph-pum .cmp-hero-num"))),
+      text(profileHeader?.querySelector("h5")),
+      parseNumber(text(profileHeader?.querySelector(".ph-pum .cmp-hero-num"))),
       ownPlayerId,
       "profile page"
     );
@@ -1207,17 +1300,23 @@ Last try: ${lastTryDate || "unknown"}`;
     const exact = /* @__PURE__ */ new Map();
     const loose = /* @__PURE__ */ new Map();
     const add = (name, playerId) => {
-      if (!name || !playerId) return;
-      if (!exact.has(name)) exact.set(name, playerId);
+      if (!name || !playerId)
+        return;
+      if (!exact.has(name))
+        exact.set(name, playerId);
       const key = nameKey(name);
-      if (loose.has(key) && loose.get(key) !== playerId) loose.set(key, null);
-      else loose.set(key, playerId);
+      if (loose.has(key) && loose.get(key) !== playerId)
+        loose.set(key, null);
+      else
+        loose.set(key, playerId);
     };
     for (const link of document.querySelectorAll('[data-testid="rival-feed"] a.dash-ch-name[href]')) {
       const playerId = new URL(link.href, location.href).pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/)?.[1];
-      if (playerId) add(text(link), decodeURIComponent(playerId));
+      if (playerId)
+        add(text(link), decodeURIComponent(playerId));
     }
-    for (const [playerId, player] of Object.entries(players || {})) add(player?.name, playerId);
+    for (const [playerId, player] of Object.entries(players || {}))
+      add(player?.name, playerId);
     return (name) => exact.get(name) ?? loose.get(nameKey(name)) ?? null;
   }
   function createSessionsLink(compareButton, playerId) {
@@ -1259,7 +1358,8 @@ Last try: ${lastTryDate || "unknown"}`;
       return;
     }
     const signature = JSON.stringify(storedOnly.map(([playerId, p]) => [playerId, p?.name, p?.pumbility]));
-    if (existing?.getAttribute(STORED_ROSTER_ATTR) === signature && existing.previousElementSibling === roster) return;
+    if (existing?.getAttribute(STORED_ROSTER_ATTR) === signature && existing.previousElementSibling === roster)
+      return;
     existing?.remove();
     const block = document.createElement("div");
     block.setAttribute(STORED_ROSTER_ATTR, signature);
@@ -1275,7 +1375,8 @@ Last try: ${lastTryDate || "unknown"}`;
     roster.after(block);
   }
   async function runRivalsPage() {
-    if (!isRivalsPage()) return;
+    if (!isRivalsPage())
+      return;
     const roster = document.querySelector('[data-testid="rival-roster"]');
     const rows = roster ? roster.querySelectorAll(".rvl-row") : [];
     const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
@@ -1283,158 +1384,83 @@ Last try: ${lastTryDate || "unknown"}`;
     const rosterIds = /* @__PURE__ */ new Set();
     for (const row of rows) {
       const playerId = rivalId(text(row.querySelector(".rvl-row-name")));
-      if (playerId) rosterIds.add(playerId);
+      if (playerId)
+        rosterIds.add(playerId);
       const existing = row.querySelector(`[${SESSIONS_LINK_ATTR}]`);
-      if (existing?.getAttribute(SESSIONS_LINK_ATTR) === playerId) continue;
+      if (existing?.getAttribute(SESSIONS_LINK_ATTR) === playerId)
+        continue;
       existing?.remove();
-      if (!playerId) continue;
+      if (!playerId)
+        continue;
       const compare = [...row.querySelectorAll("button")].find((button) => text(button) === "Compare");
       const link = createSessionsLink(compare, playerId);
-      if (compare) compare.after(link);
-      else row.append(link);
+      if (compare)
+        compare.after(link);
+      else
+        row.append(link);
     }
     renderStoredOnly(roster, players, ownPlayerId, rosterIds);
   }
 
-  // src/page_scrappers/sessions.js
-  var lastSignature = null;
-  var isScrapingSessions = false;
-  var sessionsPumbility = () => parseNumber(text(document.querySelector(
-    '[data-testid="session-ceremony"] .sbd-pumb-big'
-  )));
+  // src/page_scrappers/sessions_list.js
   var isNewestSessionOpen = () => !!document.querySelector('[data-testid="session-card"]')?.classList.contains("sbd-card-now") && !findPageButton("newer");
-  async function syncSessionsPumbility(ownPlayerId) {
-    const playerId = sessionPagePlayerId();
-    if (!playerId) return;
-    const pumbility = sessionsPumbility();
-    if (pumbility === null) return;
-    if (!isNewestSessionOpen()) {
-      logPumbility(`found ${pumbility} for ${playerName() || playerId} (${playerId}) on Sessions page: not the newest session, ignoring`);
-      return;
-    }
-    await savePlayerInfo(playerId, playerName(), pumbility, ownPlayerId, "Sessions page");
-  }
-  async function addNewPlayer(playerId, report) {
-    report("Adding player");
-    if (isNewestSessionOpen()) {
-      await waitForChange(() => sessionsPumbility() !== null, "PUMBILITY", 3e3).catch((error) => console.warn(TAG, error.message));
-    }
-    const pumbility = isNewestSessionOpen() ? sessionsPumbility() : null;
-    await savePlayerInfo(playerId, playerName(), pumbility, await syncOwnPlayerId(), "Sessions page", true);
-  }
-  function playerName() {
-    return text(document.querySelector("main h5")).replace(/\s+[—–-]\s+Sessions$/i, "").trim();
-  }
-  function parseSessionScore(element) {
-    const p = element?.querySelector('[data-testid="peer-score"] p');
-    if (!p) return null;
-    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
-    return Number.isNaN(n) ? null : n;
-  }
-  function isPhoenix2Chart(element) {
-    return /\/difficulty\/Phoenix2\//i.test(element?.getAttribute("src") || "");
-  }
-  function parseHeroDate(heroWhen) {
-    const match = (heroWhen.split("\xB7")[1] || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
-    if (!match) return null;
-    const [, month, day, year] = match;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  function scrapeSessionScores() {
-    const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
-    const allPlays = document.querySelector('[data-testid="session-all-plays"]');
-    if (!highlights && !allPlays) return null;
-    const heroWhen = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'));
-    const mix = heroWhen.split("\xB7")[0].trim();
-    if (mix !== "Phoenix 2") return null;
-    const date = parseHeroDate(heroWhen);
-    if (!date) console.warn(`${TAG} Unable to parse the session date from "${heroWhen}"`);
-    const rowsByChart = /* @__PURE__ */ new Map();
-    const addScore = (track, chart, score) => {
-      if (!track || !isScrapLevel(chart) || score === null) return false;
-      const row = { track, chart, score };
-      const key = storageKey(row);
-      if (score > (rowsByChart.get(key)?.score ?? -1)) rowsByChart.set(key, row);
-      return true;
-    };
-    for (const card of highlights?.querySelectorAll('[data-testid="session-highlight-card"]') || []) {
-      const difficulty = card.querySelector("img.difficulty-bubble");
-      if (!isPhoenix2Chart(difficulty)) continue;
-      addScore(
-        text(card.querySelector(".hl-card-song")),
-        difficulty.getAttribute("alt") || "",
-        parseSessionScore(card)
-      );
-    }
-    const playRows = [...allPlays?.querySelectorAll('[data-testid="session-score-row"]') || []];
-    let scrapedScores = 0;
-    for (const row of playRows) {
-      const difficulty = row.querySelector("img.difficulty-bubble");
-      if (!isPhoenix2Chart(difficulty)) continue;
-      if (addScore(
-        text(row.querySelector('[data-testid="session-row-chart"]')),
-        difficulty.getAttribute("alt") || "",
-        parseSessionScore(row)
-      )) scrapedScores++;
-    }
-    return {
-      playerId: pagePlayerId(),
-      date,
-      rows: [...rowsByChart.values()],
-      scannedResults: playRows.length,
-      scrapedScores
-    };
-  }
-  function sessionPagePlayerId() {
-    return isSessionsPage() ? pagePlayerId() : null;
-  }
   function getSessionCards() {
     return [...document.querySelectorAll('[data-testid="session-card"]')];
   }
   function getSessionCardMix(card) {
     const meta = text(card.querySelector(".sbd-card-meta")).replace(/\s+/g, " ");
-    if (/^Phoenix 2(?:\s|$)/i.test(meta)) return "Phoenix 2";
-    if (/^Phoenix(?:\s|$)/i.test(meta)) return "Phoenix";
+    if (/^Phoenix 2(?:\s|$)/i.test(meta))
+      return "Phoenix 2";
+    if (/^Phoenix(?:\s|$)/i.test(meta))
+      return "Phoenix";
     return null;
   }
-  function getSessionCardInfo(card) {
-    if (getSessionCardMix(card) !== "Phoenix 2") return null;
+  function getPhoenix2CardInfo(card) {
+    if (getSessionCardMix(card) !== "Phoenix 2")
+      return null;
     const meta = text(card.querySelector(".sbd-card-meta")).replace(/\s+/g, " ");
     const title = meta.replace(/^Phoenix 2\s*(?:·|-)?\s*/i, "").trim();
     const timestamp = text(card.querySelector(".sbd-card-when")).replace(/\s+/g, " ");
-    if (!title || !timestamp) return null;
+    if (!title || !timestamp)
+      return null;
     return { title, timestamp };
   }
   function currentPhoenix2Sessions() {
     const sessions = [];
     for (const card of getSessionCards()) {
       const mix = getSessionCardMix(card);
-      if (mix === "Phoenix") return { sessions, reachedPhoenix: true };
-      if (mix !== "Phoenix 2") continue;
-      const info = getSessionCardInfo(card);
-      if (info) sessions.push({ card, info });
+      if (mix === "Phoenix")
+        return { sessions, reachedOlderMix: true };
+      if (mix !== "Phoenix 2")
+        continue;
+      const info = getPhoenix2CardInfo(card);
+      if (info)
+        sessions.push({ card, info });
     }
-    return { sessions, reachedPhoenix: false };
+    return { sessions, reachedOlderMix: false };
   }
   function sessionCardSignature() {
-    return JSON.stringify(getSessionCards().map((card) => getSessionCardInfo(card) || text(card)));
+    return JSON.stringify(getSessionCards().map((card) => getPhoenix2CardInfo(card) || text(card)));
   }
   function sessionCheckpointMatches(checkpoint, info) {
     return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;
   }
   function parseCardTimestamp(timestamp) {
     const match = timestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}):(\d{2})\s*([AP])M\b/i);
-    if (!match) return null;
+    if (!match)
+      return null;
     const [, day, month, hours, minutes, half] = match;
     return {
       date: `${Number(day)} ${month.toLowerCase()}`,
       minutes: (Number(hours) % 12 + (half.toUpperCase() === "P" ? 12 : 0)) * 60 + Number(minutes)
     };
   }
-  function findGrownCheckpoint(checkpoint, sessions) {
+  function findGrownSession(checkpoint, sessions) {
     const first = sessions[0]?.info;
-    if (!checkpoint || !first || findPageButton("newer")) return null;
-    if (sessions.some(({ info }) => sessionCheckpointMatches(checkpoint, info))) return null;
+    if (!checkpoint || !first || findPageButton("newer"))
+      return null;
+    if (sessions.some(({ info }) => sessionCheckpointMatches(checkpoint, info)))
+      return null;
     const was = parseCardTimestamp(checkpoint.timestamp);
     const now = parseCardTimestamp(first.timestamp);
     return first.title === checkpoint.title && was && now && was.date === now.date && now.minutes > was.minutes ? first : null;
@@ -1459,54 +1485,136 @@ Last try: ${lastTryDate || "unknown"}`;
       return patterns[direction].test(value) && !button.disabled && button.getAttribute("aria-disabled") !== "true";
     }) || null;
   }
-  function sameSessionDate(cardTimestamp, heroTimestamp) {
-    const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
-    const heroDate = heroTimestamp.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
-    if (!cardDate || !heroDate) return false;
-    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    return Number(cardDate[1]) === Number(heroDate[2]) && months.indexOf(cardDate[2].toLowerCase()) + 1 === Number(heroDate[1]) && cardDate[3].replace(/\s+/g, "").toLowerCase() === heroDate[3].replace(/\s+/g, "").toLowerCase();
-  }
   async function clickPageButton(button, direction) {
-    if (!button) return false;
+    if (!button)
+      return false;
     const before = sessionCardSignature();
     button.click();
     await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
     return true;
   }
-  async function saveSessionCheckpoint(playerId, info, scrapedScores, isNewSession) {
-    const stored = await chrome.storage.local.get(["players"]);
-    const players = { ...stored.players || {} };
-    const scrapStats = players[playerId]?.scrapStats || {};
-    players[playerId] = {
-      ...players[playerId],
-      lastScrapedSession: info,
-      scrapStats: {
-        scores: (scrapStats.scores || 0) + scrapedScores,
-        sessions: (scrapStats.sessions || 0) + (isNewSession ? 1 : 0)
-      }
+  function findCurrentCard(info) {
+    return currentPhoenix2Sessions().sessions.find((item) => sessionCheckpointMatches(info, item.info))?.card || null;
+  }
+
+  // src/page_scrappers/sessions_content.js
+  function isSessionsPage() {
+    return /^\/Player\/[^/]+\/Sessions\/?$/.test(location.pathname);
+  }
+  function sessionPagePlayerId() {
+    return isSessionsPage() ? pagePlayerId() : null;
+  }
+  function pagePlayerName() {
+    return text(document.querySelector("main h5")).replace(/\s+[—–-]\s+Sessions$/i, "").trim();
+  }
+  var readOpenSessionPumbility = () => parseNumber(text(document.querySelector(
+    '[data-testid="session-ceremony"] .sbd-pumb-big'
+  )));
+  function readSessionsPage() {
+    const playerId = sessionPagePlayerId();
+    if (!playerId || getSessionCards().length === 0)
+      return null;
+    return { playerId, name: pagePlayerName(), pumbility: isNewestSessionOpen() ? readOpenSessionPumbility() : null };
+  }
+  function parsePlayScore(element) {
+    const p = element?.querySelector('[data-testid="peer-score"] p');
+    if (!p)
+      return null;
+    const n = parseInt(p.textContent.replace(/[^\d]/g, ""), 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  function isPhoenix2Chart(element) {
+    return /\/difficulty\/Phoenix2\//i.test(element?.getAttribute("src") || "");
+  }
+  function parseSummaryDate(summary) {
+    const match = (summary.split("\xB7")[1] || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
+    if (!match)
+      return null;
+    const [, month, day, year] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  function scrapeSessionScores() {
+    const highlights = document.querySelector('[data-testid="session-highlight-cards"]');
+    const allPlays = document.querySelector('[data-testid="session-all-plays"]');
+    if (!highlights && !allPlays)
+      return null;
+    const summary = text(document.querySelector('[data-testid="session-hero"] .sbd-hero-when'));
+    const mix = summary.split("\xB7")[0].trim();
+    if (mix !== "Phoenix 2")
+      return null;
+    const date = parseSummaryDate(summary);
+    if (!date)
+      console.warn(`${TAG} Unable to parse the session date from "${summary}"`);
+    const rowsByChart = /* @__PURE__ */ new Map();
+    const addScore = (track, chart, score) => {
+      if (!track || !isScrapLevel(chart) || score === null)
+        return false;
+      const row = { track, chart, score };
+      const key = storageKey(row);
+      if (score > (rowsByChart.get(key)?.score ?? -1))
+        rowsByChart.set(key, row);
+      return true;
     };
-    const name = playerName();
-    if (name) players[playerId].name = name;
-    await chrome.storage.local.set({ players });
+    for (const card of highlights?.querySelectorAll('[data-testid="session-highlight-card"]') || []) {
+      const difficulty = card.querySelector("img.difficulty-bubble");
+      if (!isPhoenix2Chart(difficulty))
+        continue;
+      addScore(
+        text(card.querySelector(".hl-card-song")),
+        difficulty.getAttribute("alt") || "",
+        parsePlayScore(card)
+      );
+    }
+    const playRows = [...allPlays?.querySelectorAll('[data-testid="session-score-row"]') || []];
+    let scrapedScores = 0;
+    for (const row of playRows) {
+      const difficulty = row.querySelector("img.difficulty-bubble");
+      if (!isPhoenix2Chart(difficulty))
+        continue;
+      if (addScore(
+        text(row.querySelector('[data-testid="session-row-chart"]')),
+        difficulty.getAttribute("alt") || "",
+        parsePlayScore(row)
+      ))
+        scrapedScores++;
+    }
+    return {
+      playerId: pagePlayerId(),
+      date,
+      rows: [...rowsByChart.values()],
+      scannedResults: playRows.length,
+      scrapedScores
+    };
+  }
+  function sameSessionTime(cardTimestamp, summary) {
+    const cardDate = cardTimestamp.match(/\b(\d{1,2})\s+([A-Za-z]{3})\s*·\s*(\d{1,2}:\d{2}\s*[AP]M)\b/i);
+    const summaryDate = summary.match(/\b(\d{1,2})\/(\d{1,2})\/\d{4}\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
+    if (!cardDate || !summaryDate)
+      return false;
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    return Number(cardDate[1]) === Number(summaryDate[2]) && months.indexOf(cardDate[2].toLowerCase()) + 1 === Number(summaryDate[1]) && cardDate[3].replace(/\s+/g, "").toLowerCase() === summaryDate[3].replace(/\s+/g, "").toLowerCase();
   }
   function openSessionMismatches(info) {
-    const hero = document.querySelector('[data-testid="session-hero"]');
-    if (!hero) return ["session hero is missing"];
-    const heroWhen = text(hero.querySelector(".sbd-hero-when"));
-    const heroTitle = text(hero.querySelector(".sbd-hero-title"));
-    const heroMix = heroWhen.split("\xB7")[0].trim();
+    const header = document.querySelector('[data-testid="session-hero"]');
+    if (!header)
+      return ["session header is missing"];
+    const summary = text(header.querySelector(".sbd-hero-when"));
+    const sessionTitle = text(header.querySelector(".sbd-hero-title"));
+    const mix = summary.split("\xB7")[0].trim();
     const cardTitle = info.title.split("\xB7")[0].trim();
     const mismatches = [];
-    if (heroMix !== "Phoenix 2") mismatches.push(`mix: hero "${heroMix}", expected "Phoenix 2"`);
-    if (heroTitle !== cardTitle) mismatches.push(`title: hero "${heroTitle}", card "${cardTitle}"`);
-    if (!sameSessionDate(info.timestamp, heroWhen)) {
-      mismatches.push(`date: hero "${heroWhen}", card "${info.timestamp}"`);
+    if (mix !== "Phoenix 2")
+      mismatches.push(`mix: opened "${mix}", expected "Phoenix 2"`);
+    if (sessionTitle !== cardTitle)
+      mismatches.push(`title: opened "${sessionTitle}", card "${cardTitle}"`);
+    if (!sameSessionTime(info.timestamp, summary)) {
+      mismatches.push(`date: opened "${summary}", card "${info.timestamp}"`);
     }
-    if (!document.querySelector('[data-testid="session-all-plays"]')) mismatches.push("all plays list is missing");
+    if (!document.querySelector('[data-testid="session-all-plays"]'))
+      mismatches.push("all plays list is missing");
     return mismatches;
   }
-  async function parseSessionCard(card, info, playerId, report, progress) {
-    card.click();
+  async function loadSessionContent(info) {
     try {
       await waitForChange(() => openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
     } catch (error) {
@@ -1519,7 +1627,8 @@ Last try: ${lastTryDate || "unknown"}`;
       showAll.click();
       await waitForChange(
         () => {
-          if (!document.querySelector('[data-testid="session-show-all-plays"]')) return true;
+          if (!document.querySelector('[data-testid="session-show-all-plays"]'))
+            return true;
           const tally = [...document.querySelectorAll('[data-testid="session-hero"] .sbd-tally > div')].find((item) => text(item.querySelector(".sbd-tally-k")) === "Plays");
           const total = parseInt(text(tally?.querySelector(".sbd-tally-v")).replace(/[^\d]/g, ""), 10);
           return Number.isFinite(total) && document.querySelectorAll('[data-testid="session-score-row"]').length >= total;
@@ -1527,40 +1636,147 @@ Last try: ${lastTryDate || "unknown"}`;
         `all plays for "${info.title}" to load`
       );
     }
+  }
+
+  // src/page_scrappers/session_scores.js
+  var lastSignature = null;
+  async function saveSessionScores(result, playerName, ownPlayerId, allowNewPlayer = false) {
+    const playerId = result.playerId;
+    if (!playerId) {
+      console.warn(`${TAG} Unable to identify the player ID for session scores`);
+      return;
+    }
+    const stored = await chrome.storage.local.get(["results", "players"]);
+    if (!allowNewPlayer && !isKnownPlayer(stored.players, playerId, ownPlayerId))
+      return;
+    const signature = JSON.stringify({ sessions: result, ownPlayerId });
+    if (signature === lastSignature)
+      return;
+    lastSignature = signature;
+    const updates = {};
+    const events = [];
+    const results = { ...stored.results || {} };
+    let resultsChanged = false;
+    if (playerName) {
+      const players = { ...stored.players || {} };
+      if (players[playerId]?.name !== playerName) {
+        players[playerId] = { ...players[playerId], name: playerName };
+        updates.players = players;
+      }
+    }
+    for (const row of result.rows) {
+      const key = storageKey(row);
+      const scores = { ...results[key] || {} };
+      const scoreUpdate = saveScoreTry(scores, playerId, row.score, result.date);
+      if (scores[playerId] === results[key]?.[playerId])
+        continue;
+      results[key] = scores;
+      resultsChanged = true;
+      if (scoreUpdate)
+        events.push({
+          kind: "rival",
+          change: scoreUpdate.change,
+          track: row.track,
+          chart: row.chart,
+          player: playerId === ownPlayerId ? "You" : playerName || playerId,
+          score: row.score,
+          prevScore: scoreUpdate.prevScore,
+          delta: null
+        });
+    }
+    if (resultsChanged)
+      updates.results = results;
+    if (Object.keys(updates).length)
+      await chrome.storage.local.set(updates);
+    if (events.length === 0)
+      return;
+    const player = playerId === ownPlayerId ? "You" : playerName || playerId;
+    console.log(`${TAG} sessions: ${player}, ${events.length} best-score update(s)`);
+    console.table(events.map((event) => ({
+      type: event.change,
+      track: event.track,
+      chart: event.chart,
+      player,
+      score: event.score,
+      prevScore: event.prevScore
+    })));
+    showToast(player, events);
+  }
+  async function saveScrapProgress(playerId, playerName, info, scrapedScores, isNewSession) {
+    const stored = await chrome.storage.local.get(["players"]);
+    const players = { ...stored.players || {} };
+    const scrapStats = players[playerId]?.scrapStats || {};
+    players[playerId] = {
+      ...players[playerId],
+      lastScrapedSession: info,
+      scrapStats: {
+        scores: (scrapStats.scores || 0) + scrapedScores,
+        sessions: (scrapStats.sessions || 0) + (isNewSession ? 1 : 0)
+      }
+    };
+    if (playerName)
+      players[playerId].name = playerName;
+    await chrome.storage.local.set({ players });
+  }
+  async function scrapeSession(card, info, playerId, playerName, isNewSession) {
+    card.click();
+    await loadSessionContent(info);
     const result = scrapeSessionScores();
-    if (!result) throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
-    if (result.playerId !== playerId) throw new Error("Session player changed while scraping");
-    await runSessionScores(result, await syncOwnPlayerId(), true);
-    await saveSessionCheckpoint(playerId, info, result.scrapedScores, info !== progress.grown);
-    progress.count++;
-    progress.results += result.scrapedScores;
+    if (!result)
+      throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
+    if (result.playerId !== playerId)
+      throw new Error("Session player changed while scraping");
+    await saveSessionScores(result, playerName, await syncOwnPlayerId(), true);
+    await saveScrapProgress(playerId, playerName, info, result.scrapedScores, isNewSession);
     showSessionToast(
-      playerName() || playerId,
+      playerName || playerId,
       info.title,
       info.timestamp,
       result.scannedResults
     );
+    return result.scrapedScores;
   }
-  function currentPhoenix2SessionCards() {
-    return currentPhoenix2Sessions().sessions;
+
+  // src/page_scrappers/sessions.js
+  var isScrapingSessions = false;
+  async function saveNewestSessionPumbility(ownPlayerId) {
+    const playerId = sessionPagePlayerId();
+    if (!playerId)
+      return;
+    const pumbility = readOpenSessionPumbility();
+    if (pumbility === null)
+      return;
+    if (!isNewestSessionOpen()) {
+      logPumbility(`found ${pumbility} for ${pagePlayerName() || playerId} (${playerId}) on Sessions page: not the newest session, ignoring`);
+      return;
+    }
+    await savePlayerInfo(playerId, pagePlayerName(), pumbility, ownPlayerId, "Sessions page");
   }
-  function findCurrentCard(info) {
-    return currentPhoenix2SessionCards().find((item) => sessionCheckpointMatches(info, item.info))?.card || null;
+  async function addNewPlayer(playerId, report) {
+    report("Adding player");
+    if (isNewestSessionOpen()) {
+      await waitForChange(() => readOpenSessionPumbility() !== null, "PUMBILITY", 3e3).catch((error) => console.warn(TAG, error.message));
+    }
+    const pumbility = isNewestSessionOpen() ? readOpenSessionPumbility() : null;
+    await savePlayerInfo(playerId, pagePlayerName(), pumbility, await syncOwnPlayerId(), "Sessions page", true);
   }
   async function scrapePlayerSessions(report = () => {
   }) {
     const playerId = sessionPagePlayerId();
-    if (!playerId) throw new Error("Grabbing scores is only available on a player Sessions page");
-    if (isScrapingSessions) return;
+    if (!playerId)
+      throw new Error("Grabbing scores is only available on a player Sessions page");
+    if (isScrapingSessions)
+      return;
     isScrapingSessions = true;
     try {
       const stored = await chrome.storage.local.get(["players", "ownPlayerId"]);
-      if (!isKnownPlayer(stored.players, playerId, stored.ownPlayerId)) await addNewPlayer(playerId, report);
+      if (!isKnownPlayer(stored.players, playerId, stored.ownPlayerId))
+        await addNewPlayer(playerId, report);
       const checkpoint = stored.players?.[playerId]?.lastScrapedSession || null;
       const pages = [];
       const seenPages = /* @__PURE__ */ new Set();
       let checkpointFound = !checkpoint;
-      let reachedPhoenixBoundary = false;
+      let reachedOlderMixBoundary = false;
       let grown = null;
       const countFound = () => pages.reduce((sum, page) => sum + page.length, 0);
       const reportFound = () => report(`Searching sessions, ${countFound()} found...`);
@@ -1571,14 +1787,16 @@ Last try: ${lastTryDate || "unknown"}`;
           const page = currentPhoenix2Sessions();
           pages.push(page.sessions.map(({ info }) => info));
           reportFound();
-          if (page.reachedPhoenix) break;
+          if (page.reachedOlderMix)
+            break;
           const next = findPageButton("older");
-          if (!next) break;
+          if (!next)
+            break;
           await clickPageButton(next, "older");
           signature = sessionCardSignature();
         }
       } else {
-        grown = findGrownCheckpoint(checkpoint, currentPhoenix2Sessions().sessions);
+        grown = findGrownSession(checkpoint, currentPhoenix2Sessions().sessions);
         if (grown) {
           pages.push([grown]);
           checkpointFound = true;
@@ -1598,148 +1816,82 @@ Last try: ${lastTryDate || "unknown"}`;
           }
           pages.push(page);
           reportFound();
-          if (checkpointFound || currentPage.reachedPhoenix) {
-            reachedPhoenixBoundary = currentPage.reachedPhoenix;
+          if (checkpointFound || currentPage.reachedOlderMix) {
+            reachedOlderMixBoundary = currentPage.reachedOlderMix;
             break;
           }
           const next = findPageButton("older");
-          if (!next) break;
+          if (!next)
+            break;
           await clickPageButton(next, "older");
           signature = sessionCardSignature();
         }
       }
-      if (checkpoint && !checkpointFound && !reachedPhoenixBoundary) {
+      if (checkpoint && !checkpointFound && !reachedOlderMixBoundary) {
         throw new Error("Saved session checkpoint was not found in the Sessions history");
       }
       const total = countFound();
-      const progress = { count: 0, results: 0, grown };
+      const playerName = pagePlayerName();
+      let scrapedSessions = 0;
+      let scrapedResults = 0;
       for (let pageIndex = pages.length - 1; pageIndex >= 0; pageIndex--) {
         for (const info of [...pages[pageIndex]].reverse()) {
           const card = findCurrentCard(info);
-          if (!card) throw new Error(`Session "${info.title}" is no longer visible on its page`);
-          report(`Scrapping session ${progress.count + 1} of ${total}...`);
-          await parseSessionCard(card, info, playerId, report, progress);
+          if (!card)
+            throw new Error(`Session "${info.title}" is no longer visible on its page`);
+          report(`Scrapping session ${scrapedSessions + 1} of ${total}...`);
+          scrapedResults += await scrapeSession(card, info, playerId, playerName, info !== grown);
+          scrapedSessions++;
         }
         if (pageIndex > 0) {
           const newer = findPageButton("newer");
-          if (!newer) throw new Error("Unable to return to newer Sessions pages");
+          if (!newer)
+            throw new Error("Unable to return to newer Sessions pages");
           await clickPageButton(newer, "newer");
         }
       }
-      if (progress.count) await syncSessionsPumbility(await syncOwnPlayerId());
+      if (scrapedSessions)
+        await saveNewestSessionPumbility(await syncOwnPlayerId());
       const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-      report(`Finished scrapping ${plural(progress.count, "session")} with ${plural(progress.results, "result")}`);
+      report(`Finished scrapping ${plural(scrapedSessions, "session")} with ${plural(scrapedResults, "result")}`);
       await recordSessionsVisit();
       return true;
     } finally {
       isScrapingSessions = false;
     }
   }
-  async function runSessionScores(result, ownPlayerId, allowNewPlayer = false) {
-    const playerId = result.playerId;
-    if (!playerId) {
-      console.warn(`${TAG} Unable to identify the player ID for session scores`);
-      return;
-    }
-    const stored = await chrome.storage.local.get(["results", "players"]);
-    if (!allowNewPlayer && !isKnownPlayer(stored.players, playerId, ownPlayerId)) return;
-    const signature = JSON.stringify({ sessions: result, ownPlayerId });
-    if (signature === lastSignature) return;
-    lastSignature = signature;
-    const name = playerName();
-    const updates = {};
-    const events = [];
-    const results = { ...stored.results || {} };
-    let resultsChanged = false;
-    if (name) {
-      const players = { ...stored.players || {} };
-      if (players[playerId]?.name !== name) {
-        players[playerId] = { ...players[playerId], name };
-        updates.players = players;
-      }
-    }
-    for (const row of result.rows) {
-      const key = storageKey(row);
-      const scores = { ...results[key] || {} };
-      const scoreUpdate = saveScoreTry(scores, playerId, row.score, result.date);
-      if (scores[playerId] === results[key]?.[playerId]) continue;
-      results[key] = scores;
-      resultsChanged = true;
-      if (scoreUpdate) events.push({
-        kind: "rival",
-        change: scoreUpdate.change,
-        track: row.track,
-        chart: row.chart,
-        player: playerId === ownPlayerId ? "You" : name || playerId,
-        score: row.score,
-        prevScore: scoreUpdate.prevScore,
-        delta: null
-      });
-    }
-    if (resultsChanged) updates.results = results;
-    if (Object.keys(updates).length) await chrome.storage.local.set(updates);
-    if (events.length === 0) return;
-    const player = playerId === ownPlayerId ? "You" : name || playerId;
-    console.log(`${TAG} sessions: ${player}, ${events.length} best-score update(s)`);
-    console.table(events.map((event) => ({
-      type: event.change,
-      track: event.track,
-      chart: event.chart,
-      player,
-      score: event.score,
-      prevScore: event.prevScore
-    })));
-    showToast(player, events);
-  }
-  function isSessionsPage() {
-    return /^\/Player\/[^/]+\/Sessions\/?$/.test(location.pathname);
-  }
-  function isSessionsContentLoaded() {
-    return isSessionsPage() && getSessionCards().length > 0;
-  }
   function countNewSessions(checkpoint) {
-    const { sessions, reachedPhoenix } = currentPhoenix2Sessions();
+    const { sessions, reachedOlderMix } = currentPhoenix2Sessions();
     const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
-    if (index >= 0) return { count: index, more: false };
-    if (findGrownCheckpoint(checkpoint, sessions)) return { count: 1, more: false };
-    return { count: sessions.length, more: !reachedPhoenix && !!findPageButton("older") };
-  }
-  var cachedStorage = null;
-  async function loadScrapState() {
-    const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
-    cachedStorage = { players: players || {}, ownPlayerId: typeof ownPlayerId === "string" ? ownPlayerId : null };
-  }
-  function getScrapInfo() {
-    const playerId = sessionPagePlayerId();
-    if (!playerId || !cachedStorage || !isSessionsContentLoaded()) return null;
-    const { players, ownPlayerId } = cachedStorage;
-    return {
-      known: isKnownPlayer(players, playerId, ownPlayerId),
-      name: displayName(playerName()),
-      pumbility: isNewestSessionOpen() ? sessionsPumbility() : null,
-      ...countNewSessions(players[playerId]?.lastScrapedSession || null)
-    };
+    if (index >= 0)
+      return { count: index, more: false };
+    if (findGrownSession(checkpoint, sessions))
+      return { count: 1, more: false };
+    return { count: sessions.length, more: !reachedOlderMix && !!findPageButton("older") };
   }
   async function recordSessionsVisit() {
     const playerId = sessionPagePlayerId();
-    if (!playerId) return;
+    if (!playerId)
+      return;
     const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
-    if (!isKnownPlayer(players, playerId, ownPlayerId)) return;
+    if (!isKnownPlayer(players, playerId, ownPlayerId))
+      return;
     await chrome.storage.local.set({
       players: { ...players, [playerId]: { ...players[playerId], sessionsVisitedAt: Date.now() } }
     });
   }
   async function runSessionsPage(ownPlayerId) {
-    await syncSessionsPumbility(ownPlayerId);
+    await saveNewestSessionPumbility(ownPlayerId);
   }
 
   // src/content.js
   var rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
-  var scrapOverlay = createScrapOverlay(
-    scrapePlayerSessions,
-    getScrapInfo,
-    () => recordSessionsVisit().catch((error) => console.error(TAG, error))
-  );
+  var scrapOverlay = createScrapOverlay({
+    scrapeResults: scrapePlayerSessions,
+    readSessionsPage,
+    countNewSessions,
+    onNothingToGrab: () => recordSessionsVisit().catch((error) => console.error(TAG, error))
+  });
   var timer = null;
   async function run() {
     const ownPlayerId = await syncOwnPlayerId();
@@ -1754,13 +1906,15 @@ Last try: ${lastTryDate || "unknown"}`;
     await runProfilePage(ownPlayerId);
   }
   chrome.storage.onChanged.addListener((_, area) => {
-    if (area !== "local") return;
-    if (rivalsWindow.isOpen()) rivalsWindow.render().catch((error) => console.error(TAG, error));
-    loadScrapState().then(() => scrapOverlay.update()).catch((error) => console.error(TAG, error));
+    if (area !== "local")
+      return;
+    if (rivalsWindow.isOpen())
+      rivalsWindow.render().catch((error) => console.error(TAG, error));
+    scrapOverlay.reload().catch((error) => console.error(TAG, error));
   });
   var pending = migrateStorage().then(() => {
     rivalsWindow.initialize();
-    return loadScrapState().then(() => scrapOverlay.update());
+    return scrapOverlay.reload();
   }).catch((error) => console.error(TAG, error));
   var schedule = () => {
     scrapOverlay.update();

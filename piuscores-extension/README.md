@@ -49,10 +49,7 @@ files, or use `npm run watch` to rebuild when they change.
 
 ## Conventions
 
-Use underscores, not hyphens, in folder and module names
-(for example `page_scrappers/common.js`).
-
-Separate top-level functions in source files with two blank lines, not one.
+Follow the coding rules in [CODING_RULES.md](CODING_RULES.md).
 
 After every code change in `src/`, rebuild `dist/` with `npm run build` and
 commit the regenerated files together with the source change.

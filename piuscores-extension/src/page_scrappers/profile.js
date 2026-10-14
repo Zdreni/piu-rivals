@@ -8,12 +8,14 @@ function profilePlayerId() {
 
 export async function runProfilePage(ownPlayerId) {
   const playerId = profilePlayerId();
-  if (!playerId) return;
-  const hero = document.querySelector('[data-testid="player-hero"]');
+  if (! playerId)
+    return;
+
+  const profileHeader = document.querySelector('[data-testid="player-hero"]');
   await savePlayerInfo(
     playerId,
-    text(hero?.querySelector('h5')),
-    parseNumber(text(hero?.querySelector('.ph-pum .cmp-hero-num'))),
+    text(profileHeader?.querySelector('h5')),
+    parseNumber(text(profileHeader?.querySelector('.ph-pum .cmp-hero-num'))),
     ownPlayerId,
     'profile page',
   );

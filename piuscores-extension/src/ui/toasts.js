@@ -21,14 +21,22 @@ const toastStyles = `
   @keyframes in { from { opacity: 0; transform: translateY(8px); } }
 `;
 
-const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString('en-US'));
+const fmt = (n) => (n === null  ||  n === undefined ? '—' : n.toLocaleString('en-US'));
+
+
 const fmtDelta = (n) => {
-  if (n === null || n === undefined) return '<span>—</span>';
+  if (n === null  ||  n === undefined)
+    return '<span>—</span>';
+
   const cls = n > 0 ? 'pos' : n < 0 ? 'neg' : '';
   return `<span class="${cls}">${n > 0 ? '+' : ''}${fmt(n)}</span>`;
 };
+
+
 const fmtScore = (score, prev) =>
-  prev === null || prev === score ? fmt(score) : `${fmt(prev)} → ${fmt(score)}`;
+  prev === null  ||  prev === score ? fmt(score) : `${fmt(prev)} → ${fmt(score)}`;
+
+
 const esc = (s) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -50,22 +58,26 @@ function eventLines(event) {
 function toastStack() {
   const root = useStyles('toasts', toastStyles);
   let stack = root.querySelector('.stack');
-  if (!stack) {
+  if (! stack) {
     stack = document.createElement('div');
     stack.className = 'stack';
     root.appendChild(stack);
   }
+
   return stack;
 }
 
 
 function pushToast(toast) {
   const close = () => {
-    if (toast.classList.contains('out')) return;
+    if (toast.classList.contains('out'))
+      return;
+
     toast.classList.add('out');
     toast.addEventListener('transitionend', () => toast.remove(), { once: true });
     setTimeout(() => toast.remove(), 600);
   };
+
   toast.addEventListener('click', close);
   setTimeout(close, TOAST_MS);
   toastStack().appendChild(toast);
@@ -75,6 +87,7 @@ function pushToast(toast) {
 export function showToast(rival, events) {
   const toast = document.createElement('div');
   toast.className = 'toast';
+
   const all = events.flatMap(eventLines);
   const lines = all.slice(0, MAX_LINES).map((line) => `<div class="line">${line}</div>`).join('');
   const more = all.length > MAX_LINES
@@ -109,6 +122,7 @@ export function showPlayerAddedToast(player, playerId, pumbility) {
 export function showPumbilityToast(player, pumbility, prevPumbility) {
   const toast = document.createElement('div');
   toast.className = 'toast';
+
   const change = prevPumbility === null
     ? '<span class="new">NEW</span>'
     : fmtDelta(pumbility - prevPumbility);

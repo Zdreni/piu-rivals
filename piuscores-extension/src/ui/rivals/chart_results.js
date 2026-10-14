@@ -55,10 +55,10 @@ export const chartResultsStyles = `
 // Score cell tooltip; dates are missing for scores stored before they were tracked.
 // The best score line is dropped when it was set on the last try.
 const datesTitle = ({ bestScoreDate, lastTryDate }) =>
-  bestScoreDate && bestScoreDate === lastTryDate
+  bestScoreDate  &&  bestScoreDate === lastTryDate
     ? `Last try: ${lastTryDate}`
-    : `Best score: ${bestScoreDate || 'unknown'}
-Last try: ${lastTryDate || 'unknown'}`;
+    : `Best score: ${bestScoreDate  ||  'unknown'}
+Last try: ${lastTryDate  ||  'unknown'}`;
 
 
 // The results column: tabs splitting the charts of the selected level, and their score table.
@@ -67,6 +67,7 @@ export function createChartResults(container, onSelectTab) {
   container.innerHTML = `
     <div class="tabs" role="tablist" aria-label="Score results"></div>
     <div class="dlg-body" role="tabpanel"></div>`;
+
   const tabs = container.querySelector('.tabs');
   const body = container.querySelector('.dlg-body');
   // Charts in the "Lost" and "Hidden" tabs whose rivals you beat are unrolled.
@@ -75,25 +76,33 @@ export function createChartResults(container, onSelectTab) {
 
   tabs.addEventListener('click', (event) => {
     const tab = event.target.closest('.tab');
-    if (tab) onSelectTab(tab.dataset.tab);
+    if (tab)
+      onSelectTab(tab.dataset.tab);
   });
+
   body.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-expand]');
-    if (!button) return;
+    if (! button)
+      return;
+
     expandedCharts.add(button.dataset.expand);
-    if (lastRender) render(...lastRender);
+    if (lastRender)
+      render(...lastRender);
   });
 
   // With `collapseWon`, rivals you beat are folded into a "show N others..." row until it is clicked.
   // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
   function chartRows(chart, myName, collapseWon, colorByRealDiff) {
     const all = [...chart.rivals];
-    if (chart.mine !== null) all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
-    all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+    if (chart.mine !== null)
+      all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
+
+    all.sort((a, b) => b.score - a.score  ||  (b.me ? 1 : 0) - (a.me ? 1 : 0));
+
     const key = `${chart.track}|${chart.chart}`;
-    const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
-    const folded = collapseWon && !expandedCharts.has(key) ? all.filter(isWon).length : 0;
-    const list = folded ? all.filter((rival) => !isWon(rival)) : all;
+    const isWon = (rival) => ! rival.me  &&  rival.delta !== null  &&  rival.delta > 0;
+    const folded = collapseWon  &&  ! expandedCharts.has(key) ? all.filter(isWon).length : 0;
+    const list = folded ? all.filter((rival) => ! isWon(rival)) : all;
     const rowCount = list.length + (folded ? 1 : 0);
     const rowStart = (i) => (i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>');
 
@@ -102,21 +111,25 @@ export function createChartResults(container, onSelectTab) {
         ? `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
            <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>`
         : '';
+
       const tr = rowStart(i);
       if (rival.me) {
         return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
       }
-      const won = rival.delta !== null && rival.delta > 0 ? ' won' : ' ahead';
+
+      const won = rival.delta !== null  &&  rival.delta > 0 ? ' won' : ' ahead';
       const playerId = rival.playerId;
       const name = playerId
         ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
         : esc(displayName(rival.player));
       return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
     });
+
     if (folded) {
       rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
         + `data-expand="${esc(key)}">...show ${folded} other${folded === 1 ? '' : 's'}...</button></td></tr>`);
     }
+
     return rows;
   }
 
@@ -130,6 +143,7 @@ export function createChartResults(container, onSelectTab) {
   // `emptyMessage` replaces the per-tab message when there is nothing to show at all.
   function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
     lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage];
+
     const groups = hiddenGroups.filter(({ charts }) => charts.length);
     const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
       id, id === 'hidden'
@@ -137,11 +151,12 @@ export function createChartResults(container, onSelectTab) {
         : levelCharts.filter((chart) => chartTier(chart) === id).length,
     ]));
     // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
-    if (selectedTab === 'hidden' && tabCounts.hidden === 0) {
+    if (selectedTab === 'hidden'  &&  tabCounts.hidden === 0) {
       onSelectTab('rivals-win');
       return;
     }
-    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden' || tabCounts.hidden).map(({ id, label }) =>
+
+    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden'  ||  tabCounts.hidden).map(({ id, label }) =>
       `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
       + `${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join('');
 
@@ -160,10 +175,11 @@ export function createChartResults(container, onSelectTab) {
         + tableRows(charts, myName, true, true).join('')).join('');
     } else {
       const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
-      const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
-      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab] || byTargetWeight);
+      const byRivalCount = (a, b) => b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
+      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab]  ||  byTargetWeight);
       rows = tableRows(visible, myName, selectedTab === 'rivals-win').join('');
     }
+
     body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
       <tbody>${rows}</tbody></table>`;

@@ -8,7 +8,8 @@ const DEFAULT_STATE = { isOpen: false, selectedLevel: null, selectedTab: 'rivals
 export function readUiState() {
   try {
     const raw = sessionStorage.getItem(UI_STATE_KEY);
-    if (!raw) return { ...DEFAULT_STATE };
+    if (! raw)
+      return { ...DEFAULT_STATE };
 
     const saved = JSON.parse(raw);
     return {
