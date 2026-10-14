@@ -99,7 +99,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     const [allCharts, { players, ownPlayerId, bestCounts }, preferences] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
 
-    const { hiddenRivals, retryCooldown } = preferences;
+    const { hiddenRivals, retryCooldown, npMinimalRivals } = preferences;
     const hidden = new Set(hiddenRivals);
 
     // Lost charts tried within the retry cooldown stay hidden until it passes; unknown dates never hide.
@@ -110,7 +110,9 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
 
     const shownCharts = allCharts
       .map((chart) => withRivals(chart, (rival) => ! hidden.has(rival.playerId)))
-      .filter(Boolean);
+      .filter(Boolean)
+      // Unplayed charts count as np only once enough shown rivals have played them.
+      .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
 
     const charts = shownCharts.filter((chart) => ! coolingDown(chart));
     const coolingCharts = shownCharts.filter(coolingDown);

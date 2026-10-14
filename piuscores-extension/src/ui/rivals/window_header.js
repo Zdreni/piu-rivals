@@ -1,6 +1,6 @@
 import {
-  clampRetryCooldown, clampScoreCap, displayName, loadPreferences, MAX_RETRY_COOLDOWN, MAX_SCORE_CAP, MIN_SCORE_CAP,
-  savePreferences, SCORE_CAP_STEP,
+  clampNpMinimalRivals, clampRetryCooldown, clampScoreCap, displayName, loadPreferences, MAX_NP_RIVALS,
+  MAX_RETRY_COOLDOWN, MAX_SCORE_CAP, MIN_NP_RIVALS, MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP,
 } from '../../storage.js';
 import { esc, statWords } from './common.js';
 
@@ -36,7 +36,7 @@ export const windowHeaderStyles = `
 `;
 
 
-// The window title with your totals, the score cap and retry cooldown, and the export / clear data / close buttons.
+// The window title with your totals, the score cap, retry cooldown and np minimal rivals, and the export / clear data / close buttons.
 // `onChange` re-renders the window after a setting changed; `onCleared` runs after all data was cleared.
 export function createWindowHeader(container, { exportTargets, onChange, onCleared, onClose }) {
   container.innerHTML = `<h2>Rivals</h2>
@@ -51,6 +51,11 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
         <button type="button" data-step="-1" aria-label="Shorten retry cooldown">−</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Lengthen retry cooldown">+</button></div>
+      <div class="stepper np-minimal-rivals" title="Count an unplayed chart as np only when at least this many rivals played it">
+        <span class="stepper-label">NP min rivals</span>
+        <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">−</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
     </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
@@ -59,6 +64,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   const title = container.querySelector('h2');
   const scoreCapControl = container.querySelector('.score-cap');
   const retryCooldownControl = container.querySelector('.retry-cooldown');
+  const npMinimalRivalsControl = container.querySelector('.np-minimal-rivals');
 
   container.querySelector('.export').addEventListener('click', () => {
     exportTargets().catch((error) => console.error('[piuscores]', error));
@@ -100,6 +106,9 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   bindStepper(retryCooldownControl, ({ retryCooldown }, step) =>
     ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
 
+  bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step) =>
+    ({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) }));
+
   function renderStepper(control, text, value, min, max, isOff) {
     control.classList.toggle('off', isOff);
     control.querySelector('.stepper-value').textContent = text;
@@ -107,13 +116,15 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     control.querySelector('[data-step="1"]').disabled = value >= max;
   }
 
-  function render(me, totals, { scoreCap, retryCooldown }) {
+  function render(me, totals, { scoreCap, retryCooldown, npMinimalRivals }) {
     const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
     title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals)}</span>`;
 
     renderStepper(scoreCapControl, `${scoreCap / 1000}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
     renderStepper(retryCooldownControl, retryCooldown ? `${retryCooldown}d` : 'off', retryCooldown, 0, MAX_RETRY_COOLDOWN,
       retryCooldown === 0);
+    renderStepper(npMinimalRivalsControl, `${npMinimalRivals}`, npMinimalRivals, MIN_NP_RIVALS, MAX_NP_RIVALS,
+      npMinimalRivals === MIN_NP_RIVALS);
   }
 
   return { render };

@@ -9,6 +9,8 @@ export const MIN_SCORE_CAP = 995000;
 export const MAX_SCORE_CAP = 1000000;
 export const SCORE_CAP_STEP = 1000;
 export const MAX_RETRY_COOLDOWN = 7;
+export const MIN_NP_RIVALS = 1;
+export const MAX_NP_RIVALS = 5;
 
 // Names carry a "#1234" tag suffix; it's left out when showing them.
 export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
@@ -169,6 +171,9 @@ export function daysSince(date) {
 }
 
 
+export const clampNpMinimalRivals = (count) => Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
+
+
 export const clampScoreCap = (cap) =>
   Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
 
@@ -179,12 +184,13 @@ function parsePreferences(preferences) {
     hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
     scoreCap: typeof prefs.scoreCap === 'number' ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
     retryCooldown: typeof prefs.retryCooldown === 'number' ? clampRetryCooldown(prefs.retryCooldown) : 0,
+    npMinimalRivals: typeof prefs.npMinimalRivals === 'number' ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS,
   };
 }
 
 
 // Preferences are stored as
-// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, retryCooldown: <days> } }.
+// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, retryCooldown: <days>, npMinimalRivals: <count> } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
   return parsePreferences(preferences);

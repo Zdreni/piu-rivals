@@ -6,6 +6,8 @@
   var MAX_SCORE_CAP = 1e6;
   var SCORE_CAP_STEP = 1e3;
   var MAX_RETRY_COOLDOWN = 7;
+  var MIN_NP_RIVALS = 1;
+  var MAX_NP_RIVALS = 5;
   var displayName = (name) => name.replace(/\s*#\d{4}$/, "");
   var storageKey = (row) => `${row.track}|${row.chart}`;
   function isKnownPlayer(players, playerId, ownPlayerId) {
@@ -108,13 +110,15 @@
     const now = /* @__PURE__ */ new Date();
     return Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.parse(`${date}T00:00:00Z`)) / 864e5);
   }
+  var clampNpMinimalRivals = (count) => Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
   var clampScoreCap = (cap) => Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
   function parsePreferences(preferences) {
     const prefs = preferences && typeof preferences === "object" ? preferences : {};
     return {
       hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
       scoreCap: typeof prefs.scoreCap === "number" ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
-      retryCooldown: typeof prefs.retryCooldown === "number" ? clampRetryCooldown(prefs.retryCooldown) : 0
+      retryCooldown: typeof prefs.retryCooldown === "number" ? clampRetryCooldown(prefs.retryCooldown) : 0,
+      npMinimalRivals: typeof prefs.npMinimalRivals === "number" ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS
     };
   }
   async function loadPreferences() {
@@ -630,6 +634,11 @@ Last try: ${lastTryDate || "unknown"}`;
         <button type="button" data-step="-1" aria-label="Shorten retry cooldown">\u2212</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Lengthen retry cooldown">+</button></div>
+      <div class="stepper np-minimal-rivals" title="Count an unplayed chart as np only when at least this many rivals played it">
+        <span class="stepper-label">NP min rivals</span>
+        <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">\u2212</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
     </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
@@ -637,6 +646,7 @@ Last try: ${lastTryDate || "unknown"}`;
     const title = container.querySelector("h2");
     const scoreCapControl = container.querySelector(".score-cap");
     const retryCooldownControl = container.querySelector(".retry-cooldown");
+    const npMinimalRivalsControl = container.querySelector(".np-minimal-rivals");
     container.querySelector(".export").addEventListener("click", () => {
       exportTargets2().catch((error) => console.error("[piuscores]", error));
     });
@@ -666,13 +676,14 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     bindStepper(scoreCapControl, ({ scoreCap }, step) => ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
     bindStepper(retryCooldownControl, ({ retryCooldown }, step) => ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
+    bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step) => ({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) }));
     function renderStepper(control, text2, value, min, max, isOff) {
       control.classList.toggle("off", isOff);
       control.querySelector(".stepper-value").textContent = text2;
       control.querySelector('[data-step="-1"]').disabled = value <= min;
       control.querySelector('[data-step="1"]').disabled = value >= max;
     }
-    function render(me, totals, { scoreCap, retryCooldown }) {
+    function render(me, totals, { scoreCap, retryCooldown, npMinimalRivals }) {
       const text2 = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
       title.innerHTML = `${esc(text2)}<span class="head-stats"> \u2014 ${statWords(totals)}</span>`;
       renderStepper(scoreCapControl, `${scoreCap / 1e3}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
@@ -683,6 +694,14 @@ Last try: ${lastTryDate || "unknown"}`;
         0,
         MAX_RETRY_COOLDOWN,
         retryCooldown === 0
+      );
+      renderStepper(
+        npMinimalRivalsControl,
+        `${npMinimalRivals}`,
+        npMinimalRivals,
+        MIN_NP_RIVALS,
+        MAX_NP_RIVALS,
+        npMinimalRivals === MIN_NP_RIVALS
       );
     }
     return { render };
@@ -795,13 +814,13 @@ Last try: ${lastTryDate || "unknown"}`;
     async function render() {
       ensure();
       const [allCharts, { players, ownPlayerId, bestCounts }, preferences] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
-      const { hiddenRivals, retryCooldown } = preferences;
+      const { hiddenRivals, retryCooldown, npMinimalRivals } = preferences;
       const hidden = new Set(hiddenRivals);
       const coolingDown = (chart) => {
         const days = daysSince(chart.myDates.lastTryDate);
         return chartTier(chart) === "rivals-win" && days !== null && days < retryCooldown;
       };
-      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean);
+      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean).filter((chart) => !chart.unplayed || chart.rivals.length >= npMinimalRivals);
       const charts = shownCharts.filter((chart) => !coolingDown(chart));
       const coolingCharts = shownCharts.filter(coolingDown);
       const isCapLoss = (chart) => chartTier(chart) !== "rivals-win" && chart.rivals.some((rival) => rival.realDelta !== null && rival.realDelta < 0);
