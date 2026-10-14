@@ -19,6 +19,14 @@ export const windowHeaderStyles = `
                     width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
   .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
   .stepper button:disabled { opacity: .35; cursor: default; }
+  /* A two-way switch with the same label above it as the steppers. */
+  .switch { display: grid; grid-template-columns: auto auto; gap: 2px 0; color: #9AB3A3; }
+  .switch button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; height: 24px; padding: 0 8px;
+                   font: 400 13px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .switch button:first-of-type { border-radius: 4px 0 0 4px; }
+  .switch button:last-of-type { border-radius: 0 4px 4px 0; margin-left: -1px; }
+  .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
+  .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   /* Header buttons look like the rival links: grey until hovered. */
@@ -36,7 +44,7 @@ export const windowHeaderStyles = `
 `;
 
 
-// The window title with your totals, the score cap, try cooldown and np minimal rivals, and the export / clear data / close buttons.
+// The window title with your totals, the score cap, try cooldown, np minimal rivals and count by settings, and the export / clear data / close buttons.
 // `onChange` re-renders the window after a setting changed; `onCleared` runs after all data was cleared.
 export function createWindowHeader(container, { exportTargets, onChange, onCleared, onClose }) {
   container.innerHTML = `<h2>Rivals</h2>
@@ -56,6 +64,11 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
         <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">−</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
+      <div class="switch count-by" role="radiogroup" aria-label="Count by"
+           title="Count theirs / np / yours by rival results or by charts">
+        <span class="stepper-label">Count by</span>
+        <button type="button" role="radio" data-count-by="results">Results</button>
+        <button type="button" role="radio" data-count-by="charts">Charts</button></div>
     </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
@@ -65,6 +78,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   const scoreCapControl = container.querySelector('.score-cap');
   const tryCooldownControl = container.querySelector('.try-cooldown');
   const npMinimalRivalsControl = container.querySelector('.np-minimal-rivals');
+  const countByControl = container.querySelector('.count-by');
 
   container.querySelector('.export').addEventListener('click', () => {
     exportTargets().catch((error) => console.error('[piuscores]', error));
@@ -84,21 +98,29 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
 
   container.querySelector('.dlg-close').addEventListener('click', () => onClose());
 
+  async function saveSetting(changes) {
+    try {
+      await savePreferences(changes);
+      await onChange();
+    } catch (error) {
+      console.error('[piuscores] Unable to save setting', error);
+    }
+  }
+
   // `update(preferences, step)` returns the preference changes for a −/+ click.
   function bindStepper(control, update) {
     control.addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-step]');
-      if (! button)
-        return;
-
-      try {
-        await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
-        await onChange();
-      } catch (error) {
-        console.error('[piuscores] Unable to save setting', error);
-      }
+      if (button)
+        await saveSetting(update(await loadPreferences(), Number(button.dataset.step)));
     });
   }
+
+  countByControl.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-count-by]:not(.on)');
+    if (button)
+      await saveSetting({ countBy: button.dataset.countBy });
+  });
 
   bindStepper(scoreCapControl, ({ scoreCap }, step) =>
     ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
@@ -116,7 +138,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     control.querySelector('[data-step="1"]').disabled = value >= max;
   }
 
-  function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals }) {
+  function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals, countBy }) {
     const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
     title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals)}</span>`;
 
@@ -125,6 +147,11 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
       tryCooldown === 0);
     renderStepper(npMinimalRivalsControl, `${npMinimalRivals}`, npMinimalRivals, MIN_NP_RIVALS, MAX_NP_RIVALS,
       npMinimalRivals === MIN_NP_RIVALS);
+    for (const button of countByControl.querySelectorAll('button')) {
+      const on = button.dataset.countBy === countBy;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-checked', on);
+    }
   }
 
   return { render };

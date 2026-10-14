@@ -45,13 +45,44 @@ export const TABS = [
   { id: 'hidden', label: 'Hidden' },
 ];
 
-const TIER_STAT = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win' };
+// The stat each tab counts.
+export const TIER_STAT = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win', hidden: 'hidden' };
 
 
 export function tierCounts(charts) {
   const counts = { lose: 0, win: 0, unplayed: 0 };
   for (const chart of charts)
     counts[TIER_STAT[chartTier(chart)]]++;
+
+  return counts;
+}
+
+
+// Both countings of a level, as { charts, results }, each { lose, unplayed, win, hidden }. `hiddenCharts` are its
+// losses hidden by the try cooldown or the score cap. They are judged uncapped, so score-cap losses count as hidden
+// losses, while the rivals you beat on them still count as yours.
+export function levelStats(charts, hiddenCharts) {
+  const shown = resultCounts(charts);
+  const hidden = resultCounts(hiddenCharts, (rival) => rival.realDelta);
+  return {
+    charts: { ...tierCounts(charts), hidden: hiddenCharts.length },
+    results: { lose: shown.lose, unplayed: shown.unplayed, win: shown.win + hidden.win, hidden: hidden.lose },
+  };
+}
+
+
+// Like tierCounts, but counts rival results instead of charts, whatever the chart's tier: on played charts
+// every rival either beats you or you beat them (draws count as neither), and on np charts every rival result is np.
+// `diff` picks the difference to judge by, e.g. the uncapped one.
+export function resultCounts(charts, diff = (rival) => rival.delta) {
+  const counts = { lose: 0, win: 0, unplayed: 0 };
+  for (const chart of charts) {
+    for (const rival of chart.rivals) {
+      const d = diff(rival);
+      if (d !== 0)
+        counts[d === null ? 'unplayed' : d < 0 ? 'lose' : 'win']++;
+    }
+  }
 
   return counts;
 }

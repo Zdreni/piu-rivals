@@ -1,5 +1,5 @@
 import { byLeadWeight, byTargetWeight, displayName } from '../../storage.js';
-import { chartTier, esc, fmtDelta, fmtScore, TABS } from './common.js';
+import { chartTier, esc, fmtDelta, fmtScore, TABS, TIER_STAT } from './common.js';
 
 export const chartResultsStyles = `
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
@@ -141,8 +141,9 @@ export function createChartResults(container, onSelectTab) {
   // `levelCharts` are the charts of the selected level. `hiddenGroups` are its losses left out of the
   // "Lost" tab, as [{ label, charts }]; the "Hidden" tab lists them group by group.
   // `emptyMessage` replaces the per-tab message when there is nothing to show at all.
-  function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
-    lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage];
+  // `results` ({ lose, unplayed, win, hidden }), when given, are the numbers the tabs show instead of their chart counts.
+  function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results) {
+    lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results];
 
     const groups = hiddenGroups.filter(({ charts }) => charts.length);
     const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
@@ -150,6 +151,7 @@ export function createChartResults(container, onSelectTab) {
         ? groups.reduce((acc, { charts }) => acc + charts.length, 0)
         : levelCharts.filter((chart) => chartTier(chart) === id).length,
     ]));
+    const tabNumber = (id) => (results ? results[TIER_STAT[id]] : tabCounts[id]);
     // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
     if (selectedTab === 'hidden'  &&  tabCounts.hidden === 0) {
       onSelectTab('rivals-win');
@@ -158,7 +160,7 @@ export function createChartResults(container, onSelectTab) {
 
     tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden'  ||  tabCounts.hidden).map(({ id, label }) =>
       `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
-      + `${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join('');
+      + `${label}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join('');
 
     if (tabCounts[selectedTab] === 0) {
       const message = emptyMessage

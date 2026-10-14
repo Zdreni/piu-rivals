@@ -1,4 +1,4 @@
-import { esc, tierCounts } from './common.js';
+import { esc, levelStats } from './common.js';
 
 export const levelChartStyles = `
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
@@ -72,18 +72,17 @@ export function createLevelChart(container, onSelect) {
   });
 
   // `hiddenCharts` are the losses hidden by the try cooldown or the score cap; they get their own dark segment.
-  function render(charts, hiddenCharts, selectedLevel) {
+  // `countBy` ('charts' or 'results') picks what sizes and labels the segments.
+  function render(charts, hiddenCharts, selectedLevel, countBy) {
     const levels = sortedLevels([...charts, ...hiddenCharts]);
     const stats = {};
     for (const level of levels) {
-      stats[level] = {
-        ...tierCounts(charts.filter((chart) => chart.chart === level)),
-        hidden: hiddenCharts.filter((chart) => chart.chart === level).length,
-      };
+      const atLevel = (chart) => chart.chart === level;
+      stats[level] = levelStats(charts.filter(atLevel), hiddenCharts.filter(atLevel));
     }
 
     // A level's heat grows with the square of its losses, relative to the level with the most.
-    const maxLose = Math.max(1, ...levels.map((level) => stats[level].lose));
+    const maxLose = Math.max(1, ...levels.map((level) => stats[level][countBy].lose));
     const heat = (n) => ((n / maxLose) ** 2).toFixed(3);
 
     // Each bar is split by the share of wins / not played / hidden losses / losses; wins sit next to
@@ -93,13 +92,15 @@ export function createLevelChart(container, onSelect) {
         return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
 
       const on = level === selectedLevel;
-      const counts = stats[level];
-      // The hidden-losses segment has no number; its count is in the tooltip.
+      const { charts: byCharts, results: byResults } = stats[level];
+      const counts = stats[level][countBy];
+      // The hidden-losses segment has no number; its count is in the tooltip, which shows both countings.
       const part = (cls, n, label = n, style = '') =>
         (n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : '');
+      const tip = (stat, word) => `${byCharts[stat]} ${word} (${byResults[stat]} results)`;
       return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
-        + `data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} theirs · ${counts.unplayed} np · ${counts.win} yours`
-        + `${counts.hidden ? ` · ${counts.hidden} hidden` : ''}">`
+        + `data-level="${esc(level)}" title="${esc(level)}: ${tip('lose', 'theirs')} · ${tip('unplayed', 'np')} · `
+        + `${tip('win', 'yours')}${byCharts.hidden ? ` · ${tip('hidden', 'hidden')}` : ''}">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`
         + `${part('lose', counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
     };

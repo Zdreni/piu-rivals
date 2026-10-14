@@ -12,6 +12,8 @@ export const SCORE_CAP_STEP = 1000;
 export const TRY_COOLDOWN_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21, 34];
 export const MIN_NP_RIVALS = 1;
 export const MAX_NP_RIVALS = 5;
+// What the theirs / np / yours stats count; the first is the default.
+export const COUNT_BY_OPTIONS = ['results', 'charts'];
 
 // Names carry a "#1234" tag suffix; it's left out when showing them.
 export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
@@ -195,12 +197,14 @@ function parsePreferences(preferences) {
     // Preferences saved before the rename keep their days under `retryCooldown`.
     tryCooldown: clampTryCooldown(prefs.tryCooldown ?? prefs.retryCooldown ?? 0),
     npMinimalRivals: typeof prefs.npMinimalRivals === 'number' ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS,
+    countBy: COUNT_BY_OPTIONS.includes(prefs.countBy) ? prefs.countBy : COUNT_BY_OPTIONS[0],
   };
 }
 
 
 // Preferences are stored as
-// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, tryCooldown: <days>, npMinimalRivals: <count> } }.
+// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, tryCooldown: <days>, npMinimalRivals: <count>,
+//   countBy: 'results' | 'charts' } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
   return parsePreferences(preferences);

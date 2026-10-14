@@ -8,6 +8,7 @@
   var TRY_COOLDOWN_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21, 34];
   var MIN_NP_RIVALS = 1;
   var MAX_NP_RIVALS = 5;
+  var COUNT_BY_OPTIONS = ["results", "charts"];
   var displayName = (name) => name.replace(/\s*#\d{4}$/, "");
   var storageKey = (row) => `${row.track}|${row.chart}`;
   function isKnownPlayer(players, playerId, ownPlayerId) {
@@ -123,7 +124,8 @@
       scoreCap: typeof prefs.scoreCap === "number" ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
       // Preferences saved before the rename keep their days under `retryCooldown`.
       tryCooldown: clampTryCooldown(prefs.tryCooldown ?? prefs.retryCooldown ?? 0),
-      npMinimalRivals: typeof prefs.npMinimalRivals === "number" ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS
+      npMinimalRivals: typeof prefs.npMinimalRivals === "number" ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS,
+      countBy: COUNT_BY_OPTIONS.includes(prefs.countBy) ? prefs.countBy : COUNT_BY_OPTIONS[0]
     };
   }
   async function loadPreferences() {
@@ -188,11 +190,30 @@
     // Losses hidden by the try cooldown or the score cap; never a chartTier.
     { id: "hidden", label: "Hidden" }
   ];
-  var TIER_STAT = { "rivals-win": "lose", "not-played": "unplayed", "you-win": "win" };
+  var TIER_STAT = { "rivals-win": "lose", "not-played": "unplayed", "you-win": "win", hidden: "hidden" };
   function tierCounts(charts) {
     const counts = { lose: 0, win: 0, unplayed: 0 };
     for (const chart of charts)
       counts[TIER_STAT[chartTier(chart)]]++;
+    return counts;
+  }
+  function levelStats(charts, hiddenCharts) {
+    const shown = resultCounts(charts);
+    const hidden = resultCounts(hiddenCharts, (rival) => rival.realDelta);
+    return {
+      charts: { ...tierCounts(charts), hidden: hiddenCharts.length },
+      results: { lose: shown.lose, unplayed: shown.unplayed, win: shown.win + hidden.win, hidden: hidden.lose }
+    };
+  }
+  function resultCounts(charts, diff = (rival) => rival.delta) {
+    const counts = { lose: 0, win: 0, unplayed: 0 };
+    for (const chart of charts) {
+      for (const rival of chart.rivals) {
+        const d = diff(rival);
+        if (d !== 0)
+          counts[d === null ? "unplayed" : d < 0 ? "lose" : "win"]++;
+      }
+    }
     return counts;
   }
 
@@ -301,18 +322,19 @@ Last try: ${lastTryDate || "unknown"}`;
       const chartTrs = chartRows(chart, myName, collapseWon, colorByRealDiff);
       return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
     });
-    function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
-      lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage];
+    function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results) {
+      lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results];
       const groups = hiddenGroups.filter(({ charts }) => charts.length);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
         id === "hidden" ? groups.reduce((acc, { charts }) => acc + charts.length, 0) : levelCharts.filter((chart) => chartTier(chart) === id).length
       ]));
+      const tabNumber = (id) => results ? results[TIER_STAT[id]] : tabCounts[id];
       if (selectedTab === "hidden" && tabCounts.hidden === 0) {
         onSelectTab("rivals-win");
         return;
       }
-      tabs.innerHTML = TABS.filter(({ id }) => id !== "hidden" || tabCounts.hidden).map(({ id, label }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join("");
+      tabs.innerHTML = TABS.filter(({ id }) => id !== "hidden" || tabCounts.hidden).map(({ id, label }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${label}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join("");
       if (tabCounts[selectedTab] === 0) {
         const message = emptyMessage ?? `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
         body.innerHTML = `<div class="empty">${message}</div>`;
@@ -393,24 +415,24 @@ Last try: ${lastTryDate || "unknown"}`;
       if (bar)
         onSelect(bar.dataset.level);
     });
-    function render(charts, hiddenCharts, selectedLevel) {
+    function render(charts, hiddenCharts, selectedLevel, countBy) {
       const levels = sortedLevels([...charts, ...hiddenCharts]);
       const stats = {};
       for (const level of levels) {
-        stats[level] = {
-          ...tierCounts(charts.filter((chart) => chart.chart === level)),
-          hidden: hiddenCharts.filter((chart) => chart.chart === level).length
-        };
+        const atLevel = (chart) => chart.chart === level;
+        stats[level] = levelStats(charts.filter(atLevel), hiddenCharts.filter(atLevel));
       }
-      const maxLose = Math.max(1, ...levels.map((level) => stats[level].lose));
+      const maxLose = Math.max(1, ...levels.map((level) => stats[level][countBy].lose));
       const heat = (n) => ((n / maxLose) ** 2).toFixed(3);
       const bar = (level, side) => {
         if (!level)
           return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
         const on = level === selectedLevel;
-        const counts = stats[level];
+        const { charts: byCharts, results: byResults } = stats[level];
+        const counts = stats[level][countBy];
         const part = (cls, n, label = n, style = "") => n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : "";
-        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} theirs \xB7 ${counts.unplayed} np \xB7 ${counts.win} yours${counts.hidden ? ` \xB7 ${counts.hidden} hidden` : ""}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
+        const tip = (stat2, word) => `${byCharts[stat2]} ${word} (${byResults[stat2]} results)`;
+        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${tip("lose", "theirs")} \xB7 ${tip("unplayed", "np")} \xB7 ${tip("win", "yours")}${byCharts.hidden ? ` \xB7 ${tip("hidden", "hidden")}` : ""}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
       };
       const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
       const otherLevels = levels.filter((level) => !(levelType(level) in TYPE_ORDER));
@@ -628,6 +650,14 @@ Last try: ${lastTryDate || "unknown"}`;
                     width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
   .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
   .stepper button:disabled { opacity: .35; cursor: default; }
+  /* A two-way switch with the same label above it as the steppers. */
+  .switch { display: grid; grid-template-columns: auto auto; gap: 2px 0; color: #9AB3A3; }
+  .switch button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; height: 24px; padding: 0 8px;
+                   font: 400 13px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .switch button:first-of-type { border-radius: 4px 0 0 4px; }
+  .switch button:last-of-type { border-radius: 0 4px 4px 0; margin-left: -1px; }
+  .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
+  .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   /* Header buttons look like the rival links: grey until hovered. */
@@ -661,6 +691,11 @@ Last try: ${lastTryDate || "unknown"}`;
         <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">\u2212</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
+      <div class="switch count-by" role="radiogroup" aria-label="Count by"
+           title="Count theirs / np / yours by rival results or by charts">
+        <span class="stepper-label">Count by</span>
+        <button type="button" role="radio" data-count-by="results">Results</button>
+        <button type="button" role="radio" data-count-by="charts">Charts</button></div>
     </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
@@ -669,6 +704,7 @@ Last try: ${lastTryDate || "unknown"}`;
     const scoreCapControl = container.querySelector(".score-cap");
     const tryCooldownControl = container.querySelector(".try-cooldown");
     const npMinimalRivalsControl = container.querySelector(".np-minimal-rivals");
+    const countByControl = container.querySelector(".count-by");
     container.querySelector(".export").addEventListener("click", () => {
       exportTargets2().catch((error) => console.error("[piuscores]", error));
     });
@@ -683,19 +719,26 @@ Last try: ${lastTryDate || "unknown"}`;
       }
     });
     container.querySelector(".dlg-close").addEventListener("click", () => onClose());
+    async function saveSetting(changes) {
+      try {
+        await savePreferences(changes);
+        await onChange();
+      } catch (error) {
+        console.error("[piuscores] Unable to save setting", error);
+      }
+    }
     function bindStepper(control, update) {
       control.addEventListener("click", async (event) => {
         const button = event.target.closest("button[data-step]");
-        if (!button)
-          return;
-        try {
-          await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
-          await onChange();
-        } catch (error) {
-          console.error("[piuscores] Unable to save setting", error);
-        }
+        if (button)
+          await saveSetting(update(await loadPreferences(), Number(button.dataset.step)));
       });
     }
+    countByControl.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-count-by]:not(.on)");
+      if (button)
+        await saveSetting({ countBy: button.dataset.countBy });
+    });
     bindStepper(scoreCapControl, ({ scoreCap }, step) => ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
     bindStepper(tryCooldownControl, ({ tryCooldown }, step) => ({ tryCooldown: stepTryCooldown(tryCooldown, step) }));
     bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step) => ({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) }));
@@ -705,7 +748,7 @@ Last try: ${lastTryDate || "unknown"}`;
       control.querySelector('[data-step="-1"]').disabled = value <= min;
       control.querySelector('[data-step="1"]').disabled = value >= max;
     }
-    function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals }) {
+    function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals, countBy }) {
       const text2 = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
       title.innerHTML = `${esc(text2)}<span class="head-stats"> \u2014 ${statWords(totals)}</span>`;
       renderStepper(scoreCapControl, `${scoreCap / 1e3}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
@@ -725,6 +768,11 @@ Last try: ${lastTryDate || "unknown"}`;
         MAX_NP_RIVALS,
         npMinimalRivals === MIN_NP_RIVALS
       );
+      for (const button of countByControl.querySelectorAll("button")) {
+        const on = button.dataset.countBy === countBy;
+        button.classList.toggle("on", on);
+        button.setAttribute("aria-checked", on);
+      }
     }
     return { render };
   }
@@ -852,11 +900,15 @@ Last try: ${lastTryDate || "unknown"}`;
         state.selectedLevel = levels[0] ?? null;
         saveUiState(state);
       }
-      header.render(players[ownPlayerId], tierCounts(charts), preferences);
+      const { countBy } = preferences;
+      header.render(players[ownPlayerId], countBy === "charts" ? tierCounts(charts) : resultCounts(charts), preferences);
       rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
-      levelChart.render(charts.filter((chart) => !isCapLoss(chart)), [...coolingCharts, ...capLosses], state.selectedLevel);
+      const barCharts = charts.filter((chart) => !isCapLoss(chart));
+      const hiddenCharts = [...coolingCharts, ...capLosses];
+      levelChart.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
       const emptyMessage = allCharts.length === 0 ? "No saved rival scores yet \u2014 grab them on a player's Sessions page." : shownCharts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : null;
       const atLevel = (chart) => chart.chart === state.selectedLevel;
+      const tabResults = countBy === "results" ? levelStats(barCharts.filter(atLevel), hiddenCharts.filter(atLevel)).results : null;
       chartResults.render(
         charts.filter(atLevel),
         [
@@ -865,7 +917,8 @@ Last try: ${lastTryDate || "unknown"}`;
         ],
         state.selectedTab,
         players[ownPlayerId]?.name || "You",
-        emptyMessage
+        emptyMessage,
+        tabResults
       );
     }
     function setOpen(isOpen) {

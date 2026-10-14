@@ -2,7 +2,7 @@ import {
   byTargetWeight, daysSince, loadCharts, loadPlayers, loadPreferences, targetWeight, withRivals,
 } from '../storage.js';
 import { chartResultsStyles, createChartResults } from './rivals/chart_results.js';
-import { chartTier, tierCounts } from './rivals/common.js';
+import { chartTier, levelStats, resultCounts, tierCounts } from './rivals/common.js';
 import { createLevelChart, levelChartStyles, sortedLevels } from './rivals/level_chart.js';
 import { createRivalList, rivalListStyles } from './rivals/rivals_list.js';
 import { readUiState, saveUiState } from './rivals/ui_state.js';
@@ -131,10 +131,13 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
       saveUiState(state);
     }
 
-    header.render(players[ownPlayerId], tierCounts(charts), preferences);
+    const { countBy } = preferences;
+    header.render(players[ownPlayerId], countBy === 'charts' ? tierCounts(charts) : resultCounts(charts), preferences);
     rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
     // The level bars count score-cap losses as hidden losses rather than wins.
-    levelChart.render(charts.filter((chart) => ! isCapLoss(chart)), [...coolingCharts, ...capLosses], state.selectedLevel);
+    const barCharts = charts.filter((chart) => ! isCapLoss(chart));
+    const hiddenCharts = [...coolingCharts, ...capLosses];
+    levelChart.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
 
     const emptyMessage = allCharts.length === 0
       ? 'No saved rival scores yet — grab them on a player\'s Sessions page.'
@@ -143,6 +146,8 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
         : null;
 
     const atLevel = (chart) => chart.chart === state.selectedLevel;
+    // Counted by results, the tabs show the selected level's bar numbers; by charts they count their own lists.
+    const tabResults = countBy === 'results' ? levelStats(barCharts.filter(atLevel), hiddenCharts.filter(atLevel)).results : null;
     chartResults.render(
       charts.filter(atLevel),
       [
@@ -152,6 +157,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
       state.selectedTab,
       players[ownPlayerId]?.name  ||  'You',
       emptyMessage,
+      tabResults,
     );
   }
 
