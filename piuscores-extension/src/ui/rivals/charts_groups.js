@@ -1,6 +1,6 @@
 import { esc, levelStats } from './common.js';
 
-export const levelChartStyles = `
+export const chartsGroupsStyles = `
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
              overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0;
              scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
@@ -50,6 +50,8 @@ const levelType = (level) => (level.match(/^[A-Za-z]+/)  ||  [level])[0];
 const levelNum = (level) => parseInt((level.match(/\d+/)  ||  ['0'])[0], 10);
 const TYPE_ORDER = { S: 0, D: 1 };
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 
 function compareLevels(a, b) {
   const ta = levelType(a), tb = levelType(b);
@@ -64,7 +66,7 @@ export const sortedLevels = (charts) => [...new Set(charts.map((chart) => chart.
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
 // `onSelect` gets the level whose bar was clicked.
-export function createLevelChart(container, onSelect) {
+export function createChartsGroups(container, onSelect) {
   container.addEventListener('click', (event) => {
     const bar = event.target.closest('.level-bar[data-level]');
     if (bar)
@@ -97,10 +99,11 @@ export function createLevelChart(container, onSelect) {
       // The hidden-losses segment has no number; its count is in the tooltip, which shows both countings.
       const part = (cls, n, label = n, style = '') =>
         (n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : '');
-      const tip = (stat, word) => `${byCharts[stat]} ${word} (${byResults[stat]} results)`;
+      const tipLine = (stat, word) => `\n${word} ${plural(byCharts[stat], 'chart')} / ${plural(byResults[stat], 'result')}`;
+      const tip = `${level}:${tipLine('lose', 'their')}${tipLine('hidden', 'hidden')}`
+        + `${tipLine('unplayed', 'non-matched')}${tipLine('win', 'yours')}`;
       return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
-        + `data-level="${esc(level)}" title="${esc(level)}: ${tip('lose', 'theirs')} · ${tip('unplayed', 'np')} · `
-        + `${tip('win', 'yours')}${byCharts.hidden ? ` · ${tip('hidden', 'hidden')}` : ''}">`
+        + `data-level="${esc(level)}" title="${esc(tip)}">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`
         + `${part('lose', counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
     };

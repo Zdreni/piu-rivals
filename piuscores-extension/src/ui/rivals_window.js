@@ -3,7 +3,7 @@ import {
 } from '../storage.js';
 import { chartResultsStyles, createChartResults } from './rivals/chart_results.js';
 import { chartTier, levelStats, resultCounts, tierCounts } from './rivals/common.js';
-import { createLevelChart, levelChartStyles, sortedLevels } from './rivals/level_chart.js';
+import { chartsGroupsStyles, createChartsGroups, sortedLevels } from './rivals/charts_groups.js';
 import { createRivalList, rivalListStyles } from './rivals/rivals_list.js';
 import { readUiState, saveUiState } from './rivals/ui_state.js';
 import { createWindowHeader, windowHeaderStyles } from './rivals/window_header.js';
@@ -20,7 +20,7 @@ const windowStyles = `
   .dlg-main { display: flex; flex: 1; min-height: 0; }
 `;
 
-const styles = windowStyles + windowHeaderStyles + rivalListStyles + levelChartStyles + chartResultsStyles;
+const styles = windowStyles + windowHeaderStyles + rivalListStyles + chartsGroupsStyles + chartResultsStyles;
 
 
 // The RIVALS button and the window it opens.
@@ -31,7 +31,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
   let overlay = null;
   let header = null;
   let rivalList = null;
-  let levelChart = null;
+  let chartsGroups = null;
   let chartResults = null;
 
   const rerender = () => render().catch((error) => console.error('[piuscores]', error));
@@ -80,7 +80,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
 
     rivalList = createRivalList(overlay.querySelector('.rival-list'), render);
 
-    levelChart = createLevelChart(overlay.querySelector('.filters'), (level) => {
+    chartsGroups = createChartsGroups(overlay.querySelector('.filters'), (level) => {
       state.selectedLevel = level;
       saveUiState(state);
       rerender();
@@ -137,7 +137,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     // The level bars count score-cap losses as hidden losses rather than wins.
     const barCharts = charts.filter((chart) => ! isCapLoss(chart));
     const hiddenCharts = [...coolingCharts, ...capLosses];
-    levelChart.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
+    chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
 
     const emptyMessage = allCharts.length === 0
       ? 'No saved rival scores yet — grab them on a player\'s Sessions page.'

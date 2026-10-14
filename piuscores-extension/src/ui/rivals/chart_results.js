@@ -1,5 +1,6 @@
-import { byLeadWeight, byTargetWeight, displayName } from '../../storage.js';
-import { chartTier, esc, fmtDelta, fmtScore, TABS, TIER_STAT } from './common.js';
+import { byLeadWeight, byTargetWeight } from '../../storage.js';
+import { chartKey, chartResultsItem, chartResultsItemStyles } from './chart_results_item.js';
+import { chartTier, esc, TABS, TIER_STAT } from './common.js';
 
 export const chartResultsStyles = `
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
@@ -23,16 +24,6 @@ export const chartResultsStyles = `
   th.col-score { width: 70px; }
   th.col-diff { width: 70px; }
   .track { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mine { color: #FFC433; }
-  td.sm { font-size: 16px; vertical-align: baseline; }
-  td.score { color: #9AB3A3; }
-  .tail { font-size: .75em; opacity: .6; }
-  .tail-dim { opacity: .7; }
-  td.score.mine { color: #C9A44A; }
-  .won { opacity: .4; }
-  .ahead { opacity: .8; }
-  .player-link { color: inherit; text-decoration: none; }
-  .player-link:hover { color: #4FE33F; }
   th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
        text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
   td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
@@ -40,25 +31,12 @@ export const chartResultsStyles = `
   tr.group td { border-top: 1px solid #2B4034; }
   tr.gap td { height: 8px; padding: 0; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  td.others { text-align: right; padding: 4px 6px 6px; }
-  .show-others { background: none; color: #9AB3A3; opacity: .6; border: none; padding: 3px 12px;
-                 font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
-  .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
   .tab[data-tab="hidden"] { margin-left: auto; }
   .tab-count.hidden { color: #8C2E1C; }
   td.group-title { padding: 14px 6px 6px; color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif;
                    border-bottom: 1px solid #3A1813; }
-`;
-
-
-// Score cell tooltip; dates are missing for scores stored before they were tracked.
-// The best score line is dropped when it was set on the last try.
-const datesTitle = ({ bestScoreDate, lastTryDate }) =>
-  bestScoreDate  &&  bestScoreDate === lastTryDate
-    ? `Last try: ${lastTryDate}`
-    : `Best score: ${bestScoreDate  ||  'unknown'}
-Last try: ${lastTryDate  ||  'unknown'}`;
+` + chartResultsItemStyles;
 
 
 // The results column: tabs splitting the charts of the selected level, and their score table.
@@ -90,51 +68,13 @@ export function createChartResults(container, onSelectTab) {
       render(...lastRender);
   });
 
-  // With `collapseWon`, rivals you beat are folded into a "show N others..." row until it is clicked.
-  // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
-  function chartRows(chart, myName, collapseWon, colorByRealDiff) {
-    const all = [...chart.rivals];
-    if (chart.mine !== null)
-      all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
-
-    all.sort((a, b) => b.score - a.score  ||  (b.me ? 1 : 0) - (a.me ? 1 : 0));
-
-    const key = `${chart.track}|${chart.chart}`;
-    const isWon = (rival) => ! rival.me  &&  rival.delta !== null  &&  rival.delta > 0;
-    const folded = collapseWon  &&  ! expandedCharts.has(key) ? all.filter(isWon).length : 0;
-    const list = folded ? all.filter((rival) => ! isWon(rival)) : all;
-    const rowCount = list.length + (folded ? 1 : 0);
-    const rowStart = (i) => (i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>');
-
-    const rows = list.map((rival, i) => {
-      const head = i === 0
-        ? `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
-           <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>`
-        : '';
-
-      const tr = rowStart(i);
-      if (rival.me) {
-        return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
-      }
-
-      const won = rival.delta !== null  &&  rival.delta > 0 ? ' won' : ' ahead';
-      const playerId = rival.playerId;
-      const name = playerId
-        ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
-        : esc(displayName(rival.player));
-      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
+  // With `collapseWon`, rivals you beat are folded until their "show N others..." row is clicked.
+  const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+    const chartTrs = chartResultsItem(chart, myName, {
+      collapseWon: collapseWon  &&  ! expandedCharts.has(chartKey(chart)),
+      colorByRealDiff,
     });
 
-    if (folded) {
-      rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
-        + `data-expand="${esc(key)}">...show ${folded} other${folded === 1 ? '' : 's'}...</button></td></tr>`);
-    }
-
-    return rows;
-  }
-
-  const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
-    const chartTrs = chartRows(chart, myName, collapseWon, colorByRealDiff);
     return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
   });
 
