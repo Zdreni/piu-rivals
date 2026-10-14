@@ -434,6 +434,7 @@ export async function scrapePlayerSessions(report = () => {}) {
     if (progress.count) await syncSessionsPumbility(await syncOwnPlayerId());
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
     report(`Finished scrapping ${plural(progress.count, 'session')} with ${plural(progress.results, 'result')}`);
+    await recordSessionsVisit();
     return true;
   } finally {
     isScrapingSessions = false;
@@ -546,6 +547,18 @@ export function getScrapInfo() {
     pumbility: isNewestSessionOpen() ? sessionsPumbility() : null,
     ...countNewSessions(players[playerId]?.lastScrapedSession || null),
   };
+}
+
+
+// Stores when the open Sessions page was last seen with nothing left to grab, for known players only.
+export async function recordSessionsVisit() {
+  const playerId = sessionPagePlayerId();
+  if (!playerId) return;
+  const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
+  if (!isKnownPlayer(players, playerId, ownPlayerId)) return;
+  await chrome.storage.local.set({
+    players: { ...players, [playerId]: { ...players[playerId], sessionsVisitedAt: Date.now() } },
+  });
 }
 
 

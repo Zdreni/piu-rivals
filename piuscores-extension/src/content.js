@@ -6,11 +6,12 @@ import { pagePlayerId, syncOwnPlayerId, TAG } from './page_scrappers/common.js';
 import { runProfilePage } from './page_scrappers/profile.js';
 import { isRivalsPage, runRivalsPage } from './page_scrappers/rivals.js';
 import {
-  getScrapInfo, isSessionsPage, loadScrapState, runSessionsPage, scrapePlayerSessions,
+  getScrapInfo, isSessionsPage, loadScrapState, recordSessionsVisit, runSessionsPage, scrapePlayerSessions,
 } from './page_scrappers/sessions.js';
 
 const rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
-const scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
+const scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo,
+  () => recordSessionsVisit().catch((error) => console.error(TAG, error)));
 let timer = null;
 
 

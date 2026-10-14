@@ -19,7 +19,7 @@ function isPlayerProfilePage() {
 }
 
 
-// "6+" means every session on the page is new, so older pages may hold more. PB is left out
+// "N+" means every session on the page is new, so older pages may hold more. PB is left out
 // until the PUMBILITY of the newest session can be read.
 function scrapLabel(info) {
   if (!info) return 'Loading sessions...';
@@ -32,12 +32,14 @@ function scrapLabel(info) {
 
 
 // The grab scores button, shown on player profile and Sessions pages, under the RIVALS button.
-// `update` refreshes it after the page or the scrap info changed.
-export function createScrapOverlay(scrapeResults, getScrapInfo) {
+// `update` refreshes it after the page or the scrap info changed. `onNothingToGrab` is called once
+// per opened Sessions page, when the button first shows there are no new sessions to grab.
+export function createScrapOverlay(scrapeResults, getScrapInfo, onNothingToGrab) {
   let isScraping = false;
   let scrapStatus = null;
   // The finished message stays until another page is opened.
   let finishedPath = null;
+  let readyPath = null;
 
   useStyles('scrap', scrapOverlayStyles);
   const button = document.createElement('button');
@@ -60,6 +62,10 @@ export function createScrapOverlay(scrapeResults, getScrapInfo) {
       scrapStatus = null;
     }
     const info = getScrapInfo();
+    if (info && readyPath !== location.pathname) {
+      readyPath = location.pathname;
+      if (info.count === 0) onNothingToGrab();
+    }
     button.disabled = isScraping || finishedPath !== null || !info || info.count === 0;
     const label = scrapStatus ?? scrapLabel(info);
     if (button.textContent !== label) button.textContent = label;

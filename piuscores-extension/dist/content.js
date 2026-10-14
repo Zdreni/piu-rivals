@@ -396,13 +396,22 @@ Last try: ${lastTryDate || "unknown"}`;
   .rival { cursor: pointer; }
   .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
   .rival:not(.focused) .rival-links, .rival:not(.focused) .rival-scrap { display: none; }
-  .rival-toggle { display: flex; align-items: center; gap: 8px; }
+  .rival-toggle { display: flex; align-items: center; gap: 8px; font-size: 17px; }
   .rival.focused .rival-toggle { cursor: pointer; }
-  .rival input { accent-color: #4FE33F; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+  .rival input { appearance: none; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer;
+                 background: #3A4540; border: 1px solid #56635C; border-radius: 3px; display: grid; place-content: center; }
+  .rival input:hover { border-color: #7A8A81; }
+  .rival input:checked { background: #4FE33F; border-color: #4FE33F; }
+  .rival input:checked::after { content: ''; width: 4px; height: 8px; margin-top: -2px;
+                                border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
   .rival-spacer { width: 16px; flex-shrink: 0; }
   .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
+  .rival-visit { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; color: #8A9590;
+                 font-size: 13px; font-variant-numeric: tabular-nums; text-decoration: none; }
+  .rival-visit:hover { color: #4FE33F; }
+  .rival-visit svg { width: 13px; height: 13px; }
   .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
   .rival-stats { white-space: nowrap; color: #9AB3A3; }
   .rival-stats .blue { color: #3FA9F5; }
@@ -416,11 +425,22 @@ Last try: ${lastTryDate || "unknown"}`;
   .rival-counts { white-space: nowrap; }
   .rival-counts > span { color: #9AB3A3; }
   .rival-counts .zero { opacity: .4; }
-  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-scrap { opacity: .45; }
+  .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-visit, .rival.off .rival-scrap { opacity: .45; }
   .rival-list .muted { color: #9AB3A3; }
 `;
   var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
+  var clockIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>';
+  function visitBadge(visitedAt, href) {
+    if (typeof visitedAt !== "number") {
+      return `<a class="rival-visit" href="${href}" title="Sessions page never visited">${clockIcon}?</a>`;
+    }
+    const visited = new Date(visitedAt);
+    const now = /* @__PURE__ */ new Date();
+    const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(visited.getFullYear(), visited.getMonth(), visited.getDate())) / 864e5);
+    if (days < 3) return "";
+    return `<a class="rival-visit" href="${href}" title="Sessions page last visited ${esc(visited.toLocaleString())}">${clockIcon}${days}d</a>`;
+  }
   function createRivalList(container, onChange) {
     let focusedRival = null;
     let pendingScroll = false;
@@ -483,7 +503,7 @@ Last try: ${lastTryDate || "unknown"}`;
         const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
         const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
         const focused = playerId === focusedRival ? " focused" : "";
-        return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span><span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 }, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
+        return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(players[playerId]?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(players[playerId]?.scrapStats, bestCounts[playerId])}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(rivalStats[playerId] || { lose: 0, win: 0, unplayed: 0 }, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
       }).join("") : '<div class="muted">No rivals yet</div>';
       if (pendingScroll) {
         pendingScroll = false;
@@ -810,10 +830,11 @@ Last try: ${lastTryDate || "unknown"}`;
     const sessions = `${count}${more ? "+" : ""} session${count === 1 && !more ? "" : "s"}`;
     return `Grab scores from ${sessions}`;
   }
-  function createScrapOverlay(scrapeResults, getScrapInfo2) {
+  function createScrapOverlay(scrapeResults, getScrapInfo2, onNothingToGrab) {
     let isScraping = false;
     let scrapStatus = null;
     let finishedPath = null;
+    let readyPath = null;
     useStyles("scrap", scrapOverlayStyles);
     const button = document.createElement("button");
     button.className = "btn scrap-results";
@@ -832,6 +853,10 @@ Last try: ${lastTryDate || "unknown"}`;
         scrapStatus = null;
       }
       const info = getScrapInfo2();
+      if (info && readyPath !== location.pathname) {
+        readyPath = location.pathname;
+        if (info.count === 0) onNothingToGrab();
+      }
       button.disabled = isScraping || finishedPath !== null || !info || info.count === 0;
       const label = scrapStatus ?? scrapLabel(info);
       if (button.textContent !== label) button.textContent = label;
@@ -1604,6 +1629,7 @@ Last try: ${lastTryDate || "unknown"}`;
       if (progress.count) await syncSessionsPumbility(await syncOwnPlayerId());
       const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
       report(`Finished scrapping ${plural(progress.count, "session")} with ${plural(progress.results, "result")}`);
+      await recordSessionsVisit();
       return true;
     } finally {
       isScrapingSessions = false;
@@ -1694,13 +1720,26 @@ Last try: ${lastTryDate || "unknown"}`;
       ...countNewSessions(players[playerId]?.lastScrapedSession || null)
     };
   }
+  async function recordSessionsVisit() {
+    const playerId = sessionPagePlayerId();
+    if (!playerId) return;
+    const { players, ownPlayerId } = await chrome.storage.local.get(["players", "ownPlayerId"]);
+    if (!isKnownPlayer(players, playerId, ownPlayerId)) return;
+    await chrome.storage.local.set({
+      players: { ...players, [playerId]: { ...players[playerId], sessionsVisitedAt: Date.now() } }
+    });
+  }
   async function runSessionsPage(ownPlayerId) {
     await syncSessionsPumbility(ownPlayerId);
   }
 
   // src/content.js
   var rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
-  var scrapOverlay = createScrapOverlay(scrapePlayerSessions, getScrapInfo);
+  var scrapOverlay = createScrapOverlay(
+    scrapePlayerSessions,
+    getScrapInfo,
+    () => recordSessionsVisit().catch((error) => console.error(TAG, error))
+  );
   var timer = null;
   async function run() {
     const ownPlayerId = await syncOwnPlayerId();

@@ -1,5 +1,6 @@
 // Player metadata is stored as
-// { players: { <playerId>: { name, pumbility, lastScrapedSession, scrapStats: { scores, sessions } } } }.
+// { players: { <playerId>: { name, pumbility, lastScrapedSession, scrapStats: { scores, sessions }, sessionsVisitedAt } } }.
+// sessionsVisitedAt is a ms timestamp of the last time the player's Sessions page was ready to scrap.
 // Scores are stored as results["<track>|<chart>"][playerId] = { bestScore, bestScoreDate, lastTryDate }.
 // Dates are session dates as "YYYY-MM-DD"; scores migrated from version 1 have no dates.
 export const STORAGE_VERSION = 2;
