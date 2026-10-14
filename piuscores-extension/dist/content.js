@@ -158,12 +158,12 @@
   };
   var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var stat = (cls, n) => `<span class="${cls}${n === 0 ? " zero" : ""}">${n}</span>`;
-  var statWords = (counts, separator = ", ") => `${stat("neg", counts.lose)} losses${separator}${stat("blue", counts.unplayed)} np${separator}${stat("pos", counts.win)} wins`;
+  var statWords = (counts, separator = ", ") => `${stat("neg", counts.lose)} theirs${separator}${stat("blue", counts.unplayed)} np${separator}${stat("pos", counts.win)} yours`;
   var chartTier = (chart) => chart.weight > 0 ? "rivals-win" : chart.unplayed ? "not-played" : "you-win";
   var TABS = [
-    { id: "rivals-win", label: "Lost" },
+    { id: "rivals-win", label: "Theirs" },
     { id: "not-played", label: "Not played" },
-    { id: "you-win", label: "Won" },
+    { id: "you-win", label: "Yours" },
     // Losses hidden by the retry cooldown or the score cap; never a chartTier.
     { id: "hidden", label: "Hidden" }
   ];
@@ -224,7 +224,7 @@
   td.group-title { padding: 14px 6px 6px; color: #A06060; font: 500 14px/1.2 Roboto, Arial, sans-serif;
                    border-bottom: 1px solid #3A1E1E; }
 `;
-  var datesTitle = ({ bestScoreDate, lastTryDate }) => `Best score: ${bestScoreDate || "unknown"}
+  var datesTitle = ({ bestScoreDate, lastTryDate }) => bestScoreDate && bestScoreDate === lastTryDate ? `Last try: ${lastTryDate}` : `Best score: ${bestScoreDate || "unknown"}
 Last try: ${lastTryDate || "unknown"}`;
   function createChartResults(container, onSelectTab) {
     container.innerHTML = `
@@ -244,7 +244,7 @@ Last try: ${lastTryDate || "unknown"}`;
       expandedCharts.add(button.dataset.expand);
       if (lastRender) render(...lastRender);
     });
-    function chartRows(chart, myName, collapseWon) {
+    function chartRows(chart, myName, collapseWon, colorByRealDiff) {
       const all = [...chart.rivals];
       if (chart.mine !== null) all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
       all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
@@ -264,15 +264,15 @@ Last try: ${lastTryDate || "unknown"}`;
         const won = rival.delta !== null && rival.delta > 0 ? " won" : " ahead";
         const playerId = rival.playerId;
         const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>` : esc(displayName(rival.player));
-        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
+        return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
       });
       if (folded) {
         rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" data-expand="${esc(key)}">...show ${folded} other${folded === 1 ? "" : "s"}...</button></td></tr>`);
       }
       return rows;
     }
-    const tableRows = (charts, myName, collapseWon) => charts.flatMap((chart, i) => {
-      const chartTrs = chartRows(chart, myName, collapseWon);
+    const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+      const chartTrs = chartRows(chart, myName, collapseWon, colorByRealDiff);
       return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
     });
     function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
@@ -294,7 +294,7 @@ Last try: ${lastTryDate || "unknown"}`;
       }
       let rows;
       if (selectedTab === "hidden") {
-        rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, true).join("")).join("");
+        rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, true, true).join("")).join("");
       } else {
         const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
         const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
@@ -365,7 +365,7 @@ Last try: ${lastTryDate || "unknown"}`;
         const on = level === selectedLevel;
         const counts = stats[level];
         const part = (cls, n, label = n) => n ? `<span class="${cls}" style="flex-grow: ${n}">${label}</span>` : "";
-        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses \xB7 ${counts.unplayed} np \xB7 ${counts.win} wins${counts.hidden ? ` \xB7 ${counts.hidden} hidden` : ""}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose)}</button>`;
+        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} theirs \xB7 ${counts.unplayed} np \xB7 ${counts.win} yours${counts.hidden ? ` \xB7 ${counts.hidden} hidden` : ""}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose)}</button>`;
       };
       const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
       const otherLevels = levels.filter((level) => !(levelType(level) in TYPE_ORDER));

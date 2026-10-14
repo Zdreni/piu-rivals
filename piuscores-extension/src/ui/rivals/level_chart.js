@@ -74,7 +74,7 @@ export function createLevelChart(container, onSelect) {
       // The hidden-losses segment has no number; its count is in the tooltip.
       const part = (cls, n, label = n) => (n ? `<span class="${cls}" style="flex-grow: ${n}">${label}</span>` : '');
       return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
-        + `data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses · ${counts.unplayed} np · ${counts.win} wins`
+        + `data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} theirs · ${counts.unplayed} np · ${counts.win} yours`
         + `${counts.hidden ? ` · ${counts.hidden} hidden` : ''}">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`
         + `${part('lose', counts.lose)}</button>`;

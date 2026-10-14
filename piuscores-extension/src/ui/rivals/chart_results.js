@@ -53,8 +53,11 @@ export const chartResultsStyles = `
 
 
 // Score cell tooltip; dates are missing for scores stored before they were tracked.
+// The best score line is dropped when it was set on the last try.
 const datesTitle = ({ bestScoreDate, lastTryDate }) =>
-  `Best score: ${bestScoreDate || 'unknown'}
+  bestScoreDate && bestScoreDate === lastTryDate
+    ? `Last try: ${lastTryDate}`
+    : `Best score: ${bestScoreDate || 'unknown'}
 Last try: ${lastTryDate || 'unknown'}`;
 
 
@@ -82,7 +85,8 @@ export function createChartResults(container, onSelectTab) {
   });
 
   // With `collapseWon`, rivals you beat are folded into a "show N others..." row until it is clicked.
-  function chartRows(chart, myName, collapseWon) {
+  // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
+  function chartRows(chart, myName, collapseWon, colorByRealDiff) {
     const all = [...chart.rivals];
     if (chart.mine !== null) all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
     all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
@@ -107,7 +111,7 @@ export function createChartResults(container, onSelectTab) {
       const name = playerId
         ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
         : esc(displayName(rival.player));
-      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, rival.delta)}</td></tr>`;
+      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
     });
     if (folded) {
       rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
@@ -116,8 +120,8 @@ export function createChartResults(container, onSelectTab) {
     return rows;
   }
 
-  const tableRows = (charts, myName, collapseWon) => charts.flatMap((chart, i) => {
-    const chartTrs = chartRows(chart, myName, collapseWon);
+  const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+    const chartTrs = chartRows(chart, myName, collapseWon, colorByRealDiff);
     return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
   });
 
@@ -150,10 +154,10 @@ export function createChartResults(container, onSelectTab) {
 
     let rows;
     if (selectedTab === 'hidden') {
-      // Each group starts with a title row.
+      // Each group starts with a title row. Diffs are coloured like in the "Theirs" tab, so capped ties show as losses.
       rows = groups.map(({ label, charts }) =>
         `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
-        + tableRows(charts, myName, true).join('')).join('');
+        + tableRows(charts, myName, true, true).join('')).join('');
     } else {
       const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
       const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);

@@ -21,14 +21,14 @@ export const esc = (s) =>
 
 const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
 export const statWords = (counts, separator = ', ') =>
-  `${stat('neg', counts.lose)} losses${separator}${stat('blue', counts.unplayed)} np${separator}${stat('pos', counts.win)} wins`;
+  `${stat('neg', counts.lose)} theirs${separator}${stat('blue', counts.unplayed)} np${separator}${stat('pos', counts.win)} yours`;
 
 
 export const chartTier = (chart) => (chart.weight > 0 ? 'rivals-win' : chart.unplayed ? 'not-played' : 'you-win');
 export const TABS = [
-  { id: 'rivals-win', label: 'Lost' },
+  { id: 'rivals-win', label: 'Theirs' },
   { id: 'not-played', label: 'Not played' },
-  { id: 'you-win', label: 'Won' },
+  { id: 'you-win', label: 'Yours' },
   // Losses hidden by the retry cooldown or the score cap; never a chartTier.
   { id: 'hidden', label: 'Hidden' },
 ];
