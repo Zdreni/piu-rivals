@@ -13,9 +13,8 @@ export function isRivalsPage() {
 const nameKey = (name) => displayName(name).toLowerCase();
 
 
-// Roster rows only show names, so IDs come from the rival feed links ("/Player/<id>/Sessions?session=…")
-// and from stored players. Full names (with the "#1234" tag) are matched first; a tagless match
-// is used only when it is unambiguous.
+// Roster rows only show names, so IDs come from stored players. Full names (with the "#1234" tag)
+// are matched first; a tagless match is used only when it is unambiguous.
 function rivalIdsByName(players) {
   const exact = new Map();
   const loose = new Map();
@@ -33,12 +32,6 @@ function rivalIdsByName(players) {
     else
       loose.set(key, playerId);
   };
-
-  for (const link of document.querySelectorAll('[data-testid="rival-feed"] a.dash-ch-name[href]')) {
-    const playerId = new URL(link.href, location.href).pathname.match(/^\/Player\/([^/]+)\/Sessions\/?$/)?.[1];
-    if (playerId)
-      add(text(link), decodeURIComponent(playerId));
-  }
 
   for (const [playerId, player] of Object.entries(players  ||  {}))
     add(player?.name, playerId);
