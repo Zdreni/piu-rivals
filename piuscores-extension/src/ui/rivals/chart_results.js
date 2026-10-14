@@ -69,10 +69,11 @@ export function createChartResults(container, onSelectTab) {
   });
 
   // With `collapseWon`, rivals you beat are folded until their "show N others..." row is clicked.
-  const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+  const tableRows = (charts, myName, scoreCap, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
     const chartTrs = chartResultsItem(chart, myName, {
       collapseWon: collapseWon  &&  ! expandedCharts.has(chartKey(chart)),
       colorByRealDiff,
+      scoreCap,
     });
 
     return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
@@ -82,8 +83,9 @@ export function createChartResults(container, onSelectTab) {
   // "Lost" tab, as [{ label, charts }]; the "Hidden" tab lists them group by group.
   // `emptyMessage` replaces the per-tab message when there is nothing to show at all.
   // `results` ({ lose, unplayed, win, hidden }), when given, are the numbers the tabs show instead of their chart counts.
-  function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results) {
-    lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results];
+  // `scoreCap` is named in the tooltip of diffs that the cap turns into ties.
+  function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap) {
+    lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap];
 
     const groups = hiddenGroups.filter(({ charts }) => charts.length);
     const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
@@ -114,12 +116,12 @@ export function createChartResults(container, onSelectTab) {
       // Each group starts with a title row. Diffs are coloured like in the "Theirs" tab, so capped ties show as losses.
       rows = groups.map(({ label, charts }) =>
         `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
-        + tableRows(charts, myName, true, true).join('')).join('');
+        + tableRows(charts, myName, scoreCap, true, true).join('')).join('');
     } else {
       const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
       const byRivalCount = (a, b) => b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
       visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab]  ||  byTargetWeight);
-      rows = tableRows(visible, myName, selectedTab === 'rivals-win').join('');
+      rows = tableRows(visible, myName, scoreCap, selectedTab === 'rivals-win').join('');
     }
 
     body.innerHTML = `<table>

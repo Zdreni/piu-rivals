@@ -171,13 +171,17 @@
     const i = text2.lastIndexOf(",");
     return i === -1 ? text2 : `${text2.slice(0, i)}<span class="${tailClass}">${text2.slice(i)}</span>`;
   };
-  var fmtDelta = (n, outcome = n) => {
+  var fmtDelta = (n, outcome = n, cap = null) => {
     if (n === null || n === void 0)
       return "<span>\u2014</span>";
-    const cls = outcome > 0 ? "pos" : outcome < 0 ? "neg" : "";
+    const tone = outcome || n;
+    const capped = !outcome && n;
+    const cls = (tone > 0 ? "pos" : tone < 0 ? "neg" : "") + (capped ? " muted" : "");
+    const capText = cap === null ? "score cap" : `${cap / 1e3}k score cap`;
+    const title = capped ? ` title="Both scores \u2265 ${capText}, so this counts as a tie"` : "";
     const sign = n > 0 ? "+" : n < 0 ? "-" : "";
     const digits = Math.abs(n) < 1e3 ? `<span class="tail-dim">${Math.abs(n)}</span>` : fmtScore(Math.abs(n), "tail-dim");
-    return `<span class="${cls}">${sign}${digits}</span>`;
+    return `<span class="${cls}"${title}>${sign}${digits}</span>`;
   };
   var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var stat = (cls, n) => `<span class="${cls}${n === 0 ? " zero" : ""}">${n}</span>`;
@@ -238,7 +242,7 @@
   var datesTitle = ({ bestScoreDate, lastTryDate }) => bestScoreDate && bestScoreDate === lastTryDate ? `Last try: ${lastTryDate}` : `Best score: ${bestScoreDate || "unknown"}
 Last try: ${lastTryDate || "unknown"}`;
   var rowStart = (i) => i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : "<tr>";
-  function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff }) {
+  function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, scoreCap }) {
     const all = [...chart.rivals];
     if (chart.mine !== null)
       all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
@@ -257,7 +261,7 @@ Last try: ${lastTryDate || "unknown"}`;
       const won = rival.delta !== null && rival.delta > 0 ? " won" : " ahead";
       const playerId = rival.playerId;
       const name = playerId ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>` : esc(displayName(rival.player));
-      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
+      return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta, scoreCap)}</td></tr>`;
     });
     if (folded) {
       rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" data-expand="${esc(chartKey(chart))}">...show ${folded} other${folded === 1 ? "" : "s"}...</button></td></tr>`);
@@ -322,15 +326,16 @@ Last try: ${lastTryDate || "unknown"}`;
       if (lastRender)
         render(...lastRender);
     });
-    const tableRows = (charts, myName, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+    const tableRows = (charts, myName, scoreCap, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
       const chartTrs = chartResultsItem(chart, myName, {
         collapseWon: collapseWon && !expandedCharts.has(chartKey(chart)),
-        colorByRealDiff
+        colorByRealDiff,
+        scoreCap
       });
       return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
     });
-    function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results) {
-      lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results];
+    function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap) {
+      lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap];
       const groups = hiddenGroups.filter(({ charts }) => charts.length);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
@@ -349,12 +354,12 @@ Last try: ${lastTryDate || "unknown"}`;
       }
       let rows;
       if (selectedTab === "hidden") {
-        rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, true, true).join("")).join("");
+        rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, scoreCap, true, true).join("")).join("");
       } else {
         const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
         const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
         visible.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
-        rows = tableRows(visible, myName, selectedTab === "rivals-win").join("");
+        rows = tableRows(visible, myName, scoreCap, selectedTab === "rivals-win").join("");
       }
       body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
@@ -797,6 +802,8 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
   .btn:hover:not(:disabled) { background: #1C2B22; }
   .pos { color: #4FE33F; }
   .neg { color: #FF2A00; }
+  .pos.muted { color: #7BA874; }
+  .neg.muted { color: #B86A5C; }
 `;
   var host = null;
   var styled = /* @__PURE__ */ new Set();
@@ -928,7 +935,8 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         state.selectedTab,
         players[ownPlayerId]?.name || "You",
         emptyMessage,
-        tabResults
+        tabResults,
+        preferences.scoreCap
       );
     }
     function setOpen(isOpen) {

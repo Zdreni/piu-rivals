@@ -158,6 +158,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
       players[ownPlayerId]?.name  ||  'You',
       emptyMessage,
       tabResults,
+      preferences.scoreCap,
     );
   }
 

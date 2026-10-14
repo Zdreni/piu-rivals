@@ -38,7 +38,7 @@ const rowStart = (i) => (i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr
 // The table rows of one chart: you and its rivals by score, the track and chart spanning them all.
 // With `collapseWon`, rivals you beat are folded into a "show N others..." row.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
-export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff }) {
+export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, scoreCap }) {
   const all = [...chart.rivals];
   if (chart.mine !== null)
     all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
@@ -66,7 +66,7 @@ export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff }
     const name = playerId
       ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
       : esc(displayName(rival.player));
-    return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta)}</td></tr>`;
+    return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta, scoreCap)}</td></tr>`;
   });
 
   if (folded) {

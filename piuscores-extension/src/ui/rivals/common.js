@@ -9,18 +9,23 @@ export const fmtScore = (n, tailClass = 'tail') => {
 };
 
 
-// The colour follows `outcome` (the capped diff), so a capped tie stays neutral whatever the real diff is.
-export const fmtDelta = (n, outcome = n) => {
+// The colour follows `outcome` (the capped diff); a capped tie gets a muted colour from the real diff's sign
+// and a tooltip naming `cap`.
+export const fmtDelta = (n, outcome = n, cap = null) => {
   if (n === null  ||  n === undefined)
     return '<span>—</span>';
 
-  const cls = outcome > 0 ? 'pos' : outcome < 0 ? 'neg' : '';
+  const tone = outcome  ||  n;
+  const capped = ! outcome  &&  n;
+  const cls = (tone > 0 ? 'pos' : tone < 0 ? 'neg' : '') + (capped ? ' muted' : '');
+  const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
+  const title = capped ? ` title="Both scores ≥ ${capText}, so this counts as a tie"` : '';
   const sign = n > 0 ? '+' : n < 0 ? '-' : '';
   // Below a thousand every digit is dimmed, like the last three digits of bigger diffs.
   const digits = Math.abs(n) < 1000
     ? `<span class="tail-dim">${Math.abs(n)}</span>`
     : fmtScore(Math.abs(n), 'tail-dim');
-  return `<span class="${cls}">${sign}${digits}</span>`;
+  return `<span class="${cls}"${title}>${sign}${digits}</span>`;
 };
 
 

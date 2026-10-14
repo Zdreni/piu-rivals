@@ -10,6 +10,8 @@ const baseStyles = `
   .btn:hover:not(:disabled) { background: #1C2B22; }
   .pos { color: #4FE33F; }
   .neg { color: #FF2A00; }
+  .pos.muted { color: #7BA874; }
+  .neg.muted { color: #B86A5C; }
 `;
 
 let host = null;
