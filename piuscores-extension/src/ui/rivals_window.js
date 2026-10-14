@@ -99,13 +99,13 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     const [allCharts, { players, ownPlayerId, bestCounts }, preferences] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
 
-    const { hiddenRivals, retryCooldown, npMinimalRivals } = preferences;
+    const { hiddenRivals, tryCooldown, npMinimalRivals } = preferences;
     const hidden = new Set(hiddenRivals);
 
-    // Lost charts tried within the retry cooldown stay hidden until it passes; unknown dates never hide.
+    // Lost charts tried within the try cooldown stay hidden until it passes; unknown dates never hide.
     const coolingDown = (chart) => {
       const days = daysSince(chart.myDates.lastTryDate);
-      return chartTier(chart) === 'rivals-win'  &&  days !== null  &&  days < retryCooldown;
+      return chartTier(chart) === 'rivals-win'  &&  days !== null  &&  days < tryCooldown;
     };
 
     const shownCharts = allCharts
@@ -146,7 +146,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     chartResults.render(
       charts.filter(atLevel),
       [
-        { label: 'Retry cooldown', charts: coolingCharts.filter(atLevel).sort(byTargetWeight) },
+        { label: 'Try cooldown', charts: coolingCharts.filter(atLevel).sort(byTargetWeight) },
         { label: 'Score cap', charts: capLosses.filter(atLevel).sort(byTargetWeight) },
       ],
       state.selectedTab,

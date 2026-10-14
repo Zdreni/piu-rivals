@@ -71,7 +71,7 @@ export function createLevelChart(container, onSelect) {
       onSelect(bar.dataset.level);
   });
 
-  // `hiddenCharts` are the losses hidden by the retry cooldown or the score cap; they get their own dark segment.
+  // `hiddenCharts` are the losses hidden by the try cooldown or the score cap; they get their own dark segment.
   function render(charts, hiddenCharts, selectedLevel) {
     const levels = sortedLevels([...charts, ...hiddenCharts]);
     const stats = {};

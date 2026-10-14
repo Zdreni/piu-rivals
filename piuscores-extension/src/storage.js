@@ -8,7 +8,8 @@ export const MIN_SCRAPE_LEVEL = 10;
 export const MIN_SCORE_CAP = 995000;
 export const MAX_SCORE_CAP = 1000000;
 export const SCORE_CAP_STEP = 1000;
-export const MAX_RETRY_COOLDOWN = 7;
+// Try cooldown days run through the Fibonacci numbers; 0 is off.
+export const TRY_COOLDOWN_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21, 34];
 export const MIN_NP_RIVALS = 1;
 export const MAX_NP_RIVALS = 5;
 
@@ -158,7 +159,15 @@ export async function loadPlayers() {
 }
 
 
-export const clampRetryCooldown = (days) => Math.min(MAX_RETRY_COOLDOWN, Math.max(0, Math.round(days)));
+// Snaps days to the longest try cooldown option not above them.
+export const clampTryCooldown = (days) => TRY_COOLDOWN_OPTIONS.findLast((option) => option <= days) ?? 0;
+
+
+// The try cooldown option `step` options away from `days`, kept within the options.
+export function stepTryCooldown(days, step) {
+  const index = TRY_COOLDOWN_OPTIONS.indexOf(clampTryCooldown(days)) + step;
+  return TRY_COOLDOWN_OPTIONS[Math.min(TRY_COOLDOWN_OPTIONS.length - 1, Math.max(0, index))];
+}
 
 
 // Whole days from a "YYYY-MM-DD" date to today (local), or null when the date is unknown.
@@ -183,14 +192,15 @@ function parsePreferences(preferences) {
   return {
     hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
     scoreCap: typeof prefs.scoreCap === 'number' ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
-    retryCooldown: typeof prefs.retryCooldown === 'number' ? clampRetryCooldown(prefs.retryCooldown) : 0,
+    // Preferences saved before the rename keep their days under `retryCooldown`.
+    tryCooldown: clampTryCooldown(prefs.tryCooldown ?? prefs.retryCooldown ?? 0),
     npMinimalRivals: typeof prefs.npMinimalRivals === 'number' ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS,
   };
 }
 
 
 // Preferences are stored as
-// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, retryCooldown: <days>, npMinimalRivals: <count> } }.
+// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, tryCooldown: <days>, npMinimalRivals: <count> } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
   return parsePreferences(preferences);

@@ -1,6 +1,6 @@
 import {
-  clampNpMinimalRivals, clampRetryCooldown, clampScoreCap, displayName, loadPreferences, MAX_NP_RIVALS,
-  MAX_RETRY_COOLDOWN, MAX_SCORE_CAP, MIN_NP_RIVALS, MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP,
+  clampNpMinimalRivals, clampScoreCap, displayName, loadPreferences, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_NP_RIVALS,
+  MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP, stepTryCooldown, TRY_COOLDOWN_OPTIONS,
 } from '../../storage.js';
 import { esc, statWords } from './common.js';
 
@@ -36,7 +36,7 @@ export const windowHeaderStyles = `
 `;
 
 
-// The window title with your totals, the score cap, retry cooldown and np minimal rivals, and the export / clear data / close buttons.
+// The window title with your totals, the score cap, try cooldown and np minimal rivals, and the export / clear data / close buttons.
 // `onChange` re-renders the window after a setting changed; `onCleared` runs after all data was cleared.
 export function createWindowHeader(container, { exportTargets, onChange, onCleared, onClose }) {
   container.innerHTML = `<h2>Rivals</h2>
@@ -46,11 +46,11 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
         <button type="button" data-step="-1" aria-label="Lower score cap">−</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise score cap">+</button></div>
-      <div class="stepper retry-cooldown" title="Hide lost charts you last played fewer than this many days ago">
-        <span class="stepper-label">Retry cooldown</span>
-        <button type="button" data-step="-1" aria-label="Shorten retry cooldown">−</button>
+      <div class="stepper try-cooldown" title="Hide lost charts you last played fewer than this many days ago">
+        <span class="stepper-label">Try cooldown</span>
+        <button type="button" data-step="-1" aria-label="Shorten try cooldown">−</button>
         <span class="stepper-value"></span>
-        <button type="button" data-step="1" aria-label="Lengthen retry cooldown">+</button></div>
+        <button type="button" data-step="1" aria-label="Lengthen try cooldown">+</button></div>
       <div class="stepper np-minimal-rivals" title="Count an unplayed chart as np only when at least this many rivals played it">
         <span class="stepper-label">NP min rivals</span>
         <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">−</button>
@@ -63,7 +63,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
 
   const title = container.querySelector('h2');
   const scoreCapControl = container.querySelector('.score-cap');
-  const retryCooldownControl = container.querySelector('.retry-cooldown');
+  const tryCooldownControl = container.querySelector('.try-cooldown');
   const npMinimalRivalsControl = container.querySelector('.np-minimal-rivals');
 
   container.querySelector('.export').addEventListener('click', () => {
@@ -103,8 +103,8 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   bindStepper(scoreCapControl, ({ scoreCap }, step) =>
     ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
 
-  bindStepper(retryCooldownControl, ({ retryCooldown }, step) =>
-    ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
+  bindStepper(tryCooldownControl, ({ tryCooldown }, step) =>
+    ({ tryCooldown: stepTryCooldown(tryCooldown, step) }));
 
   bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step) =>
     ({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) }));
@@ -116,13 +116,13 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     control.querySelector('[data-step="1"]').disabled = value >= max;
   }
 
-  function render(me, totals, { scoreCap, retryCooldown, npMinimalRivals }) {
+  function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals }) {
     const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
     title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals)}</span>`;
 
     renderStepper(scoreCapControl, `${scoreCap / 1000}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
-    renderStepper(retryCooldownControl, retryCooldown ? `${retryCooldown}d` : 'off', retryCooldown, 0, MAX_RETRY_COOLDOWN,
-      retryCooldown === 0);
+    renderStepper(tryCooldownControl, tryCooldown ? `${tryCooldown}d` : 'off', tryCooldown, 0, TRY_COOLDOWN_OPTIONS.at(-1),
+      tryCooldown === 0);
     renderStepper(npMinimalRivalsControl, `${npMinimalRivals}`, npMinimalRivals, MIN_NP_RIVALS, MAX_NP_RIVALS,
       npMinimalRivals === MIN_NP_RIVALS);
   }

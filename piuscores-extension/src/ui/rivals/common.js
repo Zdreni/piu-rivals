@@ -41,7 +41,7 @@ export const TABS = [
   { id: 'rivals-win', label: 'Theirs' },
   { id: 'not-played', label: 'Not played' },
   { id: 'you-win', label: 'Yours' },
-  // Losses hidden by the retry cooldown or the score cap; never a chartTier.
+  // Losses hidden by the try cooldown or the score cap; never a chartTier.
   { id: 'hidden', label: 'Hidden' },
 ];
 
