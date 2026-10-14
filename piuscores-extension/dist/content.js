@@ -5,6 +5,7 @@
   var MIN_SCORE_CAP = 995e3;
   var MAX_SCORE_CAP = 1e6;
   var SCORE_CAP_STEP = 1e3;
+  var MAX_RETRY_COOLDOWN = 7;
   var displayName = (name) => name.replace(/\s*#\d{4}$/, "");
   var storageKey = (row) => `${row.track}|${row.chart}`;
   var isScrapLevel = (chart) => {
@@ -93,12 +94,19 @@
       bestCounts
     };
   }
+  var clampRetryCooldown = (days) => Math.min(MAX_RETRY_COOLDOWN, Math.max(0, Math.round(days)));
+  function daysSince(date) {
+    if (!date) return null;
+    const now = /* @__PURE__ */ new Date();
+    return Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.parse(`${date}T00:00:00Z`)) / 864e5);
+  }
   var clampScoreCap = (cap) => Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
   function parsePreferences(preferences) {
     const prefs = preferences && typeof preferences === "object" ? preferences : {};
     return {
       hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
-      scoreCap: typeof prefs.scoreCap === "number" ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP
+      scoreCap: typeof prefs.scoreCap === "number" ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
+      retryCooldown: typeof prefs.retryCooldown === "number" ? clampRetryCooldown(prefs.retryCooldown) : 0
     };
   }
   async function loadPreferences() {
@@ -153,9 +161,11 @@
   var statWords = (counts, separator = ", ") => `${stat("neg", counts.lose)} losses${separator}${stat("blue", counts.unplayed)} np${separator}${stat("pos", counts.win)} wins`;
   var chartTier = (chart) => chart.weight > 0 ? "rivals-win" : chart.unplayed ? "not-played" : "you-win";
   var TABS = [
-    { id: "rivals-win", label: "Rivals win" },
+    { id: "rivals-win", label: "Lost" },
     { id: "not-played", label: "Not played" },
-    { id: "you-win", label: "You win" }
+    { id: "you-win", label: "Won" },
+    // Losses hidden by the retry cooldown or the score cap; never a chartTier.
+    { id: "hidden", label: "Hidden" }
   ];
   var TIER_STAT = { "rivals-win": "lose", "not-played": "unplayed", "you-win": "win" };
   function tierCounts(charts) {
@@ -172,7 +182,9 @@
          padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
   .tab:hover { color: #EAF5EC; }
   .tab[aria-selected="true"] { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; }
-  .tab-count { margin-left: 6px; opacity: .7; }
+  /* Room for three digits, so tabs keep their size as the counts change. */
+  .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
+               font-variant-numeric: tabular-nums; }
   .tab-count.rivals-win { color: #FF5A5A; }
   .tab-count.not-played { color: #3FA9F5; }
   .tab-count.you-win { color: #4FE33F; }
@@ -207,6 +219,10 @@
                  font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
   .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
+  .tab[data-tab="hidden"] { margin-left: auto; }
+  .tab-count.hidden { color: #8C3434; }
+  td.group-title { padding: 14px 6px 6px; color: #A06060; font: 500 14px/1.2 Roboto, Arial, sans-serif;
+                   border-bottom: 1px solid #3A1E1E; }
 `;
   var datesTitle = ({ bestScoreDate, lastTryDate }) => `Best score: ${bestScoreDate || "unknown"}
 Last try: ${lastTryDate || "unknown"}`;
@@ -255,29 +271,39 @@ Last try: ${lastTryDate || "unknown"}`;
       }
       return rows;
     }
-    function render(levelCharts, selectedTab, myName, emptyMessage) {
-      lastRender = [levelCharts, selectedTab, myName, emptyMessage];
+    const tableRows = (charts, myName, collapseWon) => charts.flatMap((chart, i) => {
+      const chartTrs = chartRows(chart, myName, collapseWon);
+      return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
+    });
+    function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
+      lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage];
+      const groups = hiddenGroups.filter(({ charts }) => charts.length);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
-        levelCharts.filter((chart) => chartTier(chart) === id).length
+        id === "hidden" ? groups.reduce((acc, { charts }) => acc + charts.length, 0) : levelCharts.filter((chart) => chartTier(chart) === id).length
       ]));
-      tabs.innerHTML = TABS.map(({ id, label }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join("");
-      const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
-      const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
-      visible.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
-      if (visible.length === 0) {
+      if (selectedTab === "hidden" && tabCounts.hidden === 0) {
+        onSelectTab("rivals-win");
+        return;
+      }
+      tabs.innerHTML = TABS.filter(({ id }) => id !== "hidden" || tabCounts.hidden).map(({ id, label }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join("");
+      if (tabCounts[selectedTab] === 0) {
         const message = emptyMessage ?? `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
         body.innerHTML = `<div class="empty">${message}</div>`;
         return;
       }
-      const collapseWon = selectedTab === "rivals-win";
-      const rows = visible.flatMap((chart, i) => {
-        const chartTrs = chartRows(chart, myName, collapseWon);
-        return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
-      });
+      let rows;
+      if (selectedTab === "hidden") {
+        rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, true).join("")).join("");
+      } else {
+        const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
+        const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
+        visible.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
+        rows = tableRows(visible, myName, selectedTab === "rivals-win").join("");
+      }
       body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
-      <tbody>${rows.join("")}</tbody></table>`;
+      <tbody>${rows}</tbody></table>`;
     }
     return { render };
   }
@@ -295,7 +321,7 @@ Last try: ${lastTryDate || "unknown"}`;
   .level-head.single { text-align: right; }
   .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3; font-variant-numeric: tabular-nums; }
   .level-num.on, .level-head.on { color: #EAF5EC; font-weight: 600; }
-  .level-bar { display: flex; height: 100%; padding: 0; border: none; border-radius: 3px; overflow: hidden;
+  .level-bar { display: flex; height: 100%; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box; border-radius: 3px; overflow: hidden;
                background: #1C2B22; cursor: pointer; opacity: .75; }
   .level-bar.single { flex-direction: row-reverse; }
   .level-bar:hover { opacity: 1; }
@@ -305,8 +331,9 @@ Last try: ${lastTryDate || "unknown"}`;
   .level-bar > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
                       justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; color: rgba(0,0,0,.55); }
   .level-bar .win { background: #45C039; }
-  .level-bar .unplayed { background: #3E4844; color: #B8C2BD; }
+  .level-bar .unplayed { background: #111312; color: #9AA39E; }
   .level-bar .lose { background: #DC5252; }
+  .level-bar .hidden-loss { background: #2E1515; }
   .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
   .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
   .level-other .level-bar { grid-column: 2 / -1; }
@@ -324,16 +351,21 @@ Last try: ${lastTryDate || "unknown"}`;
       const bar = event.target.closest(".level-bar[data-level]");
       if (bar) onSelect(bar.dataset.level);
     });
-    function render(charts, selectedLevel) {
-      const levels = sortedLevels(charts);
+    function render(charts, hiddenCharts, selectedLevel) {
+      const levels = sortedLevels([...charts, ...hiddenCharts]);
       const stats = {};
-      for (const level of levels) stats[level] = tierCounts(charts.filter((chart) => chart.chart === level));
+      for (const level of levels) {
+        stats[level] = {
+          ...tierCounts(charts.filter((chart) => chart.chart === level)),
+          hidden: hiddenCharts.filter((chart) => chart.chart === level).length
+        };
+      }
       const bar = (level, side) => {
         if (!level) return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
         const on = level === selectedLevel;
         const counts = stats[level];
-        const part = (cls, n) => n ? `<span class="${cls}" style="flex-grow: ${n}">${n}</span>` : "";
-        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses \xB7 ${counts.unplayed} np \xB7 ${counts.win} wins">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("lose", counts.lose)}</button>`;
+        const part = (cls, n, label = n) => n ? `<span class="${cls}" style="flex-grow: ${n}">${label}</span>` : "";
+        return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(level)}: ${counts.lose} losses \xB7 ${counts.unplayed} np \xB7 ${counts.win} wins${counts.hidden ? ` \xB7 ${counts.hidden} hidden` : ""}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose)}</button>`;
       };
       const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
       const otherLevels = levels.filter((level) => !(levelType(level) in TYPE_ORDER));
@@ -355,7 +387,7 @@ Last try: ${lastTryDate || "unknown"}`;
 
   // src/ui/rivals/rival_list.js
   var rivalListStyles = `
-  .rival-list { width: 285px; flex-shrink: 0; overflow-y: auto; padding: 10px 16px 10px 8px;
+  .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
                 border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
   .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
   .rival { padding: 9px 6px; border-radius: 4px; }
@@ -368,7 +400,7 @@ Last try: ${lastTryDate || "unknown"}`;
   .rival.focused .rival-toggle { cursor: pointer; }
   .rival input { accent-color: #4FE33F; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
   .rival-spacer { width: 16px; flex-shrink: 0; }
-  .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; font-weight: 600; }
+  .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
   .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
@@ -497,14 +529,17 @@ Last try: ${lastTryDate || "unknown"}`;
   .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
               border-bottom: 1px solid #2B4034; }
   .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
-  .score-cap { display: flex; align-items: center; gap: 4px; margin: 0 auto; color: #9AB3A3;
-               font-size: 15px; font-variant-numeric: tabular-nums; }
-  .score-cap-value { min-width: 44px; text-align: center; color: #EAF5EC; }
-  .score-cap.off .score-cap-value { color: #9AB3A3; }
-  .score-cap button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
-                      width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
-  .score-cap button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
-  .score-cap button:disabled { opacity: .35; cursor: default; }
+  .head-settings { display: flex; align-items: center; gap: 20px; margin: 0 auto; }
+  /* The label sits above the \u2212 value + row. */
+  .stepper { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 2px 4px; color: #9AB3A3;
+             font-size: 15px; font-variant-numeric: tabular-nums; }
+  .stepper-label { grid-column: 1 / -1; text-align: center; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+  .stepper-value { min-width: 44px; text-align: center; color: #EAF5EC; }
+  .stepper.off .stepper-value { color: #9AB3A3; }
+  .stepper button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                    width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+  .stepper button:disabled { opacity: .35; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   /* Header buttons look like the rival links: grey until hovered. */
@@ -522,15 +557,24 @@ Last try: ${lastTryDate || "unknown"}`;
 `;
   function createWindowHeader(container, { exportTargets: exportTargets2, onChange, onCleared, onClose }) {
     container.innerHTML = `<h2>Rivals</h2>
-    <div class="score-cap" title="All scores above this cap are considered a draw with each other">Score cap
-      <button type="button" data-cap-step="-1" aria-label="Lower score cap">\u2212</button>
-      <span class="score-cap-value"></span>
-      <button type="button" data-cap-step="1" aria-label="Raise score cap">+</button></div>
+    <div class="head-settings">
+      <div class="stepper score-cap" title="All scores above this cap are considered a draw with each other">
+        <span class="stepper-label">Score cap</span>
+        <button type="button" data-step="-1" aria-label="Lower score cap">\u2212</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Raise score cap">+</button></div>
+      <div class="stepper retry-cooldown" title="Hide lost charts you last played fewer than this many days ago">
+        <span class="stepper-label">Retry cooldown</span>
+        <button type="button" data-step="-1" aria-label="Shorten retry cooldown">\u2212</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Lengthen retry cooldown">+</button></div>
+    </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
     <button class="dlg-close" type="button" aria-label="Close">\xD7</button>`;
     const title = container.querySelector("h2");
     const scoreCapControl = container.querySelector(".score-cap");
+    const retryCooldownControl = container.querySelector(".retry-cooldown");
     container.querySelector(".export").addEventListener("click", () => {
       exportTargets2().catch((error) => console.error("[piuscores]", error));
     });
@@ -544,24 +588,38 @@ Last try: ${lastTryDate || "unknown"}`;
       }
     });
     container.querySelector(".dlg-close").addEventListener("click", () => onClose());
-    scoreCapControl.addEventListener("click", async (event) => {
-      const button = event.target.closest("button[data-cap-step]");
-      if (!button) return;
-      try {
-        const { scoreCap } = await loadPreferences();
-        await savePreferences({ scoreCap: clampScoreCap(scoreCap + Number(button.dataset.capStep) * SCORE_CAP_STEP) });
-        await onChange();
-      } catch (error) {
-        console.error("[piuscores] Unable to save score cap", error);
-      }
-    });
-    function render(me, totals, scoreCap) {
+    function bindStepper(control, update) {
+      control.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-step]");
+        if (!button) return;
+        try {
+          await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
+          await onChange();
+        } catch (error) {
+          console.error("[piuscores] Unable to save setting", error);
+        }
+      });
+    }
+    bindStepper(scoreCapControl, ({ scoreCap }, step) => ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
+    bindStepper(retryCooldownControl, ({ retryCooldown }, step) => ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
+    function renderStepper(control, text2, value, min, max, isOff) {
+      control.classList.toggle("off", isOff);
+      control.querySelector(".stepper-value").textContent = text2;
+      control.querySelector('[data-step="-1"]').disabled = value <= min;
+      control.querySelector('[data-step="1"]').disabled = value >= max;
+    }
+    function render(me, totals, { scoreCap, retryCooldown }) {
       const text2 = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
       title.innerHTML = `${esc(text2)}<span class="head-stats"> \u2014 ${statWords(totals)}</span>`;
-      scoreCapControl.classList.toggle("off", scoreCap >= MAX_SCORE_CAP);
-      scoreCapControl.querySelector(".score-cap-value").textContent = `${scoreCap / 1e3}k`;
-      scoreCapControl.querySelector('[data-cap-step="-1"]').disabled = scoreCap <= MIN_SCORE_CAP;
-      scoreCapControl.querySelector('[data-cap-step="1"]').disabled = scoreCap >= MAX_SCORE_CAP;
+      renderStepper(scoreCapControl, `${scoreCap / 1e3}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
+      renderStepper(
+        retryCooldownControl,
+        retryCooldown ? `${retryCooldown}d` : "off",
+        retryCooldown,
+        0,
+        MAX_RETRY_COOLDOWN,
+        retryCooldown === 0
+      );
     }
     return { render };
   }
@@ -606,7 +664,7 @@ Last try: ${lastTryDate || "unknown"}`;
              font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
   .overlay[hidden] { display: none; }
   .dialog { background: #14201A; border: 1px solid #2B4034; border-radius: 8px;
-            width: min(1200px, calc(100vw - 32px)); height: 90vh;
+            width: min(1400px, calc(100vw - 32px)); height: 90vh;
             display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   .dlg-main { display: flex; flex: 1; min-height: 0; }
 `;
@@ -671,20 +729,34 @@ Last try: ${lastTryDate || "unknown"}`;
     }
     async function render() {
       ensure();
-      const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals, scoreCap }] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
+      const [allCharts, { players, ownPlayerId, bestCounts }, preferences] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
+      const { hiddenRivals, retryCooldown } = preferences;
       const hidden = new Set(hiddenRivals);
-      const charts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean);
-      const levels = sortedLevels(charts);
+      const coolingDown = (chart) => {
+        const days = daysSince(chart.myDates.lastTryDate);
+        return chartTier(chart) === "rivals-win" && days !== null && days < retryCooldown;
+      };
+      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean);
+      const charts = shownCharts.filter((chart) => !coolingDown(chart));
+      const coolingCharts = shownCharts.filter(coolingDown);
+      const isCapLoss = (chart) => chartTier(chart) !== "rivals-win" && chart.rivals.some((rival) => rival.realDelta !== null && rival.realDelta < 0);
+      const capLosses = charts.filter(isCapLoss).map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
+      const levels = sortedLevels(shownCharts);
       if (!levels.includes(state.selectedLevel)) {
         state.selectedLevel = levels[0] ?? null;
         saveUiState(state);
       }
-      header.render(players[ownPlayerId], tierCounts(charts), scoreCap);
+      header.render(players[ownPlayerId], tierCounts(charts), preferences);
       rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
-      levelChart.render(charts, state.selectedLevel);
-      const emptyMessage = allCharts.length === 0 ? "No saved rival scores yet \u2014 grab them on a player's Sessions page." : charts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : null;
+      levelChart.render(charts.filter((chart) => !isCapLoss(chart)), [...coolingCharts, ...capLosses], state.selectedLevel);
+      const emptyMessage = allCharts.length === 0 ? "No saved rival scores yet \u2014 grab them on a player's Sessions page." : shownCharts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : null;
+      const atLevel = (chart) => chart.chart === state.selectedLevel;
       chartResults.render(
-        charts.filter((chart) => chart.chart === state.selectedLevel),
+        charts.filter(atLevel),
+        [
+          { label: "Retry cooldown", charts: coolingCharts.filter(atLevel).sort(byTargetWeight) },
+          { label: "Score cap", charts: capLosses.filter(atLevel).sort(byTargetWeight) }
+        ],
         state.selectedTab,
         players[ownPlayerId]?.name || "You",
         emptyMessage

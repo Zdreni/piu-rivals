@@ -1,5 +1,6 @@
 import {
-  clampScoreCap, displayName, loadPreferences, MAX_SCORE_CAP, MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP,
+  clampRetryCooldown, clampScoreCap, displayName, loadPreferences, MAX_RETRY_COOLDOWN, MAX_SCORE_CAP, MIN_SCORE_CAP,
+  savePreferences, SCORE_CAP_STEP,
 } from '../../storage.js';
 import { esc, statWords } from './common.js';
 
@@ -7,14 +8,17 @@ export const windowHeaderStyles = `
   .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
               border-bottom: 1px solid #2B4034; }
   .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
-  .score-cap { display: flex; align-items: center; gap: 4px; margin: 0 auto; color: #9AB3A3;
-               font-size: 15px; font-variant-numeric: tabular-nums; }
-  .score-cap-value { min-width: 44px; text-align: center; color: #EAF5EC; }
-  .score-cap.off .score-cap-value { color: #9AB3A3; }
-  .score-cap button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
-                      width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
-  .score-cap button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
-  .score-cap button:disabled { opacity: .35; cursor: default; }
+  .head-settings { display: flex; align-items: center; gap: 20px; margin: 0 auto; }
+  /* The label sits above the − value + row. */
+  .stepper { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 2px 4px; color: #9AB3A3;
+             font-size: 15px; font-variant-numeric: tabular-nums; }
+  .stepper-label { grid-column: 1 / -1; text-align: center; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+  .stepper-value { min-width: 44px; text-align: center; color: #EAF5EC; }
+  .stepper.off .stepper-value { color: #9AB3A3; }
+  .stepper button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                    width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+  .stepper button:disabled { opacity: .35; cursor: default; }
   .btn.clear-data { color: #FF5A5A; border-color: #FF5A5A; }
   .btn.clear-data:hover { background: #2B1C1C; }
   /* Header buttons look like the rival links: grey until hovered. */
@@ -32,19 +36,28 @@ export const windowHeaderStyles = `
 `;
 
 
-// The window title with your totals, the score cap, and the export / clear data / close buttons.
-// `onChange` re-renders the window after the score cap changed; `onCleared` runs after all data was cleared.
+// The window title with your totals, the score cap and retry cooldown, and the export / clear data / close buttons.
+// `onChange` re-renders the window after a setting changed; `onCleared` runs after all data was cleared.
 export function createWindowHeader(container, { exportTargets, onChange, onCleared, onClose }) {
   container.innerHTML = `<h2>Rivals</h2>
-    <div class="score-cap" title="All scores above this cap are considered a draw with each other">Score cap
-      <button type="button" data-cap-step="-1" aria-label="Lower score cap">−</button>
-      <span class="score-cap-value"></span>
-      <button type="button" data-cap-step="1" aria-label="Raise score cap">+</button></div>
+    <div class="head-settings">
+      <div class="stepper score-cap" title="All scores above this cap are considered a draw with each other">
+        <span class="stepper-label">Score cap</span>
+        <button type="button" data-step="-1" aria-label="Lower score cap">−</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Raise score cap">+</button></div>
+      <div class="stepper retry-cooldown" title="Hide lost charts you last played fewer than this many days ago">
+        <span class="stepper-label">Retry cooldown</span>
+        <button type="button" data-step="-1" aria-label="Shorten retry cooldown">−</button>
+        <span class="stepper-value"></span>
+        <button type="button" data-step="1" aria-label="Lengthen retry cooldown">+</button></div>
+    </div>
     <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
     <button class="dlg-close" type="button" aria-label="Close">×</button>`;
   const title = container.querySelector('h2');
   const scoreCapControl = container.querySelector('.score-cap');
+  const retryCooldownControl = container.querySelector('.retry-cooldown');
 
   container.querySelector('.export').addEventListener('click', () => {
     exportTargets().catch((error) => console.error('[piuscores]', error));
@@ -60,26 +73,38 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     }
   });
   container.querySelector('.dlg-close').addEventListener('click', () => onClose());
-  scoreCapControl.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-cap-step]');
-    if (!button) return;
-    try {
-      const { scoreCap } = await loadPreferences();
-      await savePreferences({ scoreCap: clampScoreCap(scoreCap + Number(button.dataset.capStep) * SCORE_CAP_STEP) });
-      await onChange();
-    } catch (error) {
-      console.error('[piuscores] Unable to save score cap', error);
-    }
-  });
+  // `update(preferences, step)` returns the preference changes for a −/+ click.
+  function bindStepper(control, update) {
+    control.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-step]');
+      if (!button) return;
+      try {
+        await savePreferences(update(await loadPreferences(), Number(button.dataset.step)));
+        await onChange();
+      } catch (error) {
+        console.error('[piuscores] Unable to save setting', error);
+      }
+    });
+  }
+  bindStepper(scoreCapControl, ({ scoreCap }, step) =>
+    ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
+  bindStepper(retryCooldownControl, ({ retryCooldown }, step) =>
+    ({ retryCooldown: clampRetryCooldown(retryCooldown + step) }));
 
-  function render(me, totals, scoreCap) {
+  function renderStepper(control, text, value, min, max, isOff) {
+    control.classList.toggle('off', isOff);
+    control.querySelector('.stepper-value').textContent = text;
+    control.querySelector('[data-step="-1"]').disabled = value <= min;
+    control.querySelector('[data-step="1"]').disabled = value >= max;
+  }
+
+  function render(me, totals, { scoreCap, retryCooldown }) {
     const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
     title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals)}</span>`;
 
-    scoreCapControl.classList.toggle('off', scoreCap >= MAX_SCORE_CAP);
-    scoreCapControl.querySelector('.score-cap-value').textContent = `${scoreCap / 1000}k`;
-    scoreCapControl.querySelector('[data-cap-step="-1"]').disabled = scoreCap <= MIN_SCORE_CAP;
-    scoreCapControl.querySelector('[data-cap-step="1"]').disabled = scoreCap >= MAX_SCORE_CAP;
+    renderStepper(scoreCapControl, `${scoreCap / 1000}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
+    renderStepper(retryCooldownControl, retryCooldown ? `${retryCooldown}d` : 'off', retryCooldown, 0, MAX_RETRY_COOLDOWN,
+      retryCooldown === 0);
   }
 
   return { render };

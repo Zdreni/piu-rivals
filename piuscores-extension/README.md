@@ -23,8 +23,9 @@ Dates are session dates: `bestScoreDate` is set when the best score is raised, a
 The storage schema version is recorded as `storageVersion: 2`. Version 1 stored
 bare scores (`"<playerId>": <score>`); on load they are migrated to `{ "bestScore": <score> }`
 without dates.
-UI preferences are stored as `preferences: { "hiddenRivals": ["<playerId>", ...] }`;
-rivals unchecked in the Rival scores window are excluded from its statistics.
+UI preferences are stored as `preferences: { "hiddenRivals": ["<playerId>", ...], "scoreCap": <score>, "retryCooldown": <days> }`;
+rivals unchecked in the Rival scores window are excluded from its statistics, and lost charts
+whose own `lastTryDate` is less than `retryCooldown` days ago (0–7, 0 = off) are hidden from it.
 Scraping is limited to chart levels 10 and above (`MIN_SCRAPE_LEVEL`).
 
 ## Build

@@ -7,6 +7,7 @@ export const MIN_SCRAPE_LEVEL = 10;
 export const MIN_SCORE_CAP = 995000;
 export const MAX_SCORE_CAP = 1000000;
 export const SCORE_CAP_STEP = 1000;
+export const MAX_RETRY_COOLDOWN = 7;
 
 // Names carry a "#1234" tag suffix; it's left out when showing them.
 export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
@@ -128,6 +129,15 @@ export async function loadPlayers() {
 }
 
 
+export const clampRetryCooldown = (days) => Math.min(MAX_RETRY_COOLDOWN, Math.max(0, Math.round(days)));
+
+// Whole days from a "YYYY-MM-DD" date to today (local), or null when the date is unknown.
+export function daysSince(date) {
+  if (!date) return null;
+  const now = new Date();
+  return Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.parse(`${date}T00:00:00Z`)) / 86400000);
+}
+
 export const clampScoreCap = (cap) =>
   Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
 
@@ -136,11 +146,13 @@ function parsePreferences(preferences) {
   return {
     hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
     scoreCap: typeof prefs.scoreCap === 'number' ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
+    retryCooldown: typeof prefs.retryCooldown === 'number' ? clampRetryCooldown(prefs.retryCooldown) : 0,
   };
 }
 
 
-// Preferences are stored as { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score> } }.
+// Preferences are stored as
+// { preferences: { hiddenRivals: [<playerId>, ...], scoreCap: <score>, retryCooldown: <days> } }.
 export async function loadPreferences() {
   const { preferences } = await chrome.storage.local.get('preferences');
   return parsePreferences(preferences);

@@ -2,7 +2,7 @@ import { deletePlayer, displayName, loadPreferences, savePreferences } from '../
 import { esc, fmt, statWords } from './common.js';
 
 export const rivalListStyles = `
-  .rival-list { width: 285px; flex-shrink: 0; overflow-y: auto; padding: 10px 16px 10px 8px;
+  .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
                 border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
   .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
   .rival { padding: 9px 6px; border-radius: 4px; }
@@ -15,7 +15,7 @@ export const rivalListStyles = `
   .rival.focused .rival-toggle { cursor: pointer; }
   .rival input { accent-color: #4FE33F; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
   .rival-spacer { width: 16px; flex-shrink: 0; }
-  .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; font-weight: 600; }
+  .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
   .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }

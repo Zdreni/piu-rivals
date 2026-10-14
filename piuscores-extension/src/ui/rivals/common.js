@@ -26,9 +26,11 @@ export const statWords = (counts, separator = ', ') =>
 
 export const chartTier = (chart) => (chart.weight > 0 ? 'rivals-win' : chart.unplayed ? 'not-played' : 'you-win');
 export const TABS = [
-  { id: 'rivals-win', label: 'Rivals win' },
+  { id: 'rivals-win', label: 'Lost' },
   { id: 'not-played', label: 'Not played' },
-  { id: 'you-win', label: 'You win' },
+  { id: 'you-win', label: 'Won' },
+  // Losses hidden by the retry cooldown or the score cap; never a chartTier.
+  { id: 'hidden', label: 'Hidden' },
 ];
 const TIER_STAT = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win' };
 

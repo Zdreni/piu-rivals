@@ -1,6 +1,8 @@
-import { loadCharts, loadPlayers, loadPreferences, withRivals } from '../storage.js';
+import {
+  byTargetWeight, daysSince, loadCharts, loadPlayers, loadPreferences, targetWeight, withRivals,
+} from '../storage.js';
 import { chartResultsStyles, createChartResults } from './rivals/chart_results.js';
-import { tierCounts } from './rivals/common.js';
+import { chartTier, tierCounts } from './rivals/common.js';
 import { createLevelChart, levelChartStyles, sortedLevels } from './rivals/level_chart.js';
 import { createRivalList, rivalListStyles } from './rivals/rival_list.js';
 import { readUiState, saveUiState } from './rivals/ui_state.js';
@@ -13,7 +15,7 @@ const windowStyles = `
              font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
   .overlay[hidden] { display: none; }
   .dialog { background: #14201A; border: 1px solid #2B4034; border-radius: 8px;
-            width: min(1200px, calc(100vw - 32px)); height: 90vh;
+            width: min(1400px, calc(100vw - 32px)); height: 90vh;
             display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
   .dlg-main { display: flex; flex: 1; min-height: 0; }
 `;
@@ -89,29 +91,49 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
 
   async function render() {
     ensure();
-    const [allCharts, { players, ownPlayerId, bestCounts }, { hiddenRivals, scoreCap }] =
+    const [allCharts, { players, ownPlayerId, bestCounts }, preferences] =
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
+    const { hiddenRivals, retryCooldown } = preferences;
     const hidden = new Set(hiddenRivals);
-    const charts = allCharts
+    // Lost charts tried within the retry cooldown stay hidden until it passes; unknown dates never hide.
+    const coolingDown = (chart) => {
+      const days = daysSince(chart.myDates.lastTryDate);
+      return chartTier(chart) === 'rivals-win' && days !== null && days < retryCooldown;
+    };
+    const shownCharts = allCharts
       .map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId)))
       .filter(Boolean);
-    const levels = sortedLevels(charts);
+    const charts = shownCharts.filter((chart) => !coolingDown(chart));
+    const coolingCharts = shownCharts.filter(coolingDown);
+    // Charts a rival beats you on only by the uncapped score, so the score cap turns the loss into a draw.
+    const isCapLoss = (chart) => chartTier(chart) !== 'rivals-win'
+      && chart.rivals.some((rival) => rival.realDelta !== null && rival.realDelta < 0);
+    const capLosses = charts
+      .filter(isCapLoss)
+      .map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
+    const levels = sortedLevels(shownCharts);
     if (!levels.includes(state.selectedLevel)) {
       state.selectedLevel = levels[0] ?? null;
       saveUiState(state);
     }
 
-    header.render(players[ownPlayerId], tierCounts(charts), scoreCap);
+    header.render(players[ownPlayerId], tierCounts(charts), preferences);
     rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
-    levelChart.render(charts, state.selectedLevel);
+    // The level bars count score-cap losses as hidden losses rather than wins.
+    levelChart.render(charts.filter((chart) => !isCapLoss(chart)), [...coolingCharts, ...capLosses], state.selectedLevel);
 
     const emptyMessage = allCharts.length === 0
       ? 'No saved rival scores yet — grab them on a player\'s Sessions page.'
-      : charts.length === 0
+      : shownCharts.length === 0
         ? 'No charts for the selected rivals — check some rivals on the left.'
         : null;
+    const atLevel = (chart) => chart.chart === state.selectedLevel;
     chartResults.render(
-      charts.filter((chart) => chart.chart === state.selectedLevel),
+      charts.filter(atLevel),
+      [
+        { label: 'Retry cooldown', charts: coolingCharts.filter(atLevel).sort(byTargetWeight) },
+        { label: 'Score cap', charts: capLosses.filter(atLevel).sort(byTargetWeight) },
+      ],
       state.selectedTab,
       players[ownPlayerId]?.name || 'You',
       emptyMessage,

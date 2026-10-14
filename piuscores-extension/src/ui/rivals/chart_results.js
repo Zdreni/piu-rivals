@@ -8,7 +8,9 @@ export const chartResultsStyles = `
          padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
   .tab:hover { color: #EAF5EC; }
   .tab[aria-selected="true"] { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; }
-  .tab-count { margin-left: 6px; opacity: .7; }
+  /* Room for three digits, so tabs keep their size as the counts change. */
+  .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
+               font-variant-numeric: tabular-nums; }
   .tab-count.rivals-win { color: #FF5A5A; }
   .tab-count.not-played { color: #3FA9F5; }
   .tab-count.you-win { color: #4FE33F; }
@@ -43,6 +45,10 @@ export const chartResultsStyles = `
                  font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
   .show-others:hover { color: #4FE33F; opacity: 1; }
   .empty { padding: 24px; text-align: center; color: #9AB3A3; }
+  .tab[data-tab="hidden"] { margin-left: auto; }
+  .tab-count.hidden { color: #8C3434; }
+  td.group-title { padding: 14px 6px 6px; color: #A06060; font: 500 14px/1.2 Roboto, Arial, sans-serif;
+                   border-bottom: 1px solid #3A1E1E; }
 `;
 
 
@@ -60,7 +66,7 @@ export function createChartResults(container, onSelectTab) {
     <div class="dlg-body" role="tabpanel"></div>`;
   const tabs = container.querySelector('.tabs');
   const body = container.querySelector('.dlg-body');
-  // Charts in the "Rivals win" tab whose rivals you beat are unrolled.
+  // Charts in the "Lost" and "Hidden" tabs whose rivals you beat are unrolled.
   const expandedCharts = new Set();
   let lastRender = null;
 
@@ -110,35 +116,53 @@ export function createChartResults(container, onSelectTab) {
     return rows;
   }
 
-  // `levelCharts` are the charts of the selected level. `emptyMessage` replaces the per-tab message
-  // when there is nothing to show at all.
-  function render(levelCharts, selectedTab, myName, emptyMessage) {
-    lastRender = [levelCharts, selectedTab, myName, emptyMessage];
+  const tableRows = (charts, myName, collapseWon) => charts.flatMap((chart, i) => {
+    const chartTrs = chartRows(chart, myName, collapseWon);
+    return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
+  });
+
+  // `levelCharts` are the charts of the selected level. `hiddenGroups` are its losses left out of the
+  // "Lost" tab, as [{ label, charts }]; the "Hidden" tab lists them group by group.
+  // `emptyMessage` replaces the per-tab message when there is nothing to show at all.
+  function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage) {
+    lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage];
+    const groups = hiddenGroups.filter(({ charts }) => charts.length);
     const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
-      id, levelCharts.filter((chart) => chartTier(chart) === id).length,
+      id, id === 'hidden'
+        ? groups.reduce((acc, { charts }) => acc + charts.length, 0)
+        : levelCharts.filter((chart) => chartTier(chart) === id).length,
     ]));
-    tabs.innerHTML = TABS.map(({ id, label }) =>
+    // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
+    if (selectedTab === 'hidden' && tabCounts.hidden === 0) {
+      onSelectTab('rivals-win');
+      return;
+    }
+    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden' || tabCounts.hidden).map(({ id, label }) =>
       `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
       + `${label}<span class="tab-count ${id}">${tabCounts[id]}</span></button>`).join('');
 
-    const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
-    const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
-    visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab] || byTargetWeight);
-    if (visible.length === 0) {
+    if (tabCounts[selectedTab] === 0) {
       const message = emptyMessage
         ?? `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
       body.innerHTML = `<div class="empty">${message}</div>`;
       return;
     }
 
-    const collapseWon = selectedTab === 'rivals-win';
-    const rows = visible.flatMap((chart, i) => {
-      const chartTrs = chartRows(chart, myName, collapseWon);
-      return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
-    });
+    let rows;
+    if (selectedTab === 'hidden') {
+      // Each group starts with a title row.
+      rows = groups.map(({ label, charts }) =>
+        `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
+        + tableRows(charts, myName, true).join('')).join('');
+    } else {
+      const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
+      const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
+      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab] || byTargetWeight);
+      rows = tableRows(visible, myName, selectedTab === 'rivals-win').join('');
+    }
     body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
-      <tbody>${rows.join('')}</tbody></table>`;
+      <tbody>${rows}</tbody></table>`;
   }
 
   return { render };
