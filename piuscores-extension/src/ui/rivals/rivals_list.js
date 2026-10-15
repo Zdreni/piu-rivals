@@ -14,9 +14,19 @@ export const rivalListStyles = `
 export function createRivalList(container, onChange) {
   // Only the focused rival in the list shows its stats and buttons.
   let focusedRival = null;
+  // While set, only you and this rival are compared. Kept in memory only, never in preferences,
+  // and only while that rival stays focused.
+  let soloRival = null;
   let pendingScroll = false;
 
   container.addEventListener('change', async (event) => {
+    const solo = event.target.closest('input[data-solo]');
+    if (solo) {
+      soloRival = solo.checked ? solo.dataset.solo : null;
+      await onChange();
+      return;
+    }
+
     const box = event.target.closest('input[data-player]');
     if (! box)
       return;
@@ -39,7 +49,7 @@ export function createRivalList(container, onChange) {
     const button = event.target.closest('button[data-delete]');
     if (! button) {
       const rival = event.target.closest('.rival');
-      if (! rival  ||  event.target.closest('input, a'))
+      if (! rival  ||  event.target.closest('input, a, label'))
         return;
 
       // Clicking the header of the focused rival folds it back.
@@ -51,6 +61,9 @@ export function createRivalList(container, onChange) {
       for (const other of container.querySelectorAll('.rival')) {
         other.classList.toggle('focused', other.dataset.rival === focusedRival);
       }
+
+      if (dropSolo())
+        await onChange();
 
       return;
     }
@@ -64,6 +77,9 @@ export function createRivalList(container, onChange) {
 
     try {
       await deletePlayer(playerId);
+      if (soloRival === playerId)
+        soloRival = null;
+
       await onChange();
     } catch (error) {
       console.error('[piuscores] Unable to delete player data', error);
@@ -71,14 +87,16 @@ export function createRivalList(container, onChange) {
   });
 
   // Rivals (and you) are sorted by pumbility (highest first); those without one follow alphabetically.
-  // Each rival shows how many of their charts you lose / haven't played / win.
+  // Each rival shows how many of their charts you lose / haven't played / win, judged on the real scores,
+  // with none of the settings applied.
   // Below the links: scores and sessions grabbed by the scrap button, and stored best scores.
-  function render(charts, players, ownPlayerId, hidden, bestCounts) {
+  // `soloStats`, given in solo mode, replace the solo rival's stats.
+  function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats) {
     const rivalStats = {};
     for (const chart of charts) {
       for (const rival of chart.rivals) {
         const counts = (rivalStats[rival.playerId] ||= { lose: 0, win: 0, unplayed: 0 });
-        counts[rival.delta === null ? 'unplayed' : rival.delta < 0 ? 'lose' : 'win']++;
+        counts[rival.realDelta === null ? 'unplayed' : rival.realDelta < 0 ? 'lose' : 'win']++;
       }
     }
 
@@ -101,11 +119,15 @@ export function createRivalList(container, onChange) {
     container.innerHTML = rivals.length
       ? rivals.map((rival) => {
         const me = rival.playerId === ownPlayerId;
+        const on = me  ||  ! hidden.has(rival.playerId);
+        const solo = rival.playerId === soloRival;
         return rivalListItem(rival, players[rival.playerId], {
           me,
-          on: me  ||  ! hidden.has(rival.playerId),
+          on,
+          solo,
+          faded: !! soloRival  &&  ! me  &&  ! solo,
           focused: rival.playerId === focusedRival,
-          stats: rivalStats[rival.playerId]  ||  { lose: 0, win: 0, unplayed: 0 },
+          stats: (solo  &&  soloStats)  ||  rivalStats[rival.playerId]  ||  { lose: 0, win: 0, unplayed: 0 },
           best: bestCounts[rival.playerId],
         });
       }).join('')
@@ -124,7 +146,17 @@ export function createRivalList(container, onChange) {
   function focus(playerId) {
     focusedRival = playerId;
     pendingScroll = true;
+    dropSolo();
   }
 
-  return { render, focus };
+  // Unchecks solo once its rival is no longer the focused one; tells whether it did.
+  function dropSolo() {
+    if (! soloRival  ||  soloRival === focusedRival)
+      return false;
+
+    soloRival = null;
+    return true;
+  }
+
+  return { render, focus, soloRival: () => soloRival };
 }

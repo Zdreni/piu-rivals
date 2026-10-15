@@ -101,6 +101,9 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
 
     const { hiddenRivals, tryCooldown, npMinimalRivals } = preferences;
     const hidden = new Set(hiddenRivals);
+    // A solo rival is compared alone, whatever the stored selection says.
+    const solo = rivalList.soloRival();
+    const included = (playerId) => solo ? playerId === solo : ! hidden.has(playerId);
 
     // Lost charts tried within the try cooldown stay hidden until it passes; unknown dates never hide.
     const coolingDown = (chart) => {
@@ -109,7 +112,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     };
 
     const shownCharts = allCharts
-      .map((chart) => withRivals(chart, (rival) => ! hidden.has(rival.playerId)))
+      .map((chart) => withRivals(chart, (rival) => included(rival.playerId)))
       .filter(Boolean)
       // Unplayed charts count as np only once enough shown rivals have played them.
       .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
@@ -132,8 +135,10 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     }
 
     const { countBy } = preferences;
-    header.render(players[ownPlayerId], countBy === 'charts' ? tierCounts(charts) : resultCounts(charts), preferences);
-    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
+    const totals = countBy === 'charts' ? tierCounts(charts) : resultCounts(charts);
+    header.render(players[ownPlayerId], totals, preferences);
+    // In solo mode the solo rival's stats are the header's, with all the settings applied.
+    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null);
     // The level bars count score-cap losses as hidden losses rather than wins.
     const barCharts = charts.filter((chart) => ! isCapLoss(chart));
     const hiddenCharts = [...coolingCharts, ...capLosses];

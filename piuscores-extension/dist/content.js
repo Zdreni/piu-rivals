@@ -469,7 +469,9 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
 
   // src/ui/rivals/rivals_list_item.js
   var rivalListItemStyles = `
-  .rival { padding: 9px 6px; border-radius: 4px; }
+  .rival { padding: 9px 6px; border-radius: 4px; position: relative; }
+  .rival.faded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+                        background: rgba(20,32,26,.8); }
   .rival:nth-child(even) { background: rgba(255,255,255,.05); }
   .rival:hover { background: rgba(79,227,63,.12); }
   .rival { cursor: pointer; }
@@ -480,10 +482,16 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
   .rival input { appearance: none; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer;
                  background: #3A4540; border: 1px solid #56635C; border-radius: 3px; display: grid; place-content: center; }
   .rival input:hover { border-color: #7A8A81; }
-  .rival input:checked { background: #4FE33F; border-color: #4FE33F; }
+  .rival input:checked { background: #A9AFAC; border-color: #A9AFAC; }
   .rival input:checked::after { content: ''; width: 4px; height: 8px; margin-top: -2px;
                                 border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  .rival-spacer { width: 16px; flex-shrink: 0; }
+  .rival input[data-player] { position: relative; display: block; width: 28px; height: 16px; border-radius: 8px;
+                              transition: background .15s, border-color .15s; }
+  .rival input[data-player]::after { content: ''; position: absolute; top: 1px; left: 1px; width: 12px; height: 12px;
+                                     margin: 0; border: 0; border-radius: 50%; background: #9AA59F; transform: none;
+                                     transition: left .15s, background .15s; }
+  .rival input[data-player]:checked::after { left: 13px; background: #0F1A14; }
+  .rival-spacer { width: 28px; flex-shrink: 0; }
   .rival.me .rival-name, .rival.me .rival-pum { color: #FFC433; }
   .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
@@ -497,6 +505,11 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
   .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                 font-size: 13px; text-decoration: none; }
   .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+  .rival-solo { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .rival-solo:hover { color: #3FA9F5; border-color: #3FA9F5; background: #14201A; }
+  .rival .rival-solo input { width: 12px; height: 12px; }
+  .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
+  .rival .rival-solo input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
   .rival-delete { margin-left: auto; font: inherit; font-size: 13px; cursor: pointer; }
   .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
   .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
@@ -508,6 +521,8 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
 `;
   var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
+  var statsTip = "Charts: theirs / not played / yours, judged on the real scores, without the score cap and try cooldown filters";
+  var statsSoloTip = "Solo: the same counts as in the header, with the score cap, try cooldown and NP min rivals applied";
   var clockIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>';
   function visitBadge(visitedAt, href) {
     if (typeof visitedAt !== "number") {
@@ -520,10 +535,10 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       return "";
     return `<a class="rival-visit" href="${href}" title="Sessions page last visited ${esc(visited.toLocaleString())}">${clockIcon}${days}d</a>`;
   }
-  function rivalListItem({ playerId, name, pumbility }, player, { me, on, focused, stats, best }) {
+  function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, best }) {
     const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
     const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
-    return `<div class="rival${on ? "" : " off"}${me ? " me" : ""}${focused ? " focused" : ""}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(player?.scrapStats, best)}</div>` + (me ? "" : `<div class="rival-stats" title="charts: losing / not played / best">${statWords(stats, " \xB7 ")}</div>`) + `</div><div class="rival-links"><a class="rival-link" href="${base}">${me ? "My page" : "Rival"}</a><a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
+    return `<div class="rival${on || solo ? "" : " off"}${faded ? " faded" : ""}${me ? " me" : ""}${focused ? " focused" : ""}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(player?.scrapStats, best)}</div>` + (me ? "" : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, " \xB7 ")}</div>`) + '</div><div class="rival-links">' + (me ? `<a class="rival-link" href="${base}">My page</a>` : `<label class="rival-link rival-solo" title="Compare only you and this rival"><input type="checkbox" data-solo="${esc(playerId)}"${solo ? " checked" : ""}>Solo</label>`) + `<a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
   }
 
   // src/ui/rivals/rivals_list.js
@@ -535,8 +550,15 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
 ` + rivalListItemStyles;
   function createRivalList(container, onChange) {
     let focusedRival = null;
+    let soloRival = null;
     let pendingScroll = false;
     container.addEventListener("change", async (event) => {
+      const solo = event.target.closest("input[data-solo]");
+      if (solo) {
+        soloRival = solo.checked ? solo.dataset.solo : null;
+        await onChange();
+        return;
+      }
       const box = event.target.closest("input[data-player]");
       if (!box)
         return;
@@ -556,7 +578,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       const button = event.target.closest("button[data-delete]");
       if (!button) {
         const rival = event.target.closest(".rival");
-        if (!rival || event.target.closest("input, a"))
+        if (!rival || event.target.closest("input, a, label"))
           return;
         const unfocus = rival.classList.contains("focused");
         if (unfocus && !event.target.closest(".rival-toggle"))
@@ -565,6 +587,8 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         for (const other of container.querySelectorAll(".rival")) {
           other.classList.toggle("focused", other.dataset.rival === focusedRival);
         }
+        if (dropSolo())
+          await onChange();
         return;
       }
       const { delete: playerId, name, own } = button.dataset;
@@ -573,17 +597,19 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         return;
       try {
         await deletePlayer(playerId);
+        if (soloRival === playerId)
+          soloRival = null;
         await onChange();
       } catch (error) {
         console.error("[piuscores] Unable to delete player data", error);
       }
     });
-    function render(charts, players, ownPlayerId, hidden, bestCounts) {
+    function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats) {
       const rivalStats = {};
       for (const chart of charts) {
         for (const rival of chart.rivals) {
           const counts = rivalStats[rival.playerId] ||= { lose: 0, win: 0, unplayed: 0 };
-          counts[rival.delta === null ? "unplayed" : rival.delta < 0 ? "lose" : "win"]++;
+          counts[rival.realDelta === null ? "unplayed" : rival.realDelta < 0 ? "lose" : "win"]++;
         }
       }
       const ids = new Set(Object.keys(players));
@@ -600,11 +626,15 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       rivals.sort((a, b) => (b.pumbility ?? -1) - (a.pumbility ?? -1) || a.name.localeCompare(b.name, void 0, { sensitivity: "base" }));
       container.innerHTML = rivals.length ? rivals.map((rival) => {
         const me = rival.playerId === ownPlayerId;
+        const on = me || !hidden.has(rival.playerId);
+        const solo = rival.playerId === soloRival;
         return rivalListItem(rival, players[rival.playerId], {
           me,
-          on: me || !hidden.has(rival.playerId),
+          on,
+          solo,
+          faded: !!soloRival && !me && !solo,
           focused: rival.playerId === focusedRival,
-          stats: rivalStats[rival.playerId] || { lose: 0, win: 0, unplayed: 0 },
+          stats: solo && soloStats || rivalStats[rival.playerId] || { lose: 0, win: 0, unplayed: 0 },
           best: bestCounts[rival.playerId]
         });
       }).join("") : '<div class="muted">No rivals yet</div>';
@@ -618,8 +648,15 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
     function focus(playerId) {
       focusedRival = playerId;
       pendingScroll = true;
+      dropSolo();
     }
-    return { render, focus };
+    function dropSolo() {
+      if (!soloRival || soloRival === focusedRival)
+        return false;
+      soloRival = null;
+      return true;
+    }
+    return { render, focus, soloRival: () => soloRival };
   }
 
   // src/ui/rivals/ui_state.js
@@ -903,11 +940,13 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       const [allCharts, { players, ownPlayerId, bestCounts }, preferences] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
       const { hiddenRivals, tryCooldown, npMinimalRivals } = preferences;
       const hidden = new Set(hiddenRivals);
+      const solo = rivalList.soloRival();
+      const included = (playerId) => solo ? playerId === solo : !hidden.has(playerId);
       const coolingDown = (chart) => {
         const days = daysSince(chart.myDates.lastTryDate);
         return chartTier(chart) === "rivals-win" && days !== null && days < tryCooldown;
       };
-      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => !hidden.has(rival.playerId))).filter(Boolean).filter((chart) => !chart.unplayed || chart.rivals.length >= npMinimalRivals);
+      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => included(rival.playerId))).filter(Boolean).filter((chart) => !chart.unplayed || chart.rivals.length >= npMinimalRivals);
       const charts = shownCharts.filter((chart) => !coolingDown(chart));
       const coolingCharts = shownCharts.filter(coolingDown);
       const isCapLoss = (chart) => chartTier(chart) !== "rivals-win" && chart.rivals.some((rival) => rival.realDelta !== null && rival.realDelta < 0);
@@ -918,8 +957,9 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         saveUiState(state);
       }
       const { countBy } = preferences;
-      header.render(players[ownPlayerId], countBy === "charts" ? tierCounts(charts) : resultCounts(charts), preferences);
-      rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts);
+      const totals = countBy === "charts" ? tierCounts(charts) : resultCounts(charts);
+      header.render(players[ownPlayerId], totals, preferences);
+      rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null);
       const barCharts = charts.filter((chart) => !isCapLoss(chart));
       const hiddenCharts = [...coolingCharts, ...capLosses];
       chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
