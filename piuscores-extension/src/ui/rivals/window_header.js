@@ -2,7 +2,7 @@ import {
   clampNpMinimalRivals, clampScoreCap, displayName, loadPreferences, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_NP_RIVALS,
   MIN_SCORE_CAP, savePreferences, SCORE_CAP_STEP, stepTryCooldown, TRY_COOLDOWN_OPTIONS,
 } from '../../storage.js';
-import { esc, statWords } from './common.js';
+import { esc, STAT_WORDS, statWords } from './common.js';
 
 export const windowHeaderStyles = `
   .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
@@ -49,28 +49,30 @@ export const windowHeaderStyles = `
 export function createWindowHeader(container, { exportTargets, onChange, onCleared, onClose }) {
   container.innerHTML = `<h2>Rivals</h2>
     <div class="head-settings">
-      <div class="stepper score-cap" title="All scores above this cap are considered a draw with each other">
+      <div class="stepper score-cap">
         <span class="stepper-label">Score cap</span>
         <button type="button" data-step="-1" aria-label="Lower score cap">−</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise score cap">+</button></div>
-      <div class="stepper try-cooldown" title="Hide lost charts you last played fewer than this many days ago">
-        <span class="stepper-label">Try cooldown</span>
-        <button type="button" data-step="-1" aria-label="Shorten try cooldown">−</button>
+      <div class="stepper try-cooldown">
+        <span class="stepper-label">Retry after</span>
+        <button type="button" data-step="-1" aria-label="Retry sooner">−</button>
         <span class="stepper-value"></span>
-        <button type="button" data-step="1" aria-label="Lengthen try cooldown">+</button></div>
-      <div class="stepper np-minimal-rivals" title="Count an unplayed chart as np only when at least this many rivals played it">
+        <button type="button" data-step="1" aria-label="Retry later">+</button></div>
+      <div class="stepper np-minimal-rivals">
         <span class="stepper-label">NP min rivals</span>
         <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">−</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
       <div class="switch count-by" role="radiogroup" aria-label="Count by"
-           title="Count theirs / np / yours by rival results or by charts">
+           title="Count lost / non-matched / won rival results, or inferior / not played / superior charts">
         <span class="stepper-label">Count by</span>
-        <button type="button" role="radio" data-count-by="results">Results</button>
-        <button type="button" role="radio" data-count-by="charts">Charts</button></div>
+        <button type="button" role="radio" data-count-by="results"
+                title="Count each rival's result separately">Results</button>
+        <button type="button" role="radio" data-count-by="charts"
+                title="Count each chart once: inferior if any rival beats you, otherwise not played or superior">Charts</button></div>
     </div>
-    <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
+    <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
     <button class="dlg-close" type="button" aria-label="Close">×</button>`;
 
@@ -140,13 +142,21 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
 
   function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals, countBy }) {
     const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
-    title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals)}</span>`;
+    title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals, ', ', STAT_WORDS[countBy])}</span>`;
 
     renderStepper(scoreCapControl, `${scoreCap / 1000}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
+    scoreCapControl.title = scoreCap >= MAX_SCORE_CAP
+      ? 'No score cap is applied'
+      : `Hide losses or wins on mutual scores ≥ ${scoreCap / 1000}k`;
     renderStepper(tryCooldownControl, tryCooldown ? `${tryCooldown}d` : 'off', tryCooldown, 0, TRY_COOLDOWN_OPTIONS.at(-1),
       tryCooldown === 0);
+    tryCooldownControl.title = tryCooldown
+      ? `Hide lost charts for ${tryCooldown} ${tryCooldown === 1 ? 'day' : 'days'} after your last try`
+      : 'Show lost charts no matter when you last tried them';
     renderStepper(npMinimalRivalsControl, `${npMinimalRivals}`, npMinimalRivals, MIN_NP_RIVALS, MAX_NP_RIVALS,
       npMinimalRivals === MIN_NP_RIVALS);
+    npMinimalRivalsControl.title =
+      `Show unplayed charts with ≥ ${npMinimalRivals} rival ${npMinimalRivals === 1 ? 'result' : 'results'}`;
     for (const button of countByControl.querySelectorAll('button')) {
       const on = button.dataset.countBy === countBy;
       button.classList.toggle('on', on);

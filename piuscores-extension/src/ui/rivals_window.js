@@ -138,7 +138,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     const totals = countBy === 'charts' ? tierCounts(charts) : resultCounts(charts);
     header.render(players[ownPlayerId], totals, preferences);
     // In solo mode the solo rival's stats are the header's, with all the settings applied.
-    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null);
+    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null, countBy);
     // The level bars count score-cap losses as hidden losses rather than wins.
     const barCharts = charts.filter((chart) => ! isCapLoss(chart));
     const hiddenCharts = [...coolingCharts, ...capLosses];

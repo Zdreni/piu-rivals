@@ -1,6 +1,6 @@
 import { byLeadWeight, byTargetWeight } from '../../storage.js';
 import { chartKey, chartResultsItem, chartResultsItemStyles } from './chart_results_item.js';
-import { chartTier, esc, TABS, TIER_STAT } from './common.js';
+import { chartTier, esc, STAT_WORDS, TABS, TIER_STAT } from './common.js';
 
 export const chartResultsStyles = `
   .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
@@ -94,26 +94,28 @@ export function createChartResults(container, onSelectTab) {
         : levelCharts.filter((chart) => chartTier(chart) === id).length,
     ]));
     const tabNumber = (id) => (results ? results[TIER_STAT[id]] : tabCounts[id]);
+    // Tabs are named after what their numbers count.
+    const tabWord = (id) => STAT_WORDS[results ? 'results' : 'charts'][TIER_STAT[id]];
     // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
     if (selectedTab === 'hidden'  &&  tabCounts.hidden === 0) {
       onSelectTab('rivals-win');
       return;
     }
 
-    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden'  ||  tabCounts.hidden).map(({ id, label }) =>
+    const capitalized = (word) => word[0].toUpperCase() + word.slice(1);
+    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden'  ||  tabCounts.hidden).map(({ id }) =>
       `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
-      + `${label}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join('');
+      + `${capitalized(tabWord(id))}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join('');
 
     if (tabCounts[selectedTab] === 0) {
-      const message = emptyMessage
-        ?? `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
+      const message = emptyMessage ?? `No ${STAT_WORDS.charts[TIER_STAT[selectedTab]]} charts at this level.`;
       body.innerHTML = `<div class="empty">${message}</div>`;
       return;
     }
 
     let rows;
     if (selectedTab === 'hidden') {
-      // Each group starts with a title row. Diffs are coloured like in the "Theirs" tab, so capped ties show as losses.
+      // Each group starts with a title row. Diffs are coloured like in the "Inferior" tab, so capped ties show as losses.
       rows = groups.map(({ label, charts }) =>
         `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
         + tableRows(charts, myName, scoreCap, true, true).join('')).join('');

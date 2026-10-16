@@ -36,18 +36,26 @@ export const esc = (s) =>
 const stat = (cls, n) => `<span class="${cls}${n === 0 ? ' zero' : ''}">${n}</span>`;
 
 
-export const statWords = (counts, separator = ', ') =>
-  `${stat('neg', counts.lose)} theirs${separator}${stat('blue', counts.unplayed)} np${separator}${stat('pos', counts.win)} yours`;
+// The word for each stat, by the count by setting.
+export const STAT_WORDS = {
+  results: { lose: 'lost', unplayed: 'non-matched', win: 'won', hidden: 'hidden' },
+  charts: { lose: 'inferior', unplayed: 'not played', win: 'superior', hidden: 'hidden' },
+};
+
+export const statWords = (counts, separator = ', ', words = STAT_WORDS.results) =>
+  `${stat('neg', counts.lose)} ${words.lose}${separator}${stat('blue', counts.unplayed)} ${words.unplayed}${separator}`
+  + `${stat('pos', counts.win)} ${words.win}`;
 
 
 export const chartTier = (chart) => (chart.weight > 0 ? 'rivals-win' : chart.unplayed ? 'not-played' : 'you-win');
 
+// Each tab is labelled with the word of its stat.
 export const TABS = [
-  { id: 'rivals-win', label: 'Theirs' },
-  { id: 'not-played', label: 'Not played' },
-  { id: 'you-win', label: 'Yours' },
+  { id: 'rivals-win' },
+  { id: 'not-played' },
+  { id: 'you-win' },
   // Losses hidden by the try cooldown or the score cap; never a chartTier.
-  { id: 'hidden', label: 'Hidden' },
+  { id: 'hidden' },
 ];
 
 // The stat each tab counts.

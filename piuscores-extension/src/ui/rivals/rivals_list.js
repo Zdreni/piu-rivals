@@ -1,4 +1,5 @@
 import { deletePlayer, displayName, loadPreferences, savePreferences } from '../../storage.js';
+import { STAT_WORDS } from './common.js';
 import { rivalListItem, rivalListItemStyles } from './rivals_list_item.js';
 
 export const rivalListStyles = `
@@ -90,8 +91,8 @@ export function createRivalList(container, onChange) {
   // Each rival shows how many of their charts you lose / haven't played / win, judged on the real scores,
   // with none of the settings applied.
   // Below the links: scores and sessions grabbed by the scrap button, and stored best scores.
-  // `soloStats`, given in solo mode, replace the solo rival's stats.
-  function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats) {
+  // `soloStats`, given in solo mode, replace the solo rival's stats; they are named by `countBy`, like in the header.
+  function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats, countBy) {
     const rivalStats = {};
     for (const chart of charts) {
       for (const rival of chart.rivals) {
@@ -128,6 +129,7 @@ export function createRivalList(container, onChange) {
           faded: !! soloRival  &&  ! me  &&  ! solo,
           focused: rival.playerId === focusedRival,
           stats: (solo  &&  soloStats)  ||  rivalStats[rival.playerId]  ||  { lose: 0, win: 0, unplayed: 0 },
+          statsWords: STAT_WORDS[solo  &&  soloStats ? countBy : 'results'],
           best: bestCounts[rival.playerId],
         });
       }).join('')

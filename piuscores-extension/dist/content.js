@@ -185,14 +185,18 @@
   };
   var esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var stat = (cls, n) => `<span class="${cls}${n === 0 ? " zero" : ""}">${n}</span>`;
-  var statWords = (counts, separator = ", ") => `${stat("neg", counts.lose)} theirs${separator}${stat("blue", counts.unplayed)} np${separator}${stat("pos", counts.win)} yours`;
+  var STAT_WORDS = {
+    results: { lose: "lost", unplayed: "non-matched", win: "won", hidden: "hidden" },
+    charts: { lose: "inferior", unplayed: "not played", win: "superior", hidden: "hidden" }
+  };
+  var statWords = (counts, separator = ", ", words = STAT_WORDS.results) => `${stat("neg", counts.lose)} ${words.lose}${separator}${stat("blue", counts.unplayed)} ${words.unplayed}${separator}${stat("pos", counts.win)} ${words.win}`;
   var chartTier = (chart) => chart.weight > 0 ? "rivals-win" : chart.unplayed ? "not-played" : "you-win";
   var TABS = [
-    { id: "rivals-win", label: "Theirs" },
-    { id: "not-played", label: "Not played" },
-    { id: "you-win", label: "Yours" },
+    { id: "rivals-win" },
+    { id: "not-played" },
+    { id: "you-win" },
     // Losses hidden by the try cooldown or the score cap; never a chartTier.
-    { id: "hidden", label: "Hidden" }
+    { id: "hidden" }
   ];
   var TIER_STAT = { "rivals-win": "lose", "not-played": "unplayed", "you-win": "win", hidden: "hidden" };
   function tierCounts(charts) {
@@ -342,13 +346,15 @@ Last try: ${lastTryDate || "unknown"}`;
         id === "hidden" ? groups.reduce((acc, { charts }) => acc + charts.length, 0) : levelCharts.filter((chart) => chartTier(chart) === id).length
       ]));
       const tabNumber = (id) => results ? results[TIER_STAT[id]] : tabCounts[id];
+      const tabWord = (id) => STAT_WORDS[results ? "results" : "charts"][TIER_STAT[id]];
       if (selectedTab === "hidden" && tabCounts.hidden === 0) {
         onSelectTab("rivals-win");
         return;
       }
-      tabs.innerHTML = TABS.filter(({ id }) => id !== "hidden" || tabCounts.hidden).map(({ id, label }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${label}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join("");
+      const capitalized = (word) => word[0].toUpperCase() + word.slice(1);
+      tabs.innerHTML = TABS.filter(({ id }) => id !== "hidden" || tabCounts.hidden).map(({ id }) => `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">${capitalized(tabWord(id))}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join("");
       if (tabCounts[selectedTab] === 0) {
-        const message = emptyMessage ?? `No ${TABS.find(({ id }) => id === selectedTab).label.toLowerCase()} charts at this level.`;
+        const message = emptyMessage ?? `No ${STAT_WORDS.charts[TIER_STAT[selectedTab]]} charts at this level.`;
         body.innerHTML = `<div class="empty">${message}</div>`;
         return;
       }
@@ -444,9 +450,9 @@ Last try: ${lastTryDate || "unknown"}`;
         const { charts: byCharts, results: byResults } = stats[level];
         const counts = stats[level][countBy];
         const part = (cls, n, label = n, style = "") => n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : "";
-        const tipLine = (stat2, word) => `
-${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result")}`;
-        const tip = `${level}:${tipLine("lose", "their")}${tipLine("hidden", "hidden")}${tipLine("unplayed", "non-matched")}${tipLine("win", "yours")}`;
+        const tipLine = (stat2) => `
+${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byResults[stat2], `${STAT_WORDS.results[stat2]} result`)}`;
+        const tip = `${level}:${tipLine("lose")}${tipLine("hidden")}${tipLine("unplayed")}${tipLine("win")}`;
         return `<button class="level-bar ${side}${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-level="${esc(level)}" title="${esc(tip)}">${part("win", counts.win)}${part("unplayed", counts.unplayed)}${part("hidden-loss", counts.hidden, "")}${part("lose", counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
       };
       const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
@@ -521,7 +527,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
 `;
   var scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ""}>${fmt(n)}</span> ${label}`;
   var scrapLine = (scrapStats, best) => `${scrapCount(scrapStats?.scores || 0, "scores")} \xB7 ${scrapCount(best || 0, "best")} \xB7 ${scrapCount(scrapStats?.sessions || 0, "sessions")}`;
-  var statsTip = "Charts: theirs / not played / yours, judged on the real scores, without the score cap and try cooldown filters";
+  var statsTip = "Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap and try cooldown filters";
   var statsSoloTip = "Solo: the same counts as in the header, with the score cap, try cooldown and NP min rivals applied";
   var clockIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>';
   function visitBadge(visitedAt, href) {
@@ -535,10 +541,10 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       return "";
     return `<a class="rival-visit" href="${href}" title="Sessions page last visited ${esc(visited.toLocaleString())}">${clockIcon}${days}d</a>`;
   }
-  function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, best }) {
+  function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, statsWords, best }) {
     const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
     const toggle = me ? '<span class="rival-spacer"></span>' : `<input type="checkbox" data-player="${esc(playerId)}"${on ? " checked" : ""}>`;
-    return `<div class="rival${on || solo ? "" : " off"}${faded ? " faded" : ""}${me ? " me" : ""}${focused ? " focused" : ""}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(player?.scrapStats, best)}</div>` + (me ? "" : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, " \xB7 ")}</div>`) + '</div><div class="rival-links">' + (me ? `<a class="rival-link" href="${base}">My page</a>` : `<label class="rival-link rival-solo" title="Compare only you and this rival"><input type="checkbox" data-solo="${esc(playerId)}"${solo ? " checked" : ""}>Solo</label>`) + `<a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
+    return `<div class="rival${on || solo ? "" : " off"}${faded ? " faded" : ""}${me ? " me" : ""}${focused ? " focused" : ""}" data-rival="${esc(playerId)}"><div class="rival-toggle" title="${esc(name)}">${toggle}<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}<span class="rival-pum">${fmt(pumbility)}</span></div><div class="rival-scrap"><div class="rival-counts" title="scraped scores \xB7 best scores \xB7 scraped sessions">${scrapLine(player?.scrapStats, best)}</div>` + (me ? "" : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, " \xB7 ", statsWords)}</div>`) + '</div><div class="rival-links">' + (me ? `<a class="rival-link" href="${base}">My page</a>` : `<label class="rival-link rival-solo" title="Compare only you and this rival"><input type="checkbox" data-solo="${esc(playerId)}"${solo ? " checked" : ""}>Solo</label>`) + `<a class="rival-link" href="${base}/Sessions">Sessions</a><button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" data-name="${esc(name)}"${me ? ' data-own="1"' : ""} title="${me ? "Delete all your saved scores" : "Delete this player and all their saved scores"}">Delete</button></div></div>`;
   }
 
   // src/ui/rivals/rivals_list.js
@@ -604,7 +610,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         console.error("[piuscores] Unable to delete player data", error);
       }
     });
-    function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats) {
+    function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats, countBy) {
       const rivalStats = {};
       for (const chart of charts) {
         for (const rival of chart.rivals) {
@@ -635,6 +641,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
           faded: !!soloRival && !me && !solo,
           focused: rival.playerId === focusedRival,
           stats: solo && soloStats || rivalStats[rival.playerId] || { lose: 0, win: 0, unplayed: 0 },
+          statsWords: STAT_WORDS[solo && soloStats ? countBy : "results"],
           best: bestCounts[rival.playerId]
         });
       }).join("") : '<div class="muted">No rivals yet</div>';
@@ -728,28 +735,30 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
   function createWindowHeader(container, { exportTargets: exportTargets2, onChange, onCleared, onClose }) {
     container.innerHTML = `<h2>Rivals</h2>
     <div class="head-settings">
-      <div class="stepper score-cap" title="All scores above this cap are considered a draw with each other">
+      <div class="stepper score-cap">
         <span class="stepper-label">Score cap</span>
         <button type="button" data-step="-1" aria-label="Lower score cap">\u2212</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise score cap">+</button></div>
-      <div class="stepper try-cooldown" title="Hide lost charts you last played fewer than this many days ago">
-        <span class="stepper-label">Try cooldown</span>
-        <button type="button" data-step="-1" aria-label="Shorten try cooldown">\u2212</button>
+      <div class="stepper try-cooldown">
+        <span class="stepper-label">Retry after</span>
+        <button type="button" data-step="-1" aria-label="Retry sooner">\u2212</button>
         <span class="stepper-value"></span>
-        <button type="button" data-step="1" aria-label="Lengthen try cooldown">+</button></div>
-      <div class="stepper np-minimal-rivals" title="Count an unplayed chart as np only when at least this many rivals played it">
+        <button type="button" data-step="1" aria-label="Retry later">+</button></div>
+      <div class="stepper np-minimal-rivals">
         <span class="stepper-label">NP min rivals</span>
         <button type="button" data-step="-1" aria-label="Lower minimal rivals for np">\u2212</button>
         <span class="stepper-value"></span>
         <button type="button" data-step="1" aria-label="Raise minimal rivals for np">+</button></div>
       <div class="switch count-by" role="radiogroup" aria-label="Count by"
-           title="Count theirs / np / yours by rival results or by charts">
+           title="Count lost / non-matched / won rival results, or inferior / not played / superior charts">
         <span class="stepper-label">Count by</span>
-        <button type="button" role="radio" data-count-by="results">Results</button>
-        <button type="button" role="radio" data-count-by="charts">Charts</button></div>
+        <button type="button" role="radio" data-count-by="results"
+                title="Count each rival's result separately">Results</button>
+        <button type="button" role="radio" data-count-by="charts"
+                title="Count each chart once: inferior if any rival beats you, otherwise not played or superior">Charts</button></div>
     </div>
-    <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export targets</button>
+    <button class="btn export" type="button" title="Download charts where rivals beat you or you have no score">Export</button>
     <button class="btn clear-data" type="button" title="Clear all PIU Scores data saved by this extension">Clear data</button>
     <button class="dlg-close" type="button" aria-label="Close">\xD7</button>`;
     const title = container.querySelector("h2");
@@ -802,8 +811,9 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
     }
     function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals, countBy }) {
       const text2 = me?.name ? `Rivals for ${displayName(me.name)}` : "Rivals";
-      title.innerHTML = `${esc(text2)}<span class="head-stats"> \u2014 ${statWords(totals)}</span>`;
+      title.innerHTML = `${esc(text2)}<span class="head-stats"> \u2014 ${statWords(totals, ", ", STAT_WORDS[countBy])}</span>`;
       renderStepper(scoreCapControl, `${scoreCap / 1e3}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
+      scoreCapControl.title = scoreCap >= MAX_SCORE_CAP ? "No score cap is applied" : `Hide losses or wins on mutual scores \u2265 ${scoreCap / 1e3}k`;
       renderStepper(
         tryCooldownControl,
         tryCooldown ? `${tryCooldown}d` : "off",
@@ -812,6 +822,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         TRY_COOLDOWN_OPTIONS.at(-1),
         tryCooldown === 0
       );
+      tryCooldownControl.title = tryCooldown ? `Hide lost charts for ${tryCooldown} ${tryCooldown === 1 ? "day" : "days"} after your last try` : "Show lost charts no matter when you last tried them";
       renderStepper(
         npMinimalRivalsControl,
         `${npMinimalRivals}`,
@@ -820,6 +831,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
         MAX_NP_RIVALS,
         npMinimalRivals === MIN_NP_RIVALS
       );
+      npMinimalRivalsControl.title = `Show unplayed charts with \u2265 ${npMinimalRivals} rival ${npMinimalRivals === 1 ? "result" : "results"}`;
       for (const button of countByControl.querySelectorAll("button")) {
         const on = button.dataset.countBy === countBy;
         button.classList.toggle("on", on);
@@ -959,7 +971,7 @@ ${word} ${plural(byCharts[stat2], "chart")} / ${plural(byResults[stat2], "result
       const { countBy } = preferences;
       const totals = countBy === "charts" ? tierCounts(charts) : resultCounts(charts);
       header.render(players[ownPlayerId], totals, preferences);
-      rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null);
+      rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null, countBy);
       const barCharts = charts.filter((chart) => !isCapLoss(chart));
       const hiddenCharts = [...coolingCharts, ...capLosses];
       chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);

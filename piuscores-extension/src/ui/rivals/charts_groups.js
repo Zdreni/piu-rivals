@@ -1,4 +1,4 @@
-import { esc, levelStats } from './common.js';
+import { esc, levelStats, STAT_WORDS } from './common.js';
 
 export const chartsGroupsStyles = `
   .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
@@ -99,9 +99,9 @@ export function createChartsGroups(container, onSelect) {
       // The hidden-losses segment has no number; its count is in the tooltip, which shows both countings.
       const part = (cls, n, label = n, style = '') =>
         (n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : '');
-      const tipLine = (stat, word) => `\n${word} ${plural(byCharts[stat], 'chart')} / ${plural(byResults[stat], 'result')}`;
-      const tip = `${level}:${tipLine('lose', 'their')}${tipLine('hidden', 'hidden')}`
-        + `${tipLine('unplayed', 'non-matched')}${tipLine('win', 'yours')}`;
+      const tipLine = (stat) => `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
+        + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;
+      const tip = `${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tipLine('win')}`;
       return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
         + `data-level="${esc(level)}" title="${esc(tip)}">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`

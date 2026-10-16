@@ -60,7 +60,7 @@ const scrapLine = (scrapStats, best) =>
   + `${scrapCount(scrapStats?.sessions  ||  0, 'sessions')}`;
 
 
-const statsTip = 'Charts: theirs / not played / yours, judged on the real scores, '
+const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, '
   + 'without the score cap and try cooldown filters';
 
 const statsSoloTip = 'Solo: the same counts as in the header, with the score cap, try cooldown and NP min rivals applied';
@@ -94,7 +94,7 @@ function visitBadge(visitedAt, href) {
 // scrap counts, the charts you lose / haven't played / win against them, and their links.
 // `player` is the stored player record; `me` marks your own row, `on` a rival checked for the stats,
 // `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader).
-export function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, best }) {
+export function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, statsWords, best }) {
   const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
   const toggle = me
     ? '<span class="rival-spacer"></span>'
@@ -106,7 +106,7 @@ export function rivalListItem({ playerId, name, pumbility }, player, { me, on, s
     + `<span class="rival-pum">${fmt(pumbility)}</span></div>`
     + `<div class="rival-scrap"><div class="rival-counts" title="scraped scores · best scores · scraped sessions">${
       scrapLine(player?.scrapStats, best)}</div>`
-    + (me ? '' : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, ' · ')}</div>`)
+    + (me ? '' : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, ' · ', statsWords)}</div>`)
     + '</div>'
     + '<div class="rival-links">'
     + (me
