@@ -1,6 +1,6 @@
 import { showSessionToast, showToast } from '../ui/toasts.js';
 import { isKnownPlayer, storageKey } from '../storage.js';
-import { saveScoreTry, syncOwnPlayerId, TAG } from './common.js';
+import { playerNameFor, saveScoreTry, syncOwnPlayerId, TAG } from './common.js';
 import { loadSessionContent, scrapeSessionScores } from './sessions_content.js';
 
 let lastSignature = null;
@@ -103,7 +103,7 @@ async function saveScrapProgress(playerId, playerName, info, scrapedScores, isNe
 
 // Opens the session of `card` (described by `info`), saves its scores and the scrap checkpoint,
 // and returns the number of scraped scores. `isNewSession` is false for a grown checkpoint session.
-export async function scrapeSession(card, info, playerId, playerName, isNewSession) {
+export async function scrapeSession(card, info, playerId, pageName, isNewSession) {
   card.click();
   await loadSessionContent(info);
 
@@ -114,7 +114,9 @@ export async function scrapeSession(card, info, playerId, playerName, isNewSessi
   if (result.playerId !== playerId)
     throw new Error('Session player changed while scraping');
 
-  await saveSessionScores(result, playerName, await syncOwnPlayerId(), true);
+  const ownPlayerId = await syncOwnPlayerId();
+  const playerName = playerNameFor(playerId, ownPlayerId, pageName);
+  await saveSessionScores(result, playerName, ownPlayerId, true);
   await saveScrapProgress(playerId, playerName, info, result.scrapedScores, isNewSession);
   showSessionToast(
     playerName  ||  playerId,

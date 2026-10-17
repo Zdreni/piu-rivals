@@ -119,6 +119,15 @@ export function showPlayerAddedToast(player, playerId, pumbility) {
 }
 
 
+export function showOwnPlayerToast(player, playerId) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<div class="title">${esc(displayName(player))}: <span class="new">you are recognized</span></div>`
+    + `<div class="line">ID ${esc(playerId)}</div>`;
+  pushToast(toast);
+}
+
+
 export function showPumbilityToast(player, pumbility, prevPumbility) {
   const toast = document.createElement('div');
   toast.className = 'toast';

@@ -1237,6 +1237,12 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
     toast.innerHTML = `<div class="title">${esc2(displayName(player))}: <span class="new">player added</span></div><div class="line">ID ${esc2(playerId)}</div><div class="line">PUMBILITY ${fmt4(pumbility)}</div>`;
     pushToast(toast);
   }
+  function showOwnPlayerToast(player, playerId) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `<div class="title">${esc2(displayName(player))}: <span class="new">you are recognized</span></div><div class="line">ID ${esc2(playerId)}</div>`;
+    pushToast(toast);
+  }
   function showPumbilityToast(player, pumbility, prevPumbility) {
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -1280,6 +1286,19 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
     const username = accountUsername();
     return username && id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
   }
+  var playerNameFor = (playerId, ownPlayerId, pageName) => (playerId === ownPlayerId ? accountUsername() : null) || pageName;
+  async function saveOwnName(ownPlayerId) {
+    const name = accountUsername();
+    if (!ownPlayerId || !name)
+      return;
+    const { players } = await chrome.storage.local.get("players");
+    if (players?.[ownPlayerId]?.name === name)
+      return;
+    await chrome.storage.local.set({ players: { ...players || {}, [ownPlayerId]: { ...players?.[ownPlayerId], name } } });
+    console.log(`${TAG} Saved own name "${name}" for player ID ${ownPlayerId}`);
+    if (!players?.[ownPlayerId])
+      showOwnPlayerToast(name, ownPlayerId);
+  }
   async function mergeOwnAlias(ownPlayerId) {
     const alias = accountUsername();
     if (!ownPlayerId || !alias)
@@ -1321,6 +1340,7 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       knownOwnPlayerId = id;
       await mergeOwnAlias(id);
     }
+    await saveOwnName(id);
     return id;
   }
   var laterDate = (a, b) => (!a || b && b > a ? b : a) ?? null;
@@ -1366,17 +1386,18 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
     lastPumbilityLog = message;
     console.log(`${TAG} PUMBILITY ${message}`);
   }
-  async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
-    if (!name && pumbility === null)
+  async function savePlayerInfo(playerId, pageName, pumbility, ownPlayerId, source, allowNewPlayer = false) {
+    if (!pageName && pumbility === null)
       return;
     const { players } = await chrome.storage.local.get("players");
     const isNew = !isKnownPlayer(players, playerId, ownPlayerId);
     if (!allowNewPlayer && isNew) {
-      logPumbility(`found for ${name || playerId} (${playerId}) on ${source}: not a known player, skipping`);
+      logPumbility(`found for ${pageName || playerId} (${playerId}) on ${source}: not a known player, skipping`);
       return;
     }
     const prev = players?.[playerId] || {};
     const player = { ...prev };
+    const name = playerNameFor(playerId, ownPlayerId, pageName);
     if (name)
       player.name = name;
     const who = `${player.name || playerId} (${playerId}) on ${source}`;
@@ -1877,7 +1898,7 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       players[playerId].name = playerName;
     await chrome.storage.local.set({ players });
   }
-  async function scrapeSession(card, info, playerId, playerName, isNewSession) {
+  async function scrapeSession(card, info, playerId, pageName, isNewSession) {
     card.click();
     await loadSessionContent(info);
     const result = scrapeSessionScores();
@@ -1885,7 +1906,9 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       throw new Error(`Unable to parse Phoenix 2 session "${info.title}"`);
     if (result.playerId !== playerId)
       throw new Error("Session player changed while scraping");
-    await saveSessionScores(result, playerName, await syncOwnPlayerId(), true);
+    const ownPlayerId = await syncOwnPlayerId();
+    const playerName = playerNameFor(playerId, ownPlayerId, pageName);
+    await saveSessionScores(result, playerName, ownPlayerId, true);
     await saveScrapProgress(playerId, playerName, info, result.scrapedScores, isNewSession);
     showSessionToast(
       playerName || playerId,

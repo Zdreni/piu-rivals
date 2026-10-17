@@ -1,5 +1,5 @@
 import { isKnownPlayer } from '../storage.js';
-import { showPlayerAddedToast, showPumbilityToast } from '../ui/toasts.js';
+import { showOwnPlayerToast, showPlayerAddedToast, showPumbilityToast } from '../ui/toasts.js';
 
 export const TAG = '[piuscores]';
 
@@ -34,7 +34,7 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 let knownOwnPlayerId = null;
 
 
-// The account menu caption reads "<username> (<in-game name>)".
+// The account menu caption reads "<username> (<in-game name>)", e.g. "Dino (DINO #3869)".
 function accountUsername() {
   return text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1] ?? null;
 }
@@ -53,6 +53,30 @@ export function pagePlayerId() {
 
   const username = accountUsername();
   return username  &&  id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
+}
+
+
+// Your name always comes from the account menu (the username), not from your own pages, which
+// show the in-game name.
+export const playerNameFor = (playerId, ownPlayerId, pageName) =>
+  (playerId === ownPlayerId ? accountUsername() : null)  ||  pageName;
+
+
+// Saves your username from the account menu, so it is known before any of your pages are visited.
+// The first save creates your player record and shows a toast.
+async function saveOwnName(ownPlayerId) {
+  const name = accountUsername();
+  if (! ownPlayerId  ||  ! name)
+    return;
+
+  const { players } = await chrome.storage.local.get('players');
+  if (players?.[ownPlayerId]?.name === name)
+    return;
+
+  await chrome.storage.local.set({ players: { ...(players  ||  {}), [ownPlayerId]: { ...players?.[ownPlayerId], name } } });
+  console.log(`${TAG} Saved own name "${name}" for player ID ${ownPlayerId}`);
+  if (! players?.[ownPlayerId])
+    showOwnPlayerToast(name, ownPlayerId);
 }
 
 
@@ -107,6 +131,8 @@ export async function syncOwnPlayerId() {
     knownOwnPlayerId = id;
     await mergeOwnAlias(id);
   }
+
+  await saveOwnName(id);
 
   return id;
 }
@@ -183,19 +209,20 @@ export function logPumbility(message) {
 // PUMBILITY never decreases, so a lower value than the stored one must come from a history
 // record (e.g. an old session) and is ignored. Only the scrap button (allowNewPlayer) may add
 // a player that is not stored yet.
-export async function savePlayerInfo(playerId, name, pumbility, ownPlayerId, source, allowNewPlayer = false) {
-  if (! name  &&  pumbility === null)
+export async function savePlayerInfo(playerId, pageName, pumbility, ownPlayerId, source, allowNewPlayer = false) {
+  if (! pageName  &&  pumbility === null)
     return;
 
   const { players } = await chrome.storage.local.get('players');
   const isNew = ! isKnownPlayer(players, playerId, ownPlayerId);
   if (! allowNewPlayer  &&  isNew) {
-    logPumbility(`found for ${name  ||  playerId} (${playerId}) on ${source}: not a known player, skipping`);
+    logPumbility(`found for ${pageName  ||  playerId} (${playerId}) on ${source}: not a known player, skipping`);
     return;
   }
 
   const prev = players?.[playerId]  ||  {};
   const player = { ...prev };
+  const name = playerNameFor(playerId, ownPlayerId, pageName);
   if (name)
     player.name = name;
 
