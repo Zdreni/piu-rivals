@@ -64,7 +64,7 @@ export function GoogleButton() {
         },
       });
 
-      google.accounts.id.renderButton(element.current, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill' });
+      google.accounts.id.renderButton(element.current, { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
     }, (e) => setError(errorText(e)));
 
     return () => {
