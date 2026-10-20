@@ -1,3 +1,5 @@
 node_modules/
-.env
+# Server secrets (database password). web/.env holds only public site config and is committed.
+server/.env
 server/dist/
+web/dist/

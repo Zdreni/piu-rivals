@@ -158,7 +158,7 @@ The steps for the Google Cloud project `piu-rivals` are in [google_login_setup.m
 
 1. ✅ `server/`: schema, migrations, the session page parser with saved-page fixtures, the scrape worker, and a command-line entry to scrape one player for testing
 2. ✅ `shared/` and `server/`: API, including auth, the admin API and scrape runs
-3. `web/`: login, the admin panel (users, players, import, scrape runs with progress), the Pages workflow
+3. ✅ `web/`: login, the admin panel (users, players, import, scrape runs with progress), the Pages workflow
 4. `web/`: the Rivals view, ported from the old extension's rivals window
 
 ## Open items

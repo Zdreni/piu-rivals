@@ -1,11 +1,10 @@
-# Publishes the piu-rivals site to GitHub Pages (https://zdreni.github.io/piu-rivals/).
-# Until the site is built (web/ step 3), web/public is published as is.
+# Builds the piu-rivals site (web/) and publishes it to GitHub Pages: https://zdreni.github.io/piu-rivals/
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'shared/**', '.github/workflows/pages.yml']
+    paths: ['web/**', 'shared/**', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -25,9 +24,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Only the site's workspace: the server's Playwright browsers aren't needed here.
+      - run: npm ci --workspace web --include-workspace-root
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npm run build --workspace web
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web/public
+          path: web/dist
       - id: deployment
         uses: actions/deploy-pages@v4
