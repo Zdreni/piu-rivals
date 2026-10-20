@@ -1,32 +1,17 @@
+/* piu-rivals is dark only. */
 :root {
-  color-scheme: light;
-  --bg: #f6f8fa;
-  --surface: #ffffff;
-  --text: #1f2328;
-  --muted: #59636e;
-  --border: #d1d9e0;
-  --accent: #1f7a3a;
-  --accent-text: #ffffff;
-  --link: #0969da;
-  --danger: #cf222e;
-  --track: #e6ebf0;
+  color-scheme: dark;
+  --bg: #0d1117;
+  --surface: #161b22;
+  --text: #e6edf3;
+  --muted: #9198a1;
+  --border: #30363d;
+  --accent: #3fb950;
+  --accent-text: #0d1117;
+  --link: #4493f8;
+  --danger: #f85149;
+  --track: #262c36;
   --radius: 8px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #0d1117;
-    --surface: #161b22;
-    --text: #e6edf3;
-    --muted: #9198a1;
-    --border: #30363d;
-    --accent: #3fb950;
-    --accent-text: #0d1117;
-    --link: #4493f8;
-    --danger: #f85149;
-    --track: #262c36;
-  }
 }
 
 * { box-sizing: border-box; }
