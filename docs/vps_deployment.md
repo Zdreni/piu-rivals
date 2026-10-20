@@ -33,9 +33,8 @@ Node only listens on `127.0.0.1:9876`; nginx is the only thing reachable from ou
 ## 2. Get the code
 
 ```sh
-cd /opt   # or wherever you keep apps
-sudo git clone https://github.com/Zdreni/piu-rivals.git
-sudo chown -R $USER piu-rivals
+cd ~   # the guide uses /home/piutop/piu-rivals; any folder works
+git clone https://github.com/Zdreni/piu-rivals.git
 cd piu-rivals
 npm ci
 cd server
@@ -82,7 +81,9 @@ pm2 startup                      # prints a command; run it, so pm2 starts again
 curl http://127.0.0.1:9876/health   # → {"ok":true}
 ```
 
-Logs: `pm2 logs piu-rivals-api`, `pm2 logs piu-rivals-worker`.
+Logs: `pm2 logs piu-rivals-api`, `pm2 logs piu-rivals-worker` (add `--nostream` to print and exit).
+If an app keeps restarting with empty logs, run it directly to see the error:
+`node --import tsx src/server.ts` (or `src/worker.ts`) from `server/`.
 
 ## 6. TLS certificate
 
@@ -140,7 +141,7 @@ curl https://api.pumpking.top:6767/health   # → {"ok":true}, from any machine
 ## Updating
 
 ```sh
-cd /opt/piu-rivals
+cd ~/piu-rivals
 git pull
 npm ci
 cd server
