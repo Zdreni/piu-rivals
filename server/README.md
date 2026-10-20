@@ -76,7 +76,7 @@ pm2 start ecosystem.config.cjs   # starts piu-rivals-api and piu-rivals-worker
 pm2 save
 ```
 
-nginx terminates TLS for `api.pumpking.top` and forwards to `127.0.0.1:9876` (see the design for
-the config). Turn on gzip for JSON there (`gzip on; gzip_types application/json;`): best results
-compress well. `SCRAPE_DELAY_MS` (default 2000) is the worker's pause between page actions on
+nginx terminates TLS on `https://api.pumpking.top:6767` and forwards to `127.0.0.1:9876`. The full
+setup, including MySQL, the TLS certificate and the nginx config, is in
+[docs/vps_deployment.md](../docs/vps_deployment.md). `SCRAPE_DELAY_MS` (default 2000) is the worker's pause between page actions on
 piuscores.

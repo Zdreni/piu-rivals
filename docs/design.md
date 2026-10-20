@@ -124,24 +124,9 @@ This copies the players to the clipboard. Paste the result into the admin panel'
 - Playwright installs its own Chromium on the VPS (`npx playwright install --with-deps chromium`).
 - Database migrations are Kysely migrations, run with `npm run migrate`.
 - `ecosystem.config.cjs` defines two pm2 apps, `piu-rivals-api` and `piu-rivals-worker`, started with `pm2 start ecosystem.config.cjs`.
-- nginx terminates TLS for `api.pumpking.top` and forwards requests to `127.0.0.1:9876`. Example:
+- nginx terminates TLS on `https://api.pumpking.top:6767` and forwards requests to the API on `127.0.0.1:9876`. The public API URL is set in `web/.env`.
 
-```nginx
-server {
-    listen 443 ssl;   # or the public port you choose
-    server_name api.pumpking.top;
-    ssl_certificate     /etc/letsencrypt/live/api.pumpking.top/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.pumpking.top/privkey.pem;
-    location / {
-        proxy_pass http://127.0.0.1:9876;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-The public API URL (including the port, if it isn't 443) is set in `web/` config.
+The step-by-step setup is in [vps_deployment.md](vps_deployment.md).
 
 ### GitHub Pages
 
