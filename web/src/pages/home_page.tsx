@@ -32,7 +32,7 @@ export function HomePage() {
           </p>
         )
         : <p className="muted">No PIU Scores player is linked to your account yet, so there's no Rivals view for you.</p>}
-      <p className="muted">The Rivals view is coming next.</p>
+      {user.player  &&  <p><Link to="/rivals">Compare your scores with your rivals'</Link>.</p>}
       {user.isAdmin  &&  (
         <p>
           Admin: manage <Link to="/admin/players">players</Link>, <Link to="/admin/runs">scrape runs</Link>

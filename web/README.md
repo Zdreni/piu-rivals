@@ -1,7 +1,8 @@
 # piu-rivals site
 
-The site at <https://zdreni.github.io/piu-rivals/>: Google sign-in and the admin panel (players,
-scrape runs, users). The Rivals view comes next. See [the design](../docs/design.md).
+The site at <https://zdreni.github.io/piu-rivals/>: Google sign-in, the Rivals view
+([src/pages/rivals/](src/pages/rivals/), ported from the old extension's rivals window) and the admin
+panel (players, scrape runs, users). See [the design](../docs/design.md).
 
 Vite + React + TypeScript. API response types come from [shared/](../shared/src/api.ts).
 
@@ -27,5 +28,5 @@ of the OAuth client (see [the Google setup](../docs/google_login_setup.md)).
 ## Publishing
 
 Every push to `main` that changes `web/` or `shared/` builds the site and publishes it to GitHub
-Pages ([.github/workflows/pages.yml](../.github/workflows/pages.yml)). Files in `web/public`, like
+Pages ([.github/workflows/deploy.yml](../.github/workflows/deploy.yml), after the server when that changed too). Files in `web/public`, like
 the privacy policy, are published as they are.

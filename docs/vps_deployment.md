@@ -140,14 +140,83 @@ curl https://api.pumpking.top:6767/health   # → {"ok":true}, from any machine
 
 ## Updating
 
+Every push to `main` that changes `server/` or `shared/` deploys itself (set it up once, below).
+By hand, from the repo folder:
+
 ```sh
-cd ~/piu-rivals
-git pull
-npm ci
-cd server
-npm run migrate
-pm2 restart piu-rivals-api piu-rivals-worker
+bash server/deploy.sh   # latest origin/main; or pass a commit hash
 ```
+
+[`server/deploy.sh`](../server/deploy.sh) fast-forwards the checkout and, only when
+`package-lock.json` changed, runs `npm ci` and installs Playwright's Chromium. Then it runs the
+database migrations, restarts both pm2 apps and waits for `/health`. It never overwrites local
+changes to tracked files: if there are any, it stops and changes nothing. `server/.env` isn't
+tracked, so it always stays.
 
 A worker restart stops the scrape run in progress; it shows as "interrupted", and everything
 stored up to then stays. Start a new run to continue.
+
+When a new Playwright version needs more system libraries, run
+`sudo npx playwright install-deps chromium` in `server/` once; the deploy has no sudo.
+
+## Automatic deployment
+
+The workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) runs on every push to `main`:
+
+1. If `server/` or `shared/` changed: type-checks the server, runs its tests against a throwaway
+   MySQL, then connects to the VPS over SSH and runs `server/deploy.sh` for the pushed commit.
+2. If `web/` or `shared/` changed: builds the site and publishes it to GitHub Pages, after the
+   server is deployed, so a new site never calls an old API. When the server's tests or deploy fail,
+   the site isn't published either.
+
+**Actions → Deploy → Run workflow** deploys both by hand, e.g. to retry after a failure. A failed
+server deploy isn't retried by a later push that changes only `web/`, so run it by hand then.
+
+### One-time setup
+
+1. **Deploy once by hand** (the first time, the VPS checkout doesn't have `deploy.sh` yet):
+
+   ```sh
+   cd ~/piu-rivals && git pull && bash server/deploy.sh
+   ```
+
+2. **A deploy key.** On your own computer, make a key pair used only for this:
+
+   ```sh
+   ssh-keygen -t ed25519 -N "" -C "piu-rivals deploy" -f piu-rivals-deploy
+   ```
+
+3. **Let the key run only the deploy.** On the VPS, add one line to `~/.ssh/authorized_keys` of
+   the user that runs pm2 (here `piutop`), with the contents of `piu-rivals-deploy.pub` at the end:
+
+   ```
+   command="bash /home/piutop/piu-rivals/server/deploy.sh",restrict ssh-ed25519 AAAA... piu-rivals deploy
+   ```
+
+   With `command=` the key can't open a shell or run anything else, whatever the connection asks
+   for; the commit the workflow sends reaches the script as its argument (`SSH_ORIGINAL_COMMAND`),
+   and the script accepts nothing but a commit hash. `restrict` turns off port forwarding and the like.
+
+4. **The VPS's host key**, so the workflow knows it's talking to your VPS. On your computer:
+
+   ```sh
+   ssh-keyscan -p 22 api.pumpking.top
+   ```
+
+5. **Repository secrets.** In the repo, **Settings → Secrets and variables → Actions → New repository secret**:
+
+   | Secret | Value |
+   |---|---|
+   | `VPS_HOST` | `api.pumpking.top` (or the VPS's IP) |
+   | `VPS_USER` | `piutop` |
+   | `VPS_SSH_KEY` | the contents of the private key `piu-rivals-deploy` |
+   | `VPS_KNOWN_HOSTS` | the output of `ssh-keyscan` |
+   | `VPS_SSH_PORT` | only if SSH isn't on port 22 |
+
+   Then delete the private key file from your computer.
+
+6. **Check it:** `ssh -i piu-rivals-deploy piutop@api.pumpking.top` (before deleting the key)
+   should run a deploy and disconnect. Or run the workflow by hand, as above.
+
+The workflow replaces the old `pages.yml`; GitHub Pages keeps publishing from **GitHub Actions**
+with no changes in the settings.

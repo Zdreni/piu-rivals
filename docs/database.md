@@ -98,11 +98,12 @@ users
 user_rivals
   user_id                   INT FK users
   player_id                 CHAR(36) FK players
+  hidden                    BOOL DEFAULT false     -- switched off in the Rivals view, but kept in the list
   PK(user_id, player_id)
 
 user_preferences
   user_id                   INT PK FK users
-  data                      JSON                   -- score cap, try cooldown, hidden rivals, ...
+  data                      JSON                   -- the Rivals view's settings: score cap, np minimal rivals, count by
 
 auth_sessions
   token_hash                CHAR(64) PK

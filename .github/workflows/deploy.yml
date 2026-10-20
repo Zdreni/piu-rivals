@@ -1,0 +1,129 @@
+# Deploys piu-rivals on every push to main:
+# - server/ (API and scrape worker): tested against a throwaway MySQL, then updated on the VPS over SSH
+#   by server/deploy.sh (packages, database migrations, pm2 restart)
+# - web/: built and published to GitHub Pages: https://zdreni.github.io/piu-rivals/
+# Each part is deployed only when its files (or shared/) changed. The site goes out after the server,
+# so a new site never talks to an old API; if the server's tests or deploy fail, the site isn't published.
+# Setup (SSH key and secrets): docs/vps_deployment.md, "Automatic deployment".
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'web/**', 'shared/**', 'package-lock.json', '.github/workflows/deploy.yml']
+  # Deploys both parts.
+  workflow_dispatch:
+
+# One deploy at a time, in push order; a deploy in progress is never cancelled halfway.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.diff.outputs.server }}
+      web: ${{ steps.diff.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Manual runs, and pushes whose previous commit is unknown (e.g. a force push), deploy both.
+          if [ "$EVENT" != push ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          common='^(shared/|package-lock\.json$|\.github/workflows/deploy\.yml$)'
+          echo "server=$(grep -qE "^server/|$common" <<< "$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "web=$(grep -qE "^web/|$common" <<< "$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  test-server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: piurivals_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --workspace server --include-workspace-root
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npm run typecheck --workspace server
+      - run: npm test --workspace server
+        env:
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/piurivals_test
+
+  deploy-server:
+    needs: test-server
+    runs-on: ubuntu-latest
+    steps:
+      # The key may only run server/deploy.sh on the VPS (a forced command), which gets this commit as its argument.
+      - name: Deploy on the VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+          PORT: ${{ secrets.VPS_SSH_PORT }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o BatchMode=yes "$USER@$HOST" "$GITHUB_SHA"
+
+  deploy-web:
+    needs: [changes, test-server, deploy-server]
+    # Also when the server had nothing to deploy (its jobs skipped), but not when its tests or deploy failed.
+    if: >-
+      !cancelled() && needs.changes.outputs.web == 'true'
+      && needs.test-server.result != 'failure' && needs.deploy-server.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Only the site's workspace: the server's Playwright browsers aren't needed here.
+      - run: npm ci --workspace web --include-workspace-root
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npm run build --workspace web
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
