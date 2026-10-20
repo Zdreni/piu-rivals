@@ -1,14 +1,18 @@
 import { TABS, type TabId } from './stats.ts';
 
-// The selected level and tab, kept in this browser so the view reopens where it was.
+// The selected level and tabs, kept in this browser so the view reopens where it was.
 const UI_STATE_KEY = 'piu-rivals.rivals.uiState';
+
+// The rivals column's tabs: your rivals, or the other players to add.
+export type RivalTab = 'mine' | 'others';
 
 export interface UiState {
   selectedLevel: string | null;
   selectedTab: TabId;
+  rivalTab: RivalTab;
 }
 
-const DEFAULT_STATE: UiState = { selectedLevel: null, selectedTab: 'rivals-win' };
+const DEFAULT_STATE: UiState = { selectedLevel: null, selectedTab: 'rivals-win', rivalTab: 'mine' };
 
 
 export function readUiState(): UiState {
@@ -21,6 +25,7 @@ export function readUiState(): UiState {
     return {
       selectedLevel: typeof saved.selectedLevel === 'string' ? saved.selectedLevel : null,
       selectedTab: TABS.find((id) => id === saved.selectedTab)  ??  DEFAULT_STATE.selectedTab,
+      rivalTab: saved.rivalTab === 'others' ? 'others' : 'mine',
     };
   } catch {
     return DEFAULT_STATE;

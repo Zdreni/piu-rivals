@@ -5,18 +5,15 @@ import { type ChartRow, type Dates, displayName, type RivalResult } from './mode
 type Entry = (RivalResult & { me?: false }) | (Dates & { me: true; score: number });
 
 
-// Score cell tooltip. The best score line is dropped when it was set on the last try.
+// Score tooltip. The best score line is dropped when it was set on the last try.
 const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
   (bestScoreDate  &&  bestScoreDate === lastTryDate
     ? `Last try: ${lastTryDate}`
     : `Best score: ${bestScoreDate  ||  'unknown'}\nLast try: ${lastTryDate  ||  'unknown'}`);
 
 
-const rowClass = (i: number) => (i === 0 ? 'group alt' : i % 2 === 0 ? 'alt' : undefined);
-
-
-// The table rows of one chart: you and its rivals by score, the track and chart spanning them all.
-// With `collapseWon`, rivals you beat are folded into a "show N others..." row, which calls `onExpand`.
+// One chart's card: the track and chart in its header, then you and its rivals by score, with each rival's diff.
+// With `collapseWon`, rivals you beat are folded into a "show N others..." button, which calls `onExpand`.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
 export function ChartResultsItem({ chart, myName, collapseWon, colorByRealDiff, scoreCap, onExpand }: {
   chart: ChartRow;
@@ -35,54 +32,43 @@ export function ChartResultsItem({ chart, myName, collapseWon, colorByRealDiff, 
   const isWon = (entry: Entry) => ! entry.me  &&  entry.delta !== null  &&  entry.delta > 0;
   const folded = collapseWon ? all.filter(isWon).length : 0;
   const list = folded ? all.filter((entry) => ! isWon(entry)) : all;
-  const rowCount = list.length + (folded ? 1 : 0);
 
-  const rows: ReactNode[] = list.map((entry, i) => {
-    const head = i === 0  &&  (
-      <>
-        <td className="track" rowSpan={rowCount} title={chart.track}>{chart.track}</td>
-        <td rowSpan={rowCount}><b>{chart.chart}</b></td>
-      </>
-    );
-
+  const rows: ReactNode[] = list.map((entry) => {
     if (entry.me) {
       return (
-        <tr key="me" className={rowClass(i)}>
-          {head}
-          <td className="sm mine" title={myName}>{displayName(myName)}</td>
-          <td className="sm num score mine" title={datesTitle(entry)}><Score value={entry.score} /></td>
-          <td className="sm" />
-        </tr>
+        <div key="me" className="result mine">
+          <span className="result-player" title={myName}>{displayName(myName)}</span>
+          <span className="num" title={datesTitle(entry)}><Score value={entry.score} /></span>
+          <span />
+        </div>
       );
     }
 
-    const won = entry.delta !== null  &&  entry.delta > 0 ? ' won' : ' ahead';
+    const won = entry.delta !== null  &&  entry.delta > 0 ? 'won' : 'ahead';
     return (
-      <tr key={entry.playerId} className={rowClass(i)}>
-        {head}
-        <td className={`sm${won}`} title={entry.player}>
-          <a className="player-link" href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(entry.playerId)}/Sessions`}
-            target="_blank" rel="noreferrer">
-            {displayName(entry.player)}
-          </a>
-        </td>
-        <td className={`sm num score${won}`} title={datesTitle(entry)}><Score value={entry.score} /></td>
-        <td className={`sm num${won}`}>
+      <div key={entry.playerId} className={`result ${won}`}>
+        <a className="result-player player-link" title={entry.player}
+          href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(entry.playerId)}/Sessions`} target="_blank" rel="noreferrer">
+          {displayName(entry.player)}
+        </a>
+        <span className="num score" title={datesTitle(entry)}><Score value={entry.score} /></span>
+        <span className="num">
           <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} />
-        </td>
-      </tr>
+        </span>
+      </div>
     );
   });
 
-  if (folded) {
-    rows.push(
-      <tr key="others" className={rowClass(list.length)}>
-        <td className="sm others" colSpan={3}>
-          <button className="show-others" type="button" onClick={onExpand}>...show {folded} other{folded === 1 ? '' : 's'}...</button>
-        </td>
-      </tr>,
-    );
-  }
-
-  return <>{rows}</>;
+  return (
+    <section className="chart-card">
+      <header className="chart-card-head">
+        <span className="track" title={chart.track}>{chart.track}</span>
+        <span className="chart-label">{chart.chart}</span>
+      </header>
+      <div className="chart-card-results">{rows}</div>
+      {folded > 0  &&  (
+        <button className="show-others" type="button" onClick={onExpand}>...show {folded} other{folded === 1 ? '' : 's'}...</button>
+      )}
+    </section>
+  );
 }

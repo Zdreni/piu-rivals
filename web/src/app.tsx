@@ -9,18 +9,24 @@ import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
 
+// The brand and main menu on the left, the admin menu in the middle, the account on the right.
 function Header() {
   const { status, me, signOut } = useSession();
+  const signedIn = status === 'signed-in'  &&  me;
   return (
     <header className="header">
-      <NavLink to="/" className="brand">piu-rivals</NavLink>
-      {status === 'signed-in'  &&  me  &&  (
-        <>
+      <div className="header-left">
+        <NavLink to="/" className="brand">piu-rivals</NavLink>
+        {signedIn  &&  (
           <nav className="nav" aria-label="Main">
             <NavLink to="/rivals">Rivals</NavLink>
           </nav>
+        )}
+      </div>
+      {signedIn  &&  (
+        <>
           {me.user.isAdmin  &&  (
-            <nav className="nav" aria-label="Admin">
+            <nav className="nav nav-admin" aria-label="Admin">
               <NavLink to="/admin/players">Players</NavLink>
               <NavLink to="/admin/runs">Scrape runs</NavLink>
               <NavLink to="/admin/users">Users</NavLink>
@@ -50,10 +56,22 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 
-// The Rivals view takes the full width; the other pages keep to a readable one.
-function Main({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation();
-  return <main className={pathname === '/rivals' ? 'main wide' : 'main'}>{children}</main>;
+// The Rivals view fills the whole window below the menu bar; the other pages keep to a readable width, with the
+// footer below them.
+function Layout({ children }: { children: ReactNode }) {
+  const full = useLocation().pathname === '/rivals';
+  return (
+    <div className={full ? 'app full' : 'app'}>
+      <Header />
+      <main className="main">{children}</main>
+      {! full  &&  (
+        <footer className="footer muted">
+          <a href="privacy.html">Privacy policy</a>
+          <span>Scores from <a href="https://piuscores.arroweclip.se">PIU Scores</a></span>
+        </footer>
+      )}
+    </div>
+  );
 }
 
 
@@ -61,8 +79,7 @@ export function App() {
   return (
     <SessionProvider>
       <HashRouter>
-        <Header />
-        <Main>
+        <Layout>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/rivals" element={<RivalsPage />} />
@@ -72,11 +89,7 @@ export function App() {
             <Route path="/admin/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
             <Route path="*" element={<p>Page not found.</p>} />
           </Routes>
-        </Main>
-        <footer className="footer muted">
-          <a href="privacy.html">Privacy policy</a>
-          <span>Scores from <a href="https://piuscores.arroweclip.se">PIU Scores</a></span>
-        </footer>
+        </Layout>
       </HashRouter>
     </SessionProvider>
   );
