@@ -2,6 +2,7 @@
   "name": "piu-rivals",
   "private": true,
   "workspaces": [
+    "shared",
     "server"
   ]
 }

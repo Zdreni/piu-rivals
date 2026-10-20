@@ -86,22 +86,22 @@ The tables, their fields and how they fit together are in [database.md](database
 
 ## API
 
-All requests and responses are JSON. Authentication uses `Authorization: Bearer <login session token>`. CORS allows `https://zdreni.github.io`.
+All requests and responses are JSON; response types are in [shared/src/api.ts](../shared/src/api.ts), and the endpoint list is in [server/README.md](../server/README.md#api). Authentication uses `Authorization: Bearer <login session token>`. CORS allows `https://zdreni.github.io` (and `http://localhost:5173` for development).
 
 **Auth and own account**
-- `POST /auth/google` with `{ idToken }` returns `{ token, user }`. Only emails added by an admin can log in, with two bootstrap exceptions: emails in the `ADMIN_EMAILS` config, and the first login while the users table is empty, who becomes admin. That second rule means whoever logs in first on a fresh install is admin, so log in yourself right after deploying.
+- `POST /auth/google` with `{ idToken }` returns `{ token, expiresAt, user }`. Sessions last 30 days (`SESSION_DAYS`); only a hash of the token is stored. Only emails added by an admin can log in, with two bootstrap exceptions: emails in the `ADMIN_EMAILS` config, and the first login while the users table is empty, who becomes admin. That second rule means whoever logs in first on a fresh install is admin, so log in yourself right after deploying.
 - `POST /auth/logout`
-- `GET /me`, `PUT /me/preferences`, `PUT /me/rivals`
+- `GET /me`, `PUT /me/preferences`, `PUT /me/rivals`. A user's own player is never in their rival list.
 
 **Data**
 - `GET /players` lists players (id, name, PUMBILITY) for the rival picker.
 - `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. The site keeps the rows in IndexedDB and filters locally.
 
 **Admin** (requires `is_admin`)
-- `GET/POST/PATCH/DELETE /admin/users`: email, linked player, `is_admin`
+- `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
 - `GET /admin/players`, `DELETE /admin/players/:id`
-- `POST /admin/players/import`: JSON exported from the old extension's `players`, importing GUID, name and PUMBILITY
-- `POST /admin/scrape-runs` with `{ kind, playerIds? | playerUrl? }` queues a run
+- `POST /admin/players/import`: JSON exported from the old extension's `players`, importing GUID, name and PUMBILITY. Returns how many were added and how many already existed.
+- `POST /admin/scrape-runs` with `{ kind, players? }` queues a run; `players` are GUIDs or piuscores player links
 - `GET /admin/scrape-runs` lists runs, newest first
 - `GET /admin/scrape-runs/:id` returns progress and failures
 - `POST /admin/scrape-runs/:id/cancel`
@@ -159,8 +159,8 @@ The public API URL (including the port, if it isn't 443) is set in `web/` config
 
 ## Build order
 
-1. `shared/` and `server/`: schema, migrations, the session page parser with saved-page fixtures, the scrape worker, and a command-line entry to scrape one player for testing
-2. `server/`: API, including auth, the admin API and scrape runs
+1. ✅ `server/`: schema, migrations, the session page parser with saved-page fixtures, the scrape worker, and a command-line entry to scrape one player for testing
+2. ✅ `shared/` and `server/`: API, including auth, the admin API and scrape runs
 3. `web/`: login, the admin panel (users, players, import, scrape runs with progress), the Pages workflow
 4. `web/`: the Rivals view, ported from the old extension's rivals window
 

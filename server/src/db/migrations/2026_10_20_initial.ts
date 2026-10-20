@@ -1,5 +1,7 @@
 import { type Kysely, sql } from 'kysely';
 
+// Foreign keys are table constraints (addForeignKeyConstraint): MySQL 8 silently ignores
+// REFERENCES written inside a column definition.
 const tableOptions = sql`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`;
 const now = sql`CURRENT_TIMESTAMP`;
 // Case-sensitive, so keys differing only in case stay apart.
@@ -23,13 +25,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('name', 'varchar(100)')
     .addColumn('pumbility', 'integer')
     .addColumn('created_at', 'datetime', (c) => c.notNull().defaultTo(now))
-    .addColumn('created_by_user_id', 'integer', (c) => c.references('users.id').onDelete('set null'))
+    .addColumn('created_by_user_id', 'integer')
     .addColumn('last_scraped_at', 'datetime')
     .addColumn('last_session_no', 'integer', (c) => c.notNull().defaultTo(0))
     .addColumn('last_session_title', 'varchar(255)')
     .addColumn('last_session_timestamp', 'varchar(64)')
     .addColumn('anchor_session_title', 'varchar(255)')
     .addColumn('anchor_session_timestamp', 'varchar(64)')
+    .addForeignKeyConstraint('players_created_by_user_id_fk', ['created_by_user_id'], 'users', ['id'], (c) => c.onDelete('set null'))
     .modifyEnd(tableOptions)
     .execute();
 
@@ -53,7 +56,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('player_ids', 'json')
     .addColumn('status', sql`enum('queued', 'running', 'done', 'failed', 'cancelled', 'interrupted')`,
       (c) => c.notNull().defaultTo('queued'))
-    .addColumn('started_by_user_id', 'integer', (c) => c.references('users.id').onDelete('set null'))
+    .addColumn('started_by_user_id', 'integer')
     .addColumn('created_at', 'datetime', (c) => c.notNull().defaultTo(now))
     .addColumn('started_at', 'datetime')
     .addColumn('finished_at', 'datetime')
@@ -64,6 +67,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('plays_added', 'integer', (c) => c.notNull().defaultTo(0))
     .addColumn('bests_improved', 'integer', (c) => c.notNull().defaultTo(0))
     .addColumn('cancel_requested', 'boolean', (c) => c.notNull().defaultTo(false))
+    .addForeignKeyConstraint('scrape_runs_started_by_user_id_fk', ['started_by_user_id'], 'users', ['id'], (c) => c.onDelete('set null'))
     .modifyEnd(tableOptions)
     .execute();
 
@@ -71,20 +75,21 @@ export async function up(db: Kysely<any>): Promise<void> {
 
   await db.schema.createTable('scrape_failures')
     .addColumn('id', 'integer', (c) => c.primaryKey().autoIncrement())
-    .addColumn('scrape_run_id', 'integer', (c) => c.notNull().references('scrape_runs.id').onDelete('cascade'))
+    .addColumn('scrape_run_id', 'integer', (c) => c.notNull())
     .addColumn('player_id', 'char(36)')
     .addColumn('message', 'text', (c) => c.notNull())
     .addColumn('created_at', 'datetime', (c) => c.notNull().defaultTo(now))
+    .addForeignKeyConstraint('scrape_failures_scrape_run_id_fk', ['scrape_run_id'], 'scrape_runs', ['id'], (c) => c.onDelete('cascade'))
     .modifyEnd(tableOptions)
     .execute();
 
   await db.schema.createTable('plays')
     .addColumn('id', 'bigint', (c) => c.primaryKey().autoIncrement())
-    .addColumn('player_id', 'char(36)', (c) => c.notNull().references('players.id').onDelete('cascade'))
-    .addColumn('chart_id', 'integer', (c) => c.notNull().references('charts.id'))
+    .addColumn('player_id', 'char(36)', (c) => c.notNull())
+    .addColumn('chart_id', 'integer', (c) => c.notNull())
     .addColumn('session_no', 'integer', (c) => c.notNull())
     .addColumn('played_on', 'date')
-    .addColumn('scrape_run_id', 'integer', (c) => c.references('scrape_runs.id').onDelete('set null'))
+    .addColumn('scrape_run_id', 'integer')
     .addColumn('score', 'integer', (c) => c.notNull())
     .addColumn('grade', 'varchar(16)')
     .addColumn('passed', 'boolean', (c) => c.notNull())
@@ -95,6 +100,9 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('bad', 'integer')
     .addColumn('miss', 'integer')
     .addColumn('max_combo', 'integer')
+    .addForeignKeyConstraint('plays_player_id_fk', ['player_id'], 'players', ['id'], (c) => c.onDelete('cascade'))
+    .addForeignKeyConstraint('plays_chart_id_fk', ['chart_id'], 'charts', ['id'])
+    .addForeignKeyConstraint('plays_scrape_run_id_fk', ['scrape_run_id'], 'scrape_runs', ['id'], (c) => c.onDelete('set null'))
     .modifyEnd(tableOptions)
     .execute();
 
@@ -102,8 +110,8 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.createIndex('plays_player_chart_idx').on('plays').columns(['player_id', 'chart_id', 'score']).execute();
 
   await db.schema.createTable('best_results')
-    .addColumn('player_id', 'char(36)', (c) => c.notNull().references('players.id').onDelete('cascade'))
-    .addColumn('chart_id', 'integer', (c) => c.notNull().references('charts.id'))
+    .addColumn('player_id', 'char(36)', (c) => c.notNull())
+    .addColumn('chart_id', 'integer', (c) => c.notNull())
     .addColumn('play_id', 'bigint', (c) => c.notNull())
     .addColumn('score', 'integer', (c) => c.notNull())
     .addColumn('passed', 'boolean', (c) => c.notNull())
@@ -113,29 +121,35 @@ export async function up(db: Kysely<any>): Promise<void> {
     // When our server last changed the row (UTC), not a time from piuscores.
     .addColumn('updated_at', sql`datetime(3)`, (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP(3)`))
     .addPrimaryKeyConstraint('best_results_pk', ['player_id', 'chart_id'])
+    .addForeignKeyConstraint('best_results_player_id_fk', ['player_id'], 'players', ['id'], (c) => c.onDelete('cascade'))
+    .addForeignKeyConstraint('best_results_chart_id_fk', ['chart_id'], 'charts', ['id'])
     .modifyEnd(tableOptions)
     .execute();
 
   await db.schema.createIndex('best_results_updated_idx').on('best_results').columns(['player_id', 'updated_at']).execute();
 
   await db.schema.createTable('user_rivals')
-    .addColumn('user_id', 'integer', (c) => c.notNull().references('users.id').onDelete('cascade'))
-    .addColumn('player_id', 'char(36)', (c) => c.notNull().references('players.id').onDelete('cascade'))
+    .addColumn('user_id', 'integer', (c) => c.notNull())
+    .addColumn('player_id', 'char(36)', (c) => c.notNull())
     .addPrimaryKeyConstraint('user_rivals_pk', ['user_id', 'player_id'])
+    .addForeignKeyConstraint('user_rivals_user_id_fk', ['user_id'], 'users', ['id'], (c) => c.onDelete('cascade'))
+    .addForeignKeyConstraint('user_rivals_player_id_fk', ['player_id'], 'players', ['id'], (c) => c.onDelete('cascade'))
     .modifyEnd(tableOptions)
     .execute();
 
   await db.schema.createTable('user_preferences')
-    .addColumn('user_id', 'integer', (c) => c.primaryKey().references('users.id').onDelete('cascade'))
+    .addColumn('user_id', 'integer', (c) => c.primaryKey())
     .addColumn('data', 'json', (c) => c.notNull())
+    .addForeignKeyConstraint('user_preferences_user_id_fk', ['user_id'], 'users', ['id'], (c) => c.onDelete('cascade'))
     .modifyEnd(tableOptions)
     .execute();
 
   await db.schema.createTable('auth_sessions')
     .addColumn('token_hash', 'char(64)', (c) => c.primaryKey())
-    .addColumn('user_id', 'integer', (c) => c.notNull().references('users.id').onDelete('cascade'))
+    .addColumn('user_id', 'integer', (c) => c.notNull())
     .addColumn('created_at', 'datetime', (c) => c.notNull().defaultTo(now))
     .addColumn('expires_at', 'datetime', (c) => c.notNull())
+    .addForeignKeyConstraint('auth_sessions_user_id_fk', ['user_id'], 'users', ['id'], (c) => c.onDelete('cascade'))
     .modifyEnd(tableOptions)
     .execute();
 }

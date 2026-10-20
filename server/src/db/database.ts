@@ -4,11 +4,11 @@ import { config } from '../config.ts';
 import type { Database } from './schema.ts';
 
 
-export function createDatabase(): Kysely<Database> {
+export function createDatabase(url = config.databaseUrl()): Kysely<Database> {
   return new Kysely<Database>({
     dialect: new MysqlDialect({
       pool: createPool({
-        uri: config.databaseUrl(),
+        uri: url,
         dateStrings: true,
         timezone: 'Z',
         charset: 'utf8mb4',

@@ -1,3 +1,4 @@
+import type { ScrapeRunKind, ScrapeRunStatus } from '@piurivals/shared';
 import type { ColumnType, Generated, Insertable, Selectable } from 'kysely';
 
 // Dates come back as strings (the pool uses dateStrings): DATE as "YYYY-MM-DD",
@@ -62,8 +63,7 @@ export interface BestResultsTable {
   updated_at: ColumnType<string, string | undefined, string>;
 }
 
-export type ScrapeRunKind = 'all' | 'selected' | 'register' | 'rescan';
-export type ScrapeRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'interrupted';
+export type { ScrapeRunKind, ScrapeRunStatus };
 
 export interface ScrapeRunsTable {
   id: Generated<number>;

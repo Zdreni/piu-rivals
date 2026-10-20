@@ -2,6 +2,15 @@
 module.exports = {
   apps: [
     {
+      name: 'piurivals-api',
+      script: 'src/server.ts',
+      interpreter: 'node',
+      node_args: '--import tsx',
+      cwd: __dirname,
+      instances: 1,
+      autorestart: true,
+    },
+    {
       name: 'piurivals-worker',
       script: 'src/worker.ts',
       interpreter: 'node',

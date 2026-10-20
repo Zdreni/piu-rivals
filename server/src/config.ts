@@ -21,8 +21,20 @@ const numberOr = (name: string, fallback: number) => {
 };
 
 
+const list = (value: string | undefined) =>
+  (value  ||  '').split(',').map((item) => item.trim()).filter(Boolean);
+
+
 export const config = {
   databaseUrl: () => required('DATABASE_URL'),
+  port: numberOr('PORT', 9876),
+  // nginx in front terminates TLS, so the API only listens locally.
+  host: process.env.HOST  ||  '127.0.0.1',
+  googleClientId: () => required('GOOGLE_CLIENT_ID'),
+  // Emails that are made admins on login, e.g. the first admin.
+  adminEmails: list(process.env.ADMIN_EMAILS).map((email) => email.toLowerCase()),
+  corsOrigins: list(process.env.CORS_ORIGIN  ||  'https://zdreni.github.io,http://localhost:5173'),
+  sessionDays: numberOr('SESSION_DAYS', 30),
   piuscoresUrl: process.env.PIUSCORES_URL  ||  'https://piuscores.arroweclip.se',
   // Pause between page actions, so the load on piuscores is like one person browsing.
   scrapeDelayMs: numberOr('SCRAPE_DELAY_MS', 2000),
