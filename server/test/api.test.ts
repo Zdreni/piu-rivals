@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
   AdminPlayersResponse, BestsResponse, LoginResponse, MeResponse, ScrapeRunResponse,
-} from '@piurivals/shared';
+} from '@piu-rivals/shared';
 import { sql } from 'kysely';
 import { buildApp } from '../src/api/app.ts';
 import { HttpError } from '../src/api/errors.ts';

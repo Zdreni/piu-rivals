@@ -1,4 +1,4 @@
-# piurivals: design
+# piu-rivals: design
 
 Status: draft for review. Nothing here is implemented yet.
 
@@ -10,7 +10,7 @@ piuscores site <────┤ scrape worker (headless Chromium)  │
                     │        │ writes                    │
                     │      MySQL                         │
                     │        │ reads/writes              │
-piurivals  <─HTTPS──┤ API server  <── nginx (TLS)        │
+piu-rivals  <─HTTPS──┤ API server  <── nginx (TLS)        │
 (GitHub Pages)      └────────────────────────────────────┘
 ```
 
@@ -18,14 +18,14 @@ piurivals  <─HTTPS──┤ API server  <── nginx (TLS)        │
 |---|---|---|
 | `piuscores-extension/` | Old extension, left untouched | JS |
 | `server/` | API server and scrape worker, both from one codebase | Node, TS, Fastify, Kysely, MySQL, Playwright, pm2 |
-| `web/` | piurivals site, including the admin section | Vite, React, TS |
+| `web/` | piu-rivals site, including the admin section | Vite, React, TS |
 | `shared/` | API request/response types, grade/plate/chart helpers | TS |
 
 The root `package.json` declares npm workspaces for `shared`, `server` and `web`.
 
 There is no scraper extension. Scraping runs on the VPS in a background worker, and admins start and watch it from the admin panel. If piuscores ever blocks the VPS, a scraper extension could be added later as a fallback that sends to the same database through the API.
 
-**Players vs users.** A *player* is a piuscores player identified by GUID. There will be many of them (~500), and they are created by registering them for scraping. A *user* is a piurivals account (Google login). There are fewer users; an admin creates each one and can optionally link it to one player. A user without a linked player can use everything except the Rivals tab.
+**Players vs users.** A *player* is a piuscores player identified by GUID. There will be many of them (~500), and they are created by registering them for scraping. A *user* is a piu-rivals account (Google login). There are fewer users; an admin creates each one and can optionally link it to one player. A user without a linked player can use everything except the Rivals tab.
 
 ## Scraping
 
@@ -123,7 +123,7 @@ This copies the players to the clipboard. Paste the result into the admin panel'
 - `server/.env` holds `PORT`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`, `CORS_ORIGIN`, `SCRAPE_DELAY_MS`.
 - Playwright installs its own Chromium on the VPS (`npx playwright install --with-deps chromium`).
 - Database migrations are Kysely migrations, run with `npm run migrate`.
-- `ecosystem.config.cjs` defines two pm2 apps, `piurivals-api` and `piurivals-worker`, started with `pm2 start ecosystem.config.cjs`.
+- `ecosystem.config.cjs` defines two pm2 apps, `piu-rivals-api` and `piu-rivals-worker`, started with `pm2 start ecosystem.config.cjs`.
 - nginx terminates TLS for `api.pumpking.top` and forwards requests to `127.0.0.1:9876`. Example:
 
 ```nginx
@@ -152,10 +152,7 @@ The public API URL (including the port, if it isn't 443) is set in `web/` config
 
 ### Google login setup (one time)
 
-1. Open <https://console.cloud.google.com>, sign in, and create a project (e.g. `piurivals`).
-2. Go to **APIs & Services → OAuth consent screen** (shown as "Google Auth Platform" in newer consoles). Set the app name `piurivals`, your support email and audience **External**. Then **publish** the app. With only the basic `openid email profile` scopes, Google doesn't need to verify it.
-3. Under **Clients → Create client**, choose **Web application**. In **Authorized JavaScript origins**, add `https://zdreni.github.io`, plus `http://localhost:5173` for local development. No redirect URIs are needed.
-4. Copy the **Client ID**. It goes into `web/` config and `server/.env` as `GOOGLE_CLIENT_ID`. No client secret is needed: the server only checks Google's ID tokens.
+The steps for the Google Cloud project `piu-rivals` are in [google_login_setup.md](google_login_setup.md).
 
 ## Build order
 

@@ -2,7 +2,7 @@
 module.exports = {
   apps: [
     {
-      name: 'piurivals-api',
+      name: 'piu-rivals-api',
       script: 'src/server.ts',
       interpreter: 'node',
       node_args: '--import tsx',
@@ -11,7 +11,7 @@ module.exports = {
       autorestart: true,
     },
     {
-      name: 'piurivals-worker',
+      name: 'piu-rivals-worker',
       script: 'src/worker.ts',
       interpreter: 'node',
       node_args: '--import tsx',

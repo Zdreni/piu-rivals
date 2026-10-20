@@ -1,4 +1,4 @@
-import type { AdminPlayersResponse, ImportPlayersResponse } from '@piurivals/shared';
+import type { AdminPlayersResponse, ImportPlayersResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { sql } from 'kysely';

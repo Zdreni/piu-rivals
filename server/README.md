@@ -1,11 +1,11 @@
-# piurivals server
+# piu-rivals server
 
-The backend of piurivals:
+The backend of piu-rivals:
 - **API** (`src/server.ts`): Google sign-in, the site's data, and the admin endpoints.
 - **Scrape worker** (`src/worker.ts`): reads players' Phoenix 2 sessions from piuscores with
   headless Chromium, for scrape runs queued by admins.
 
-Both use the same MySQL database. See [the design](../docs/piurivals_design.md) and
+Both use the same MySQL database. See [the design](../docs/design.md) and
 [the database tables](../docs/database.md). API response types are in
 [shared/src/api.ts](../shared/src/api.ts).
 
@@ -72,7 +72,7 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 ## On the VPS
 
 ```sh
-pm2 start ecosystem.config.cjs   # starts piurivals-api and piurivals-worker
+pm2 start ecosystem.config.cjs   # starts piu-rivals-api and piu-rivals-worker
 pm2 save
 ```
 

@@ -1,4 +1,4 @@
-import type { ScrapeRun, ScrapeRunResponse, ScrapeRunsResponse } from '@piurivals/shared';
+import type { ScrapeRun, ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { type Kysely, sql } from 'kysely';

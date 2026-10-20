@@ -1,4 +1,4 @@
-// Response types of the piurivals API, shared by the server and the site.
+// Response types of the piu-rivals API, shared by the server and the site.
 // Dates are "YYYY-MM-DD"; times are ISO 8601 UTC ("2026-10-20T10:16:21.245Z").
 
 export interface ApiError {

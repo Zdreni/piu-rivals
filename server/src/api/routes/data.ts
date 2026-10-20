@@ -1,4 +1,4 @@
-import type { BestsResponse, Chart, PlayersResponse } from '@piurivals/shared';
+import type { BestsResponse, Chart, PlayersResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { sql } from 'kysely';

@@ -1,4 +1,4 @@
-import type { PlayerSummary, User } from '@piurivals/shared';
+import type { PlayerSummary, User } from '@piu-rivals/shared';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema.ts';
 

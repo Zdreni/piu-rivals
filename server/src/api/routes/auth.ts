@@ -1,4 +1,4 @@
-import type { LoginResponse } from '@piurivals/shared';
+import type { LoginResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { sql } from 'kysely';
@@ -21,7 +21,7 @@ export const authRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db, 
     if (! user) {
       const { count } = await db.selectFrom('users').select((eb) => eb.fn.countAll<number>().as('count')).executeTakeFirstOrThrow();
       if (! listedAdmin  &&  Number(count) > 0)
-        throw new HttpError(403, `${identity.email} has no access to piurivals yet; ask an admin to add it`);
+        throw new HttpError(403, `${identity.email} has no access to piu-rivals yet; ask an admin to add it`);
 
       await db.insertInto('users').values({ email: identity.email, display_name: identity.name, is_admin: 1 }).execute();
       user = await db.selectFrom('users').selectAll().where('email', '=', identity.email).executeTakeFirstOrThrow();

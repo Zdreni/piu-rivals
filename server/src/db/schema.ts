@@ -1,4 +1,4 @@
-import type { ScrapeRunKind, ScrapeRunStatus } from '@piurivals/shared';
+import type { ScrapeRunKind, ScrapeRunStatus } from '@piu-rivals/shared';
 import type { ColumnType, Generated, Insertable, Selectable } from 'kysely';
 
 // Dates come back as strings (the pool uses dateStrings): DATE as "YYYY-MM-DD",
