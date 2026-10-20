@@ -153,14 +153,17 @@
 .rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
                      font-variant-numeric: tabular-nums; }
 .rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
-.rivals .level-bar { display: flex; height: 100%; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
+.rivals .level-bar { position: relative; display: block; height: 100%; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
                      border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: .75; }
-.rivals .level-bar.single { flex-direction: row-reverse; }
+/* Safari wraps a button's children in an anonymous box that doesn't stretch, so the segments get their own flex box
+   pinned to the button's edges. */
+.rivals .level-segs { position: absolute; inset: 0; display: flex; }
+.rivals .level-bar.single .level-segs { flex-direction: row-reverse; }
 .rivals .level-bar:hover { opacity: 1; }
 .rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
 .rivals .level-bar.placeholder { visibility: hidden; }
 /* Each segment shows its count and is always wide enough for it, even if that bends the proportions. */
-.rivals .level-bar > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
+.rivals .level-segs > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
                             justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; color: rgba(0,0,0,.55); }
 /* Wins and np darken from the level number outward. Losses burn from red in the middle to orange at
    the end; how orange is set by --heat (0..1), and only the most losses of any level reach full orange. */
@@ -173,14 +176,14 @@
 .rivals .level-bar.single .lose { background: linear-gradient(to right, var(--hot), #B01C00); }
 .rivals .level-bar .hidden-loss { background: #34140E; }
 /* Segments round their outer corners and lie over the next segment, which slides under them. */
-.rivals .level-bar > span { position: relative; }
+.rivals .level-segs > span { position: relative; }
 .rivals .level-bar .win { z-index: 3; }
 .rivals .level-bar .unplayed { z-index: 2; }
 .rivals .level-bar .hidden-loss { z-index: 1; }
-.rivals .level-bar > span:not(.lose) { border-radius: 0 2px 2px 0; }
-.rivals .level-bar > span + span { margin-left: -2px; padding-left: 5px; }
-.rivals .level-bar.single > span:not(.lose) { border-radius: 2px 0 0 2px; }
-.rivals .level-bar.single > span + span { margin: 0 -2px 0 0; padding: 0 5px 0 3px; }
+.rivals .level-segs > span:not(.lose) { border-radius: 0 2px 2px 0; }
+.rivals .level-segs > span + span { margin-left: -2px; padding-left: 5px; }
+.rivals .level-bar.single .level-segs > span:not(.lose) { border-radius: 2px 0 0 2px; }
+.rivals .level-bar.single .level-segs > span + span { margin: 0 -2px 0 0; padding: 0 5px 0 3px; }
 .rivals .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
 .rivals .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
 .rivals .level-other .level-bar { grid-column: 2 / -1; }

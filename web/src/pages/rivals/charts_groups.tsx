@@ -41,10 +41,12 @@ function LevelBar({ level, side, stats, countBy, selected, heat, onSelect }: {
       title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tipLine('win')}`}
       onClick={() => onSelect(level)}
     >
-      {part('win', counts.win)}
-      {part('unplayed', counts.unplayed)}
-      {part('hidden-loss', counts.hidden, '')}
-      {part('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
+      <span className="level-segs">
+        {part('win', counts.win)}
+        {part('unplayed', counts.unplayed)}
+        {part('hidden-loss', counts.hidden, '')}
+        {part('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
+      </span>
     </button>
   );
 }
