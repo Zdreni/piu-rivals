@@ -145,15 +145,16 @@
                    overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0;
                    scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
 .rivals .filters:hover { scrollbar-color: #3D5A49 transparent; }
-/* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). */
+/* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). There's no row gap:
+   bars take 92% of their row instead, so the space between them stays in proportion to their height. */
 .rivals .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
-                       grid-auto-rows: minmax(10px, 1fr); row-gap: 6px; font-size: 14px; }
-.rivals .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 4px; }
+                       grid-auto-rows: minmax(10px, 1fr); font-size: 14px; }
+.rivals .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 8px; }
 .rivals .level-head.single { text-align: right; }
 .rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
                      font-variant-numeric: tabular-nums; }
 .rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
-.rivals .level-bar { position: relative; display: block; height: 100%; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
+.rivals .level-bar { position: relative; display: block; height: 92%; align-self: center; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
                      border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: .75; }
 /* Safari wraps a button's children in an anonymous box that doesn't stretch, so the segments get their own flex box
    pinned to the button's edges. */
@@ -239,10 +240,12 @@
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
   .rivals { flex: none; }
-  .rivals .dlg-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 60vh auto; }
+  .rivals .dlg-main { display: grid; grid-template-columns: 285px minmax(0, 1fr); grid-template-rows: 60vh auto; }
   .rivals .head-settings { margin: 0; flex-wrap: wrap; }
   .rivals .rival-list { width: auto; min-height: 0; border-bottom: 1px solid #2B4034; }
   .rivals .filters { justify-content: center; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
+  /* The levels get the space the rival list doesn't need, so their bars widen. */
+  .rivals .level-chart { flex: 1; max-width: 560px; grid-template-columns: minmax(128px, 1fr) 38px minmax(128px, 1fr); }
   .rivals .score-content { grid-column: 1 / -1; min-height: 60vh; }
   .rivals .dlg-body { overflow: visible; }
   .rivals .tabs { flex-wrap: wrap; }
