@@ -75,6 +75,9 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 
 ## On the VPS
 
+Pushes to `main` deploy here automatically; by hand: `bash server/deploy.sh`. See
+[docs/vps_deployment.md](../docs/vps_deployment.md#automatic-deployment).
+
 ```sh
 pm2 start ecosystem.config.cjs   # starts piu-rivals-api and piu-rivals-worker
 pm2 save

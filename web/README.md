@@ -28,5 +28,5 @@ of the OAuth client (see [the Google setup](../docs/google_login_setup.md)).
 ## Publishing
 
 Every push to `main` that changes `web/` or `shared/` builds the site and publishes it to GitHub
-Pages ([.github/workflows/pages.yml](../.github/workflows/pages.yml)). Files in `web/public`, like
+Pages ([.github/workflows/deploy.yml](../.github/workflows/deploy.yml), after the server when that changed too). Files in `web/public`, like
 the privacy policy, are published as they are.

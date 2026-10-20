@@ -134,6 +134,7 @@ This copies the players to the clipboard. Paste the result into the admin panel'
 - Playwright installs its own Chromium on the VPS (`npx playwright install --with-deps chromium`).
 - Database migrations are Kysely migrations, run with `npm run migrate`.
 - `ecosystem.config.cjs` defines two pm2 apps, `piu-rivals-api` and `piu-rivals-worker`, started with `pm2 start ecosystem.config.cjs`.
+- Pushes to `main` that change `server/` or `shared/` deploy automatically: the `Deploy` workflow tests the server, then runs `server/deploy.sh` on the VPS over SSH (packages, migrations, pm2 restart, health check), using a key that may only run that script.
 - nginx terminates TLS on `https://api.pumpking.top:6767` and forwards requests to the API on `127.0.0.1:9876`. The public API URL is set in `web/.env`.
 
 The step-by-step setup is in [vps_deployment.md](vps_deployment.md).
@@ -141,7 +142,7 @@ The step-by-step setup is in [vps_deployment.md](vps_deployment.md).
 ### GitHub Pages
 
 1. In the repo, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
-2. The workflow `.github/workflows/pages.yml` builds `web/` with `base: '/piu-rivals/'` and deploys it on every push to `main` that changes `web/` or `shared/`.
+2. The workflow `.github/workflows/deploy.yml` builds `web/` with `base: '/piu-rivals/'` and deploys it on every push to `main` that changes `web/` or `shared/`, after the server's deploy when that changed too.
 3. Routes use hashes (`/#/rivals`), so Pages never needs a server-side fallback.
 4. The site lives at `https://zdreni.github.io/piu-rivals/`. Pages always uses https, so the API must be https as well.
 
