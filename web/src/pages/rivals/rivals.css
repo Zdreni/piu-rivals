@@ -233,21 +233,26 @@
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
-/* Narrow screens: the columns stack and the page scrolls. */
+/* Narrow screens (e.g. a tablet in portrait): rivals and levels side by side, the results below them,
+   and the page scrolls. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
   .rivals { flex: none; }
-  .rivals .dlg-main { flex-direction: column; }
+  .rivals .dlg-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 60vh auto; }
   .rivals .head-settings { margin: 0; flex-wrap: wrap; }
-  .rivals .rival-list { width: auto; height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
-  .rivals .filters { justify-content: center; max-height: 60vh; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
-  .rivals .score-content { min-height: 60vh; }
+  .rivals .rival-list { width: auto; min-height: 0; border-bottom: 1px solid #2B4034; }
+  .rivals .filters { justify-content: center; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
+  .rivals .score-content { grid-column: 1 / -1; min-height: 60vh; }
   .rivals .dlg-body { overflow: visible; }
   .rivals .tabs { flex-wrap: wrap; }
 }
 
+/* Phones: no room for rivals and levels side by side, so the columns stack. */
 @media (max-width: 600px) {
+  .rivals .dlg-main { display: flex; flex-direction: column; }
+  .rivals .rival-list { height: 45vh; border-right: none; }
+  .rivals .filters { max-height: 60vh; }
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
   .rivals .chart-grid { grid-template-columns: minmax(0, 1fr); }
