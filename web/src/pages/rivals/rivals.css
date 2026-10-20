@@ -1,20 +1,18 @@
 /* The Rivals view, styled like the old extension's rivals window. Everything is scoped to .rivals. */
 
-.main.wide { max-width: 1432px; }
+/* The view fills the window below the menu bar (see Layout in app.tsx). */
+.app.full { height: 100vh; height: 100dvh; min-height: 560px; display: flex; flex-direction: column; }
+.app.full .main { flex: 1; min-height: 0; max-width: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.app.full .main > p { margin: 1rem; }
 
-.rivals { background: #14201A; border: 1px solid #2B4034; border-radius: 8px; height: calc(100vh - 7rem); min-height: 480px;
+.rivals { background: #14201A; flex: 1; min-height: 0;
           display: flex; flex-direction: column; font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
 .rivals .dlg-main { display: flex; flex: 1; min-height: 0; }
 
-/* The site's own button and table styles stay out. */
+/* The site's own button styles stay out. */
 .rivals button { background: none; color: inherit; border: none; border-radius: 0; padding: 0; font-weight: inherit; }
 .rivals button:disabled { opacity: 1; }
-.rivals table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-.rivals th, .rivals td { border-bottom: none; font-size: inherit; white-space: normal; }
 
-.rivals .btn { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 3px 10px;
-               font: 400 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
-.rivals .btn:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
 .rivals .pos { color: #4FE33F; }
 .rivals .neg { color: #FF2A00; }
 .rivals .pos.muted { color: #7BA874; }
@@ -24,7 +22,7 @@
 
 .rivals .dlg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #2B4034; }
 .rivals .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
-.rivals .head-settings { display: flex; align-items: center; gap: 20px; margin: 0 auto; }
+.rivals .head-settings { display: flex; align-items: center; gap: 20px; margin-left: auto; }
 /* The label sits above the − value + row. */
 .rivals .stepper { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 2px 4px; color: #9AB3A3;
                    font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -50,13 +48,32 @@
 .rivals .head-status { font-size: 13px; color: #9AB3A3; max-width: 22rem; }
 .rivals .head-status.error { color: #FF5A5A; }
 
+/* Underlined tabs, used by the rivals column and the results: the open tab is green, with a thick underline over
+   the thin line under all tabs; the others are dimmed until hovered. */
+
+.rivals .tabs, .rivals .rival-tabs { display: flex; gap: 4px; padding: 6px 16px 0; border-bottom: 1px solid #2B4034; }
+.rivals .tabs .tab, .rivals .rival-tabs .rival-tab { margin-bottom: -1px; padding: 10px 14px; color: #6B8174; background: transparent;
+    border: none; border-bottom: 3px solid transparent; border-radius: 0; font: 500 15px/1.2 Roboto, Arial, sans-serif;
+    text-align: center; cursor: pointer; transition: color .15s, border-color .15s; }
+.rivals .tabs .tab:hover, .rivals .rival-tabs .rival-tab:hover { color: #C9D8CE; }
+.rivals .tab[aria-selected="false"] .tab-count, .rivals .rival-tab[aria-selected="false"] .tab-count { opacity: .45; }
+.rivals .tab[aria-selected="false"]:hover .tab-count, .rivals .rival-tab[aria-selected="false"]:hover .tab-count { opacity: .7; }
+.rivals .tabs .tab[aria-selected="true"], .rivals .rival-tabs .rival-tab[aria-selected="true"] {
+    color: #4FE33F; border-bottom-color: #4FE33F; cursor: default; }
+
 /* Rivals column */
 
-.rivals .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
-                      border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
-.rivals .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; display: flex; flex-direction: column;
+                      border-right: 1px solid #2B4034; }
+.rivals .rival-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 10px 8px;
+                        scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .rival-scroll:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .rival-tabs { padding-left: 14px; margin-bottom: 10px; }
+.rivals .rival-tab { flex: 1; }
+.rivals .rival-tab .tab-count { min-width: 0; }
 .rivals .rival-list .muted { color: #9AB3A3; }
 .rivals .rival-hint { padding: 9px 6px; font-size: 15px; }
+.rivals .rival-hint.error { color: #FF5A5A; }
 .rivals .rival { padding: 9px 6px; border-radius: 4px; position: relative; cursor: pointer; }
 .rivals .rival.faded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
                               background: rgba(20,32,26,.8); }
@@ -107,19 +124,20 @@
 .rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-visit,
 .rivals .rival.off .rival-scrap { opacity: .45; }
 
-/* Adding a rival */
+/* Others: players to add as rivals */
 
-.rivals .rival-add { position: relative; margin: 0 0 8px 6px; }
+.rivals .rival-add { margin: 0 16px 8px 14px; }
 .rivals .rival-add input { width: 100%; background: #1C2B22; color: #EAF5EC; border: 1px solid #2B4034; border-radius: 4px;
                            padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
 .rivals .rival-add input::placeholder { color: #8A9590; }
 .rivals .rival-add input:focus { border-color: #4FE33F; }
-.rivals .rival-add-list { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 5; background: #14201A;
-                          border: 1px solid #2B4034; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,.5); padding: 3px 0; }
-.rivals .rival-add-item { display: flex; gap: 8px; padding: 4px 8px; font-size: 15px; cursor: pointer; }
-.rivals .rival-add-item.active { background: rgba(79,227,63,.12); }
-.rivals .rival-add-note { padding: 4px 8px; font-size: 13px; color: #9AB3A3; }
-.rivals .rival-add-note.error { color: #FF5A5A; }
+.rivals .rival.other { padding: 6px; cursor: default; }
+.rivals .rival.other:hover { background: rgba(255,255,255,.05); }
+.rivals .rival.other:nth-child(even):hover { background: none; }
+.rivals .rival-plus { flex-shrink: 0; width: 28px; height: 22px; background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034;
+                      border-radius: 4px; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .rival-plus-spacer { flex-shrink: 0; width: 28px; }
+.rivals .rival-plus:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
 
 /* Levels column */
 
@@ -170,11 +188,6 @@
 /* Results column */
 
 .rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
-.rivals .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
-.rivals .tab { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 6px;
-               padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
-.rivals .tab:hover { color: #EAF5EC; }
-.rivals .tab[aria-selected="true"] { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; }
 /* Room for three digits, so tabs keep their size as the counts change. */
 .rivals .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
                      font-variant-numeric: tabular-nums; }
@@ -183,47 +196,48 @@
 .rivals .tab-count.you-win { color: #4FE33F; }
 .rivals .tab[data-tab="hidden"] { margin-left: auto; }
 .rivals .tab-count.hidden { color: #8C2E1C; }
-.rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 0 16px 12px; flex: 1;
+.rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 12px 16px; flex: 1;
                     scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
 .rivals .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
-.rivals th.col-chart { width: 56px; }
-.rivals th.col-player { width: 92px; } /* 80px of text + 12px padding */
-.rivals th.col-score { width: 70px; }
-.rivals th.col-diff { width: 70px; }
-.rivals .track { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rivals th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
-             text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
-.rivals td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
-.rivals tr.alt > td:not(.track):not([rowspan]):not(.others) { background: rgba(255,255,255,.05); }
-.rivals tr.group td { border-top: 1px solid #2B4034; }
-.rivals tr.gap td { height: 8px; padding: 0; }
-.rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rivals .empty { padding: 24px; text-align: center; color: #9AB3A3; }
-.rivals td.group-title { padding: 14px 6px 6px; color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif;
-                         border-bottom: 1px solid #3A1813; }
+.rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.rivals .mine { color: #FFC433; }
-.rivals td.sm { font-size: 16px; vertical-align: baseline; }
-.rivals td.score { color: #9AB3A3; }
+/* Chart cards: the track and chart on top, then the results, in as many columns as fit. */
+.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+.rivals .group-title { grid-column: 1 / -1; margin: 6px 0 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
+                       color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
+.rivals .group-title:not(:first-child) { margin-top: 14px; }
+.rivals .chart-card { background: #1A2820; border: 1px solid #2B4034; border-radius: 6px; overflow: hidden; }
+.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; background: #20312A;
+                           border-bottom: 1px solid #2B4034; }
+.rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
+.rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
+.rivals .chart-card-results { padding: 4px 0; }
+.rivals .result { display: grid; grid-template-columns: minmax(0, 1fr) 96px 76px; gap: 8px; padding: 3px 12px; font-size: 16px; }
+.rivals .result:nth-child(even) { background: rgba(255,255,255,.04); }
+/* Names are indented under the track name. */
+.rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rivals .result .score { color: #9AB3A3; }
+.rivals .result.mine { color: #FFC433; }
+.rivals .result.mine .num { color: #C9A44A; }
 .rivals .tail { font-size: .75em; opacity: .6; }
 .rivals .tail-dim { opacity: .7; }
-.rivals td.score.mine { color: #C9A44A; }
 .rivals .won { opacity: .4; }
 .rivals .ahead { opacity: .8; }
 .rivals .player-link { color: inherit; text-decoration: none; }
 .rivals .player-link:hover { color: #4FE33F; }
-.rivals td.others { text-align: right; padding: 4px 6px 6px; }
-.rivals .show-others { background: none; color: #9AB3A3; opacity: .6; border: none; padding: 3px 12px;
+.rivals .show-others { display: block; width: 100%; padding: 2px 12px 6px; text-align: right; color: #9AB3A3; opacity: .6;
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
 /* Narrow screens: the columns stack and the page scrolls. */
 
 @media (max-width: 1000px) {
-  .rivals { height: auto; min-height: 0; }
+  .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
+  .rivals { flex: none; }
   .rivals .dlg-main { flex-direction: column; }
   .rivals .head-settings { margin: 0; flex-wrap: wrap; }
-  .rivals .rival-list { width: auto; max-height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
+  .rivals .rival-list { width: auto; height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
   .rivals .filters { justify-content: center; max-height: 60vh; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
   .rivals .score-content { min-height: 60vh; }
   .rivals .dlg-body { overflow: visible; }
@@ -233,10 +247,7 @@
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
-  .rivals th.col-chart { width: 42px; }
-  .rivals th.col-player { width: 78px; }
-  .rivals th.col-score { width: 62px; }
-  .rivals th.col-diff { width: 54px; }
-  .rivals td.sm { font-size: 14px; }
-  .rivals .dlg-body { padding: 0 6px 12px; }
+  .rivals .chart-grid { grid-template-columns: minmax(0, 1fr); }
+  .rivals .result { grid-template-columns: minmax(0, 1fr) 84px 64px; font-size: 14px; }
+  .rivals .dlg-body { padding: 10px 6px; }
 }

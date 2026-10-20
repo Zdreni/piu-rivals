@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { exportTargets } from './export_targets.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
 import { chartTier, levelStats, resultCounts, sortedLevels, type TabId, tierCounts } from './stats.ts';
@@ -121,7 +120,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // Counted by results, the tabs show the selected level's bar numbers; by charts they count their own lists.
   const tabResults = countBy === 'results' ? levelStats(barCharts.filter(atLevel), capLosses.filter(atLevel)).results : null;
   const emptyMessage = ! rivals.length
-    ? 'Add rivals on the left to compare your scores with theirs.'
+    ? 'Add rivals on the Others tab on the left to compare your scores with theirs.'
     : ! data.ready
       ? 'Loading scores…'
       : ! allCharts.length
@@ -136,15 +135,14 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   return (
     <div className="rivals">
       <WindowHeader
-        myName={me.name}
         totals={totals}
         preferences={preferences}
         status={status}
         onChange={settings.changePreferences}
-        onExport={() => exportTargets(allCharts)}
       />
       <div className="dlg-main">
         <RivalList
+          tab={ui.rivalTab}
           charts={allCharts}
           me={me}
           rivals={rivals}
@@ -154,6 +152,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           // In solo mode the solo rival's stats are the header's, with all the settings applied.
           soloStats={soloRival ? totals : null}
           countBy={countBy}
+          onTab={(rivalTab) => changeUi({ rivalTab })}
           onFocus={focus}
           onSolo={setSolo}
           onToggle={(playerId, on) => settings.setRivalHidden(playerId, ! on)}

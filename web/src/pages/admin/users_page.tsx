@@ -1,9 +1,41 @@
 import type { AdminPlayersResponse, AdminUser, AdminUsersResponse } from '@piu-rivals/shared';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { api, errorText } from '../../api.ts';
 import { PlayerSelect } from '../../components/player_select.tsx';
 import { useSession } from '../../session.tsx';
 import { formatAgo, useLoad } from '../../util.ts';
+
+
+// The user's name, saved when the field loses focus or on Enter; Escape puts the saved name back. An empty name is
+// filled from their Google account at their next sign-in.
+function NameInput({ user, onSave }: { user: AdminUser; onSave: (displayName: string | null) => void }) {
+  const [name, setName] = useState(user.displayName  ??  '');
+  useEffect(() => setName(user.displayName  ??  ''), [user.displayName]);
+
+  const save = () => {
+    const trimmed = name.trim();
+    if (trimmed !== (user.displayName  ??  ''))
+      onSave(trimmed  ||  null);
+  };
+
+  return (
+    <input
+      type="text"
+      maxLength={100}
+      value={name}
+      placeholder="From Google"
+      aria-label={`Name of ${user.email}`}
+      onChange={(event) => setName(event.target.value)}
+      onBlur={save}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter')
+          event.currentTarget.blur();
+        else if (event.key === 'Escape')
+          setName(user.displayName  ??  '');
+      }}
+    />
+  );
+}
 
 
 function UserRow({ user, players, onChange }: {
@@ -14,7 +46,7 @@ function UserRow({ user, players, onChange }: {
   const { me, reload: reloadSession } = useSession();
   const isMe = me?.user.id === user.id;
 
-  const update = async (changes: { playerId?: string | null; isAdmin?: boolean }) => {
+  const update = async (changes: { displayName?: string | null; playerId?: string | null; isAdmin?: boolean }) => {
     try {
       await api('PATCH', `/admin/users/${user.id}`, changes);
       onChange(null);
@@ -39,10 +71,8 @@ function UserRow({ user, players, onChange }: {
 
   return (
     <tr>
-      <td>
-        <div>{user.email}</div>
-        {user.displayName  &&  <div className="muted small">{user.displayName}</div>}
-      </td>
+      <td>{user.email}</td>
+      <td><NameInput user={user} onSave={(displayName) => void update({ displayName })} /></td>
       <td>
         <PlayerSelect
           players={players}
@@ -74,6 +104,7 @@ export function UsersPage() {
   const users = useLoad(() => api<AdminUsersResponse>('GET', '/admin/users'), []);
   const players = useLoad(() => api<AdminPlayersResponse>('GET', '/admin/players'), []);
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +112,9 @@ export function UsersPage() {
   const add = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      await api('POST', '/admin/users', { email, playerId, isAdmin });
+      await api('POST', '/admin/users', { email, displayName: displayName.trim()  ||  null, playerId, isAdmin });
       setEmail('');
+      setDisplayName('');
       setPlayerId(null);
       setIsAdmin(false);
       setError(null);
@@ -112,6 +144,10 @@ export function UsersPage() {
           <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@gmail.com" />
         </label>
         <label>
+          Name
+          <input type="text" maxLength={100} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="From Google" />
+        </label>
+        <label>
           Player
           <PlayerSelect players={playerList} value={playerId} onChange={setPlayerId} label="Player" />
         </label>
@@ -127,7 +163,7 @@ export function UsersPage() {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>User</th><th>Player</th><th>Admin</th><th>Last sign-in</th><th /></tr>
+            <tr><th>Email</th><th>Name</th><th>Player</th><th>Admin</th><th>Last sign-in</th><th /></tr>
           </thead>
           <tbody>
             {users.data?.users.map((user) => <UserRow key={user.id} user={user} players={playerList} onChange={onRowChange} />)}

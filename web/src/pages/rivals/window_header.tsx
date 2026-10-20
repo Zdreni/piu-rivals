@@ -1,5 +1,4 @@
 import { StatWords } from './format.tsx';
-import { displayName } from './model.ts';
 import {
   clampNpMinimalRivals, clampScoreCap, type CountBy, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_NP_RIVALS, MIN_SCORE_CAP,
   type Preferences, SCORE_CAP_STEP,
@@ -37,23 +36,22 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 ];
 
 
-// The title with your totals, the score cap, np minimal rivals and count by settings, and the export button.
+// The title, named by what is counted, with your totals, and the score cap, np minimal rivals and count by settings.
 // `status` is a short note on loading scores, if any.
-export function WindowHeader({ myName, totals, preferences, status, onChange, onExport }: {
-  myName: string | null;
+export function WindowHeader({ totals, preferences, status, onChange }: {
   totals: Counts;
   preferences: Preferences;
   status: { text: string; error: boolean } | null;
   onChange: (changes: Partial<Preferences>) => void;
-  onExport: () => void;
 }) {
   const { scoreCap, npMinimalRivals, countBy } = preferences;
   return (
     <div className="dlg-head">
       <h2>
-        {myName ? `Rivals for ${displayName(myName)}` : 'Rivals'}
+        {countBy === 'charts' ? 'Rival charts' : 'Rival results'}
         <span className="head-stats"> — <StatWords counts={totals} words={STAT_WORDS[countBy]} /></span>
       </h2>
+      {status  &&  <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>}
       <div className="head-settings">
         <Stepper
           className="score-cap"
@@ -101,10 +99,6 @@ export function WindowHeader({ myName, totals, preferences, status, onChange, on
           ))}
         </div>
       </div>
-      {status  &&  <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>}
-      <button className="btn export" type="button" title="Download charts where rivals beat you or you have no score" onClick={onExport}>
-        Export
-      </button>
     </div>
   );
 }

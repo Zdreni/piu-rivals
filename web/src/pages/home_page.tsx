@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { GoogleButton } from '../components/google_button.tsx';
 import { useSession } from '../session.tsx';
 import { formatNumber, playerLabel } from '../util.ts';
@@ -6,6 +7,17 @@ import { formatNumber, playerLabel } from '../util.ts';
 
 export function HomePage() {
   const { status, me } = useSession();
+  const navigate = useNavigate();
+  const wasSignedOut = useRef(status === 'signed-out');
+
+  // Signing in here goes on to the Rivals view, for players who have one.
+  useEffect(() => {
+    if (status === 'signed-out')
+      wasSignedOut.current = true;
+    else if (status === 'signed-in'  &&  wasSignedOut.current  &&  me?.user.player)
+      navigate('/rivals', { replace: true });
+  }, [status, me, navigate]);
+
   if (status === 'loading')
     return <p className="muted">Loading…</p>;
 
