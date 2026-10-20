@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { HashRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/home_page.tsx';
 import { PlayersPage } from './pages/admin/players_page.tsx';
 import { RunPage } from './pages/admin/run_page.tsx';
 import { RunsPage } from './pages/admin/runs_page.tsx';
 import { UsersPage } from './pages/admin/users_page.tsx';
+import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
 
@@ -15,6 +16,9 @@ function Header() {
       <NavLink to="/" className="brand">piu-rivals</NavLink>
       {status === 'signed-in'  &&  me  &&  (
         <>
+          <nav className="nav" aria-label="Main">
+            <NavLink to="/rivals">Rivals</NavLink>
+          </nav>
           {me.user.isAdmin  &&  (
             <nav className="nav" aria-label="Admin">
               <NavLink to="/admin/players">Players</NavLink>
@@ -46,21 +50,29 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 
+// The Rivals view takes the full width; the other pages keep to a readable one.
+function Main({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <main className={pathname === '/rivals' ? 'main wide' : 'main'}>{children}</main>;
+}
+
+
 export function App() {
   return (
     <SessionProvider>
       <HashRouter>
         <Header />
-        <main className="main">
+        <Main>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/rivals" element={<RivalsPage />} />
             <Route path="/admin/players" element={<AdminOnly><PlayersPage /></AdminOnly>} />
             <Route path="/admin/runs" element={<AdminOnly><RunsPage /></AdminOnly>} />
             <Route path="/admin/runs/:id" element={<AdminOnly><RunPage /></AdminOnly>} />
             <Route path="/admin/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
             <Route path="*" element={<p>Page not found.</p>} />
           </Routes>
-        </main>
+        </Main>
         <footer className="footer muted">
           <a href="privacy.html">Privacy policy</a>
           <span>Scores from <a href="https://piuscores.arroweclip.se">PIU Scores</a></span>

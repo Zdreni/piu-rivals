@@ -1,7 +1,8 @@
 # piu-rivals site
 
-The site at <https://zdreni.github.io/piu-rivals/>: Google sign-in and the admin panel (players,
-scrape runs, users). The Rivals view comes next. See [the design](../docs/design.md).
+The site at <https://zdreni.github.io/piu-rivals/>: Google sign-in, the Rivals view
+([src/pages/rivals/](src/pages/rivals/), ported from the old extension's rivals window) and the admin
+panel (players, scrape runs, users). See [the design](../docs/design.md).
 
 Vite + React + TypeScript. API response types come from [shared/](../shared/src/api.ts).
 

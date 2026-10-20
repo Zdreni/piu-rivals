@@ -27,10 +27,27 @@ export interface LoginResponse {
   user: User;
 }
 
+// A player in the user's rival list.
+export interface Rival extends PlayerSummary {
+  // Switched off in the Rivals view: kept in the list, but left out of the comparison.
+  hidden: boolean;
+}
+
+// The site's own settings (score cap, ...); the server stores them as given.
+export type Preferences = Record<string, unknown>;
+
 export interface MeResponse {
   user: User;
-  rivals: PlayerSummary[];
-  preferences: Record<string, unknown>;
+  rivals: Rival[];
+  preferences: Preferences;
+}
+
+export interface RivalsResponse {
+  rivals: Rival[];
+}
+
+export interface PreferencesResponse {
+  preferences: Preferences;
 }
 
 export interface PlayersResponse {
@@ -72,6 +89,9 @@ export interface BestsResponse {
   serverTime: string;
   charts: Chart[];
   bests: BestResult[];
+  // How many best results each requested player has in all, changed or not. A cache holding a different
+  // number has missed a deletion (e.g. a rescan) and should load that player in full.
+  counts: Record<string, number>;
 }
 
 export interface AdminUser extends User {

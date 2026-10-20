@@ -33,7 +33,8 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
 
 
   // Best results of the given players. With `since` (a serverTime from an earlier response), only
-  // rows changed at or after it; a row may then come again, which is harmless to merge.
+  // rows changed at or after it; a row may then come again, which is harmless to merge. Deleted rows
+  // (a rescan, a deleted player) never come as changes; `counts` lets the site notice them.
   app.get('/bests', {
     schema: { querystring: Type.Object({ players: Type.String({ minLength: 1 }), since: Type.Optional(Type.String()) }) },
   }, async (request): Promise<BestsResponse> => {
@@ -59,6 +60,16 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
       query = query.where('b.updated_at', '>=', since);
 
     const rows = await query.execute();
+    const countRows = await db.selectFrom('best_results')
+      .select(['player_id', (eb) => eb.fn.countAll<number>().as('count')])
+      .where('player_id', 'in', playerIds)
+      .groupBy('player_id')
+      .execute();
+
+    const counts = Object.fromEntries(playerIds.map((playerId) => [playerId, 0]));
+    for (const row of countRows)
+      counts[row.player_id] = Number(row.count);
+
     const charts = new Map<number, Chart>();
     for (const row of rows) {
       charts.set(row.chart_id, {
@@ -87,6 +98,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
         tries: row.tries,
         updatedAt: toIso(row.updated_at),
       })),
+      counts,
     };
   });
 };

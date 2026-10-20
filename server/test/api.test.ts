@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminPlayersResponse, BestsResponse, LoginResponse, MeResponse, ScrapeRunResponse,
+  AdminPlayersResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
 import { buildApp } from '../src/api/app.ts';
@@ -150,11 +150,48 @@ test('a user keeps rivals and preferences; their own player is never a rival', {
 });
 
 
+test('rivals are added, hidden and removed one by one', { skip }, async () => {
+  const as = 'player@example.com';
+  assert.equal((await call('POST', '/me/rivals', { as, body: { playerId: ME } })).status, 409);
+  assert.equal((await call('POST', '/me/rivals', { as, body: { playerId: '44444444-4444-4444-8444-444444444444' } })).status, 404);
+
+  const added = await call<RivalsResponse>('POST', '/me/rivals', { as, body: { playerId: OTHER.toUpperCase() } });
+  assert.equal(added.status, 200);
+  assert.deepEqual(added.body.rivals.map((r) => [r.id, r.hidden]).sort(), [[RIVAL, false], [OTHER, false]]);
+
+  const hidden = await call<RivalsResponse>('PATCH', `/me/rivals/${OTHER}`, { as, body: { hidden: true } });
+  assert.equal(hidden.body.rivals.find((r) => r.id === OTHER)?.hidden, true);
+  assert.equal((await call('PATCH', `/me/rivals/${OTHER}`, { as, body: { hidden: true } })).status, 200);
+  assert.equal((await call('PATCH', `/me/rivals/${ME}`, { as, body: { hidden: true } })).status, 404);
+
+  // Replacing the list keeps the hidden setting of rivals that stay.
+  const replaced = await call<RivalsResponse>('PUT', '/me/rivals', { as, body: { playerIds: [OTHER, RIVAL] } });
+  assert.equal(replaced.body.rivals.find((r) => r.id === OTHER)?.hidden, true);
+
+  const removed = await call<RivalsResponse>('DELETE', `/me/rivals/${OTHER}`, { as });
+  assert.deepEqual(removed.body.rivals.map((r) => r.id), [RIVAL]);
+});
+
+
+test('changing preferences keeps the others; null removes one', { skip }, async () => {
+  const as = 'player@example.com';
+  await call('PUT', '/me/preferences', { as, body: { preferences: { scoreCap: 999000, countBy: 'charts' } } });
+  const changed = await call<PreferencesResponse>('PATCH', '/me/preferences', {
+    as, body: { changes: { npMinimalRivals: 2, countBy: null } },
+  });
+
+  assert.deepEqual(changed.body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
+  assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
+  await call('PUT', '/me/preferences', { as, body: { preferences: { scoreCap: 999000 } } });
+});
+
+
 test('best results come with their chart and try details, and since returns only changes', { skip }, async () => {
   const all = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}`, { as: 'player@example.com' });
   assert.equal(all.status, 200);
   assert.equal(all.body.bests.length, 3);
   assert.deepEqual(all.body.charts.map((c) => c.songKey).sort(), ['Alpha', 'Beta']);
+  assert.deepEqual(all.body.counts, { [ME]: 2, [RIVAL]: 1 });
 
   const rivalAlpha = all.body.bests.find((b) => b.playerId === RIVAL)!;
   // The broken 920,000 beats the passed 910,000: the best is the highest score.
@@ -166,6 +203,8 @@ test('best results come with their chart and try details, and since returns only
 
   const unchanged = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });
   assert.equal(unchanged.body.bests.length, 0);
+  // Counts cover every best result, not only the changed ones.
+  assert.deepEqual(unchanged.body.counts, { [ME]: 2, [RIVAL]: 1 });
 
   await scrapedSession(ME, 'Tue 2', '2026-10-02', [play('Alpha', 905000)]);
   const changed = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });

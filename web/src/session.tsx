@@ -8,6 +8,8 @@ interface Session {
   signIn(idToken: string): Promise<void>;
   signOut(): Promise<void>;
   reload(): Promise<void>;
+  // Changes `me` on this page only, e.g. right before saving the same change to the server.
+  updateMe(update: (me: MeResponse) => MeResponse): void;
 }
 
 const SessionContext = createContext<Session | null>(null);
@@ -47,6 +49,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('signed-out');
   }, []);
 
+  const updateMe = useCallback((update: (me: MeResponse) => MeResponse) => {
+    setMe((current) => (current ? update(current) : current));
+  }, []);
+
   useEffect(() => {
     void reload();
 
@@ -60,7 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [reload]);
 
   return (
-    <SessionContext.Provider value={{ status, me, signIn, signOut, reload }}>
+    <SessionContext.Provider value={{ status, me, signIn, signOut, reload, updateMe }}>
       {children}
     </SessionContext.Provider>
   );

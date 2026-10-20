@@ -1,0 +1,242 @@
+/* The Rivals view, styled like the old extension's rivals window. Everything is scoped to .rivals. */
+
+.main.wide { max-width: 1432px; }
+
+.rivals { background: #14201A; border: 1px solid #2B4034; border-radius: 8px; height: calc(100vh - 7rem); min-height: 480px;
+          display: flex; flex-direction: column; font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
+.rivals .dlg-main { display: flex; flex: 1; min-height: 0; }
+
+/* The site's own button and table styles stay out. */
+.rivals button { background: none; color: inherit; border: none; border-radius: 0; padding: 0; font-weight: inherit; }
+.rivals button:disabled { opacity: 1; }
+.rivals table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.rivals th, .rivals td { border-bottom: none; font-size: inherit; white-space: normal; }
+
+.rivals .btn { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 3px 10px;
+               font: 400 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .btn:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+.rivals .pos { color: #4FE33F; }
+.rivals .neg { color: #FF2A00; }
+.rivals .pos.muted { color: #7BA874; }
+.rivals .neg.muted { color: #B86A5C; }
+
+/* Header */
+
+.rivals .dlg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #2B4034; }
+.rivals .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
+.rivals .head-settings { display: flex; align-items: center; gap: 20px; margin: 0 auto; }
+/* The label sits above the − value + row. */
+.rivals .stepper { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 2px 4px; color: #9AB3A3;
+                   font-size: 15px; font-variant-numeric: tabular-nums; }
+.rivals .stepper-label { grid-column: 1 / -1; text-align: center; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+.rivals .stepper-value { min-width: 44px; text-align: center; color: #EAF5EC; }
+.rivals .stepper.off .stepper-value { color: #9AB3A3; }
+.rivals .stepper button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                          width: 24px; height: 24px; padding: 0; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+.rivals .stepper button:disabled { opacity: .35; cursor: default; }
+/* A two-way switch with the same label above it as the steppers. */
+.rivals .switch { display: grid; grid-template-columns: auto auto; gap: 2px 0; color: #9AB3A3; }
+.rivals .switch button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; height: 24px; padding: 0 8px;
+                         font: 400 13px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .switch button:first-of-type { border-radius: 4px 0 0 4px; }
+.rivals .switch button:last-of-type { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.rivals .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
+.rivals .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
+.rivals .head-stats { font-weight: 400; color: #9AB3A3; }
+.rivals .head-stats .blue { color: #3FA9F5; }
+.rivals .head-stats > span { opacity: .7; }
+.rivals .head-stats .zero { opacity: .2; }
+.rivals .head-status { font-size: 13px; color: #9AB3A3; max-width: 22rem; }
+.rivals .head-status.error { color: #FF5A5A; }
+
+/* Rivals column */
+
+.rivals .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; overflow-y: auto; padding: 10px 16px 10px 8px;
+                      border-right: 1px solid #2B4034; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .rival-list:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .rival-list .muted { color: #9AB3A3; }
+.rivals .rival-hint { padding: 9px 6px; font-size: 15px; }
+.rivals .rival { padding: 9px 6px; border-radius: 4px; position: relative; cursor: pointer; }
+.rivals .rival.faded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+                              background: rgba(20,32,26,.8); }
+.rivals .rival:nth-child(odd) { background: rgba(255,255,255,.05); }
+.rivals .rival:hover { background: rgba(79,227,63,.12); }
+.rivals .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
+.rivals .rival:not(.focused) .rival-links, .rivals .rival:not(.focused) .rival-scrap { display: none; }
+.rivals .rival-toggle { display: flex; align-items: center; gap: 8px; font-size: 17px; }
+.rivals .rival.focused .rival-toggle { cursor: pointer; }
+.rivals .rival input { appearance: none; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer;
+                       background: #3A4540; border: 1px solid #56635C; border-radius: 3px; display: grid; place-content: center; }
+.rivals .rival input:hover { border-color: #7A8A81; }
+.rivals .rival input:checked { background: #A9AFAC; border-color: #A9AFAC; }
+.rivals .rival input:checked::after { content: ''; width: 4px; height: 8px; margin-top: -2px;
+                                      border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.rivals .rival input[data-player] { position: relative; display: block; width: 28px; height: 16px; border-radius: 8px;
+                                    transition: background .15s, border-color .15s; }
+.rivals .rival input[data-player]::after { content: ''; position: absolute; top: 1px; left: 1px; width: 12px; height: 12px;
+                                           margin: 0; border: 0; border-radius: 50%; background: #9AA59F; transform: none;
+                                           transition: left .15s, background .15s; }
+.rivals .rival input[data-player]:checked::after { left: 13px; background: #0F1A14; }
+.rivals .rival-spacer { width: 28px; flex-shrink: 0; }
+.rivals .rival.me .rival-name, .rivals .rival.me .rival-pum { color: #FFC433; }
+.rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rivals .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
+.rivals .rival-visit { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; color: #8A9590;
+                       font-size: 13px; font-variant-numeric: tabular-nums; text-decoration: none; }
+.rivals .rival-visit:hover { color: #4FE33F; }
+.rivals .rival-visit svg { width: 13px; height: 13px; }
+.rivals .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+.rivals .rival-stats { white-space: nowrap; color: #9AB3A3; }
+.rivals .rival-stats .blue { color: #3FA9F5; }
+.rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
+                      font-size: 13px; text-decoration: none; }
+.rivals .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+.rivals .rival-solo { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.rivals .rival-solo:hover { color: #3FA9F5; border-color: #3FA9F5; background: #14201A; }
+.rivals .rival .rival-solo input { width: 12px; height: 12px; }
+.rivals .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
+.rivals .rival .rival-solo input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
+.rivals .rival-delete { margin-left: auto; font: inherit; font-size: 13px; cursor: pointer; }
+.rivals .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
+.rivals .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+.rivals .rival-counts, .rivals .rival-stats { margin-top: 3px; }
+.rivals .rival-counts { white-space: nowrap; }
+.rivals .rival-counts > span { color: #9AB3A3; }
+.rivals .rival-counts .zero, .rivals .rival-stats .zero { opacity: .4; }
+.rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-visit,
+.rivals .rival.off .rival-scrap { opacity: .45; }
+
+/* Adding a rival */
+
+.rivals .rival-add { position: relative; margin: 0 0 8px 6px; }
+.rivals .rival-add input { width: 100%; background: #1C2B22; color: #EAF5EC; border: 1px solid #2B4034; border-radius: 4px;
+                           padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
+.rivals .rival-add input::placeholder { color: #8A9590; }
+.rivals .rival-add input:focus { border-color: #4FE33F; }
+.rivals .rival-add-list { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 5; background: #14201A;
+                          border: 1px solid #2B4034; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,.5); padding: 3px 0; }
+.rivals .rival-add-item { display: flex; gap: 8px; padding: 4px 8px; font-size: 15px; cursor: pointer; }
+.rivals .rival-add-item.active { background: rgba(79,227,63,.12); }
+.rivals .rival-add-note { padding: 4px 8px; font-size: 13px; color: #9AB3A3; }
+.rivals .rival-add-note.error { color: #FF5A5A; }
+
+/* Levels column */
+
+.rivals .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
+                   overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0;
+                   scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .filters:hover { scrollbar-color: #3D5A49 transparent; }
+/* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). */
+.rivals .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
+                       grid-auto-rows: minmax(10px, 1fr); row-gap: 6px; font-size: 14px; }
+.rivals .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 4px; }
+.rivals .level-head.single { text-align: right; }
+.rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
+                     font-variant-numeric: tabular-nums; }
+.rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
+.rivals .level-bar { display: flex; height: 100%; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
+                     border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: .75; }
+.rivals .level-bar.single { flex-direction: row-reverse; }
+.rivals .level-bar:hover { opacity: 1; }
+.rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
+.rivals .level-bar.placeholder { visibility: hidden; }
+/* Each segment shows its count and is always wide enough for it, even if that bends the proportions. */
+.rivals .level-bar > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
+                            justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; color: rgba(0,0,0,.55); }
+/* Wins and np darken from the level number outward. Losses burn from red in the middle to orange at
+   the end; how orange is set by --heat (0..1), and only the most losses of any level reach full orange. */
+.rivals .level-bar .win { background: linear-gradient(to right, #72C457, #3F7D24); }
+.rivals .level-bar.single .win { background: linear-gradient(to left, #72C457, #3F7D24); }
+.rivals .level-bar .unplayed { background: linear-gradient(to right, #0F2B3C, #061219); color: #7F9DB0; }
+.rivals .level-bar.single .unplayed { background: linear-gradient(to left, #0F2B3C, #061219); }
+.rivals .level-bar .lose { --hot: color-mix(in srgb, #FF8A00 calc(var(--heat) * 100%), #D01E00);
+                           background: linear-gradient(to left, var(--hot), #B01C00); }
+.rivals .level-bar.single .lose { background: linear-gradient(to right, var(--hot), #B01C00); }
+.rivals .level-bar .hidden-loss { background: #34140E; }
+/* Segments round their outer corners and lie over the next segment, which slides under them. */
+.rivals .level-bar > span { position: relative; }
+.rivals .level-bar .win { z-index: 3; }
+.rivals .level-bar .unplayed { z-index: 2; }
+.rivals .level-bar .hidden-loss { z-index: 1; }
+.rivals .level-bar > span:not(.lose) { border-radius: 0 2px 2px 0; }
+.rivals .level-bar > span + span { margin-left: -2px; padding-left: 5px; }
+.rivals .level-bar.single > span:not(.lose) { border-radius: 2px 0 0 2px; }
+.rivals .level-bar.single > span + span { margin: 0 -2px 0 0; padding: 0 5px 0 3px; }
+.rivals .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
+.rivals .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
+.rivals .level-other .level-bar { grid-column: 2 / -1; }
+
+/* Results column */
+
+.rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.rivals .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #2B4034; }
+.rivals .tab { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 6px;
+               padding: 6px 12px; font: 500 14px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .tab:hover { color: #EAF5EC; }
+.rivals .tab[aria-selected="true"] { background: #2B4034; color: #EAF5EC; border-color: #4FE33F; }
+/* Room for three digits, so tabs keep their size as the counts change. */
+.rivals .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
+                     font-variant-numeric: tabular-nums; }
+.rivals .tab-count.rivals-win { color: #FF2A00; }
+.rivals .tab-count.not-played { color: #3FA9F5; }
+.rivals .tab-count.you-win { color: #4FE33F; }
+.rivals .tab[data-tab="hidden"] { margin-left: auto; }
+.rivals .tab-count.hidden { color: #8C2E1C; }
+.rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 0 16px 12px; flex: 1;
+                    scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals th.col-chart { width: 56px; }
+.rivals th.col-player { width: 92px; } /* 80px of text + 12px padding */
+.rivals th.col-score { width: 70px; }
+.rivals th.col-diff { width: 70px; }
+.rivals .track { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rivals th { position: sticky; top: 0; z-index: 1; background: #14201A; color: #9AB3A3; font-weight: 500;
+             text-align: left; padding: 8px 6px; border-bottom: 1px solid #2B4034; }
+.rivals td { padding: 4px 6px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
+.rivals tr.alt > td:not(.track):not([rowspan]):not(.others) { background: rgba(255,255,255,.05); }
+.rivals tr.group td { border-top: 1px solid #2B4034; }
+.rivals tr.gap td { height: 8px; padding: 0; }
+.rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rivals .empty { padding: 24px; text-align: center; color: #9AB3A3; }
+.rivals td.group-title { padding: 14px 6px 6px; color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif;
+                         border-bottom: 1px solid #3A1813; }
+
+.rivals .mine { color: #FFC433; }
+.rivals td.sm { font-size: 16px; vertical-align: baseline; }
+.rivals td.score { color: #9AB3A3; }
+.rivals .tail { font-size: .75em; opacity: .6; }
+.rivals .tail-dim { opacity: .7; }
+.rivals td.score.mine { color: #C9A44A; }
+.rivals .won { opacity: .4; }
+.rivals .ahead { opacity: .8; }
+.rivals .player-link { color: inherit; text-decoration: none; }
+.rivals .player-link:hover { color: #4FE33F; }
+.rivals td.others { text-align: right; padding: 4px 6px 6px; }
+.rivals .show-others { background: none; color: #9AB3A3; opacity: .6; border: none; padding: 3px 12px;
+                       font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .show-others:hover { color: #4FE33F; opacity: 1; }
+
+/* Narrow screens: the columns stack and the page scrolls. */
+
+@media (max-width: 1000px) {
+  .rivals { height: auto; min-height: 0; }
+  .rivals .dlg-main { flex-direction: column; }
+  .rivals .head-settings { margin: 0; flex-wrap: wrap; }
+  .rivals .rival-list { width: auto; max-height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
+  .rivals .filters { justify-content: center; max-height: 60vh; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
+  .rivals .score-content { min-height: 60vh; }
+  .rivals .dlg-body { overflow: visible; }
+  .rivals .tabs { flex-wrap: wrap; }
+}
+
+@media (max-width: 600px) {
+  .rivals { font-size: 16px; }
+  .rivals .dlg-head h2 { font-size: 20px; }
+  .rivals th.col-chart { width: 42px; }
+  .rivals th.col-player { width: 78px; }
+  .rivals th.col-score { width: 62px; }
+  .rivals th.col-diff { width: 54px; }
+  .rivals td.sm { font-size: 14px; }
+  .rivals .dlg-body { padding: 0 6px 12px; }
+}

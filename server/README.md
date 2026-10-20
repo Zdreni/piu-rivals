@@ -58,10 +58,14 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `POST /auth/google` `{ idToken }` | Sign in with a Google ID token. Only users added by an admin may sign in, plus emails in `ADMIN_EMAILS` and the very first sign-in (both become admins). Returns `{ token, expiresAt, user }` |
 | `POST /auth/logout` | End this session |
 | `GET /me` | `{ user, rivals, preferences }` |
-| `PUT /me/rivals` `{ playerIds }` | Replace the rival list |
+| `POST /me/rivals` `{ playerId }` | Add a rival; returns `{ rivals }` |
+| `PATCH /me/rivals/:id` `{ hidden }` | Switch a rival off or on in the Rivals view; returns `{ rivals }` |
+| `DELETE /me/rivals/:id` | Remove a rival; returns `{ rivals }` |
+| `PUT /me/rivals` `{ playerIds }` | Replace the rival list; rivals that stay keep their `hidden` |
+| `PATCH /me/preferences` `{ changes }` | Change only the given settings; `null` removes one |
 | `PUT /me/preferences` `{ preferences }` | Replace the site's settings object |
 | `GET /players` | All players |
-| `GET /bests?players=<id,...>[&since=<serverTime>]` | Best results with chart and try details; with `since`, only rows changed since an earlier response's `serverTime` |
+| `GET /bests?players=<id,...>[&since=<serverTime>]` | Best results with chart and try details; with `since`, only rows changed since an earlier response's `serverTime`. `counts` has each player's total number of best results |
 | `GET/POST /admin/users`, `PATCH/DELETE /admin/users/:id` | Manage users: email, display name, linked player, admin |
 | `GET /admin/players`, `DELETE /admin/players/:id` | Players with play counts; deleting removes their results |
 | `POST /admin/players/import` | Players exported from the old extension (see the design) |

@@ -91,11 +91,13 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 **Auth and own account**
 - `POST /auth/google` with `{ idToken }` returns `{ token, expiresAt, user }`. Sessions last 30 days (`SESSION_DAYS`); only a hash of the token is stored. Only emails added by an admin can log in, with two bootstrap exceptions: emails in the `ADMIN_EMAILS` config, and the first login while the users table is empty, who becomes admin. That second rule means whoever logs in first on a fresh install is admin, so log in yourself right after deploying.
 - `POST /auth/logout`
-- `GET /me`, `PUT /me/preferences`, `PUT /me/rivals`. A user's own player is never in their rival list.
+- `GET /me` returns the user, their rivals and their preferences. A user's own player is never in their rival list.
+- `POST /me/rivals`, `PATCH /me/rivals/:id` (`{ hidden }`), `DELETE /me/rivals/:id` add, switch off and remove one rival; `PUT /me/rivals` replaces the list. Each returns the whole rival list.
+- `PATCH /me/preferences` with `{ changes }` changes only the given settings (`null` removes one); `PUT /me/preferences` replaces them all. The server stores preferences as given; the site checks them when reading.
 
 **Data**
 - `GET /players` lists players (id, name, PUMBILITY) for the rival picker.
-- `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. The site keeps the rows in IndexedDB and filters locally.
+- `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. It also returns each player's total number of best results (`counts`), changed or not. The site keeps the rows in IndexedDB and filters locally (see [the Rivals view](#rivals-view)).
 
 **Admin** (requires `is_admin`)
 - `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
@@ -105,6 +107,14 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 - `GET /admin/scrape-runs` lists runs, newest first
 - `GET /admin/scrape-runs/:id` returns progress and failures
 - `POST /admin/scrape-runs/:id/cancel`
+
+## Rivals view
+
+The Rivals tab (`/#/rivals`) is the old extension's rivals window, ported to the site with its logic and look: your totals, the score cap, NP min rivals and count by settings, the rival list with solo mode, the level bars, and the lost / non-matched / won / hidden tabs. Charts below level 10 are left out, as in the extension. The extension's try cooldown is left out; filtering by the days since the last try will come back in a different form. Rivals are added by name from all registered players, and removing one only takes them off the list.
+
+**Where settings live.** The rival list, with each rival's on/off switch, is in `user_rivals`. The view's settings (score cap, NP min rivals, count by) are the user's preferences. Each change is sent on its own (one rival, or only the changed settings), so two open pages changing different things don't undo each other's changes. Changes show at once and are saved in the background. Preference saves go one at a time, in order. When a save fails, the error is shown and the page reloads the user's state from the server. Solo mode, the focused rival, and the selected level and tab are per-page state, not saved on the server (level and tab are kept in this browser's `localStorage`).
+
+**Keeping scores current.** Best results are cached in IndexedDB, keyed by player and chart, with the `serverTime` of each player's last download. On opening the view, cached rows are shown at once, then `/bests` is asked for what changed since each player's last download (a newly added rival is loaded in full). Deletions never arrive as changes, e.g. after a rescan, so the site compares each player's cached row count with `counts`. A player whose counts differ is dropped from the cache and loaded again in full. While the page is visible, it syncs again every 5 minutes, and when it comes back into view after more than a minute, reloading `/me` as well for fresh names and PUMBILITY (skipped while a change is being saved). Without IndexedDB (e.g. a private window) everything is loaded once per visit.
 
 ## Exporting players from the old extension
 
@@ -144,7 +154,7 @@ The steps for the Google Cloud project `piu-rivals` are in [google_login_setup.m
 1. ✅ `server/`: schema, migrations, the session page parser with saved-page fixtures, the scrape worker, and a command-line entry to scrape one player for testing
 2. ✅ `shared/` and `server/`: API, including auth, the admin API and scrape runs
 3. ✅ `web/`: login, the admin panel (users, players, import, scrape runs with progress), the Pages workflow
-4. `web/`: the Rivals view, ported from the old extension's rivals window
+4. ✅ `web/`: the Rivals view, ported from the old extension's rivals window
 
 ## Open items
 

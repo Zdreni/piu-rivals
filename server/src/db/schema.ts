@@ -104,6 +104,7 @@ export interface UsersTable {
 export interface UserRivalsTable {
   user_id: number;
   player_id: string;
+  hidden: Generated<number>;
 }
 
 export interface UserPreferencesTable {
