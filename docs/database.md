@@ -52,10 +52,7 @@ plays
 best_results                                       -- one row per player and chart
   player_id                 CHAR(36) FK players
   chart_id                  INT FK charts
-  play_id                   BIGINT                 -- the best try
-  score                     INT
-  passed                    BOOL                   -- whether the best try passed
-  best_played_on            DATE NULL              -- date of the best try
+  play_id                   BIGINT                 -- the best try; its score, pass and date are read from the play
   last_played_on            DATE NULL              -- date of the latest try
   tries                     INT
   updated_at                DATETIME(3)            -- when our server last changed the row (UTC)
@@ -116,7 +113,7 @@ auth_sessions
 
 - **No sessions table.** Plays have no time of their own, and a session's timestamp moves when scores are re-imported into it, so session timestamps are never stored on plays. They are kept only in the player's checkpoint, to tell new sessions from the grown one and to know where to stop scanning. Each play has the per-player `session_no` of the session it came from, used only to compare a grown session with what was stored from it. Each play also has a date (`played_on`), which feeds the best-score date and the last-try date (max `played_on` over the chart's tries, used by the try cooldown).
 - **Try counts are exact.** Identical tries in different sessions are separate rows. Only a grown session is compared with stored tries, and only with its own.
-- **Best for a chart** is the play with the highest score (the earliest one on ties). `best_results` also keeps the best score's date, the last try's date and the number of tries, so piu-rivals doesn't need the plays. A row changes whenever a chart gets a new try.
+- **Best for a chart** is the play with the highest score (the earliest one on ties). `best_results` points at that play and keeps the last try's date and the number of tries, so reading bests never has to go over all of a player's plays; the best try's score, pass and date come from its play. A row changes whenever a chart gets a new try.
 - **`updated_at`** is when our server last wrote the row, in UTC from the database clock; it is never a time read from piuscores. piu-rivals can ask for rows changed since its last download. The server sends its own current time with each response, and the next request asks from that time, so the browser's clock doesn't matter.
 - **PUMBILITY** is only raised, never lowered.
 - **Deleting a player** (admin only) removes their plays and best results, and unlinks them from any user or rival list.

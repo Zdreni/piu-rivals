@@ -116,12 +116,11 @@ async function updateBests(trx: Trx, playerId: string, chartIdList: number[]): P
     return 0;
 
   const { rows: fresh } = await sql<{
-    chart_id: number; play_id: number; score: number; passed: number; best_played_on: string | null;
-    last_played_on: string | null; tries: number;
+    chart_id: number; play_id: number; score: number; last_played_on: string | null; tries: number;
   }>`
-    SELECT chart_id, id AS play_id, score, passed, played_on AS best_played_on, last_played_on, tries
+    SELECT chart_id, id AS play_id, score, last_played_on, tries
     FROM (
-      SELECT id, chart_id, score, passed, played_on,
+      SELECT id, chart_id, score, played_on,
         ROW_NUMBER() OVER (PARTITION BY chart_id ORDER BY score DESC, played_on IS NULL, played_on, id) AS place,
         MAX(played_on) OVER (PARTITION BY chart_id) AS last_played_on,
         COUNT(*) OVER (PARTITION BY chart_id) AS tries
@@ -130,10 +129,11 @@ async function updateBests(trx: Trx, playerId: string, chartIdList: number[]): P
     ) ranked
     WHERE place = 1`.execute(trx);
 
-  const stored = new Map((await trx.selectFrom('best_results')
-    .selectAll()
-    .where('player_id', '=', playerId)
-    .where('chart_id', 'in', chartIdList)
+  const stored = new Map((await trx.selectFrom('best_results as b')
+    .innerJoin('plays as p', 'p.id', 'b.play_id')
+    .select(['b.chart_id', 'b.play_id', 'b.last_played_on', 'b.tries', 'p.score'])
+    .where('b.player_id', '=', playerId)
+    .where('b.chart_id', 'in', chartIdList)
     .execute()).map((row) => [row.chart_id, row]));
 
   const changed = fresh.filter((row) => {
@@ -145,9 +145,6 @@ async function updateBests(trx: Trx, playerId: string, chartIdList: number[]): P
   for (const row of changed) {
     const values = {
       play_id: Number(row.play_id),
-      score: row.score,
-      passed: row.passed ? 1 : 0,
-      best_played_on: row.best_played_on,
       last_played_on: row.last_played_on,
       tries: Number(row.tries),
       updated_at: sql<string>`CURRENT_TIMESTAMP(3)`,

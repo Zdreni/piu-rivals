@@ -53,11 +53,8 @@ export interface PlaysTable {
 export interface BestResultsTable {
   player_id: string;
   chart_id: number;
+  // The best try; its score, pass and date are read from the play.
   play_id: number;
-  score: number;
-  // Whether the best try passed.
-  passed: number;
-  best_played_on: string | null;
   last_played_on: string | null;
   tries: number;
   // When our server last changed the row, "YYYY-MM-DD HH:MM:SS.mmm" UTC.
