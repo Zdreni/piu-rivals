@@ -1,4 +1,4 @@
-import type { ScrapeRunPlayer, ScrapeRunPlayerState, ScrapeRunResponse } from '@piu-rivals/shared';
+import type { ScrapeFailure, ScrapeRunPlayer, ScrapeRunPlayerState, ScrapeRunResponse } from '@piu-rivals/shared';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
@@ -20,7 +20,8 @@ const PLAYER_STATES: Record<ScrapeRunPlayerState, { mark: string; title: string 
 };
 
 
-function RunPlayer({ player }: { player: ScrapeRunPlayer }) {
+// errors: the messages the player failed with, shown under a failed player.
+function RunPlayer({ player, errors }: { player: ScrapeRunPlayer; errors: ScrapeFailure[] }) {
   const { mark, title } = PLAYER_STATES[player.state];
   const sessions = (
     <a href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`} target="_blank" rel="noreferrer">
@@ -30,9 +31,16 @@ function RunPlayer({ player }: { player: ScrapeRunPlayer }) {
   return (
     <li>
       <span className={`player-mark player-${player.state}`} title={title} aria-label={title}>{mark}</span>
-      {player.name
-        ? <span>{player.name} <span className="muted">({sessions})</span></span>
-        : <span>{sessions}</span>}
+      <div>
+        {player.name
+          ? <span>{player.name} <span className="muted">({sessions})</span></span>
+          : <span>{sessions}</span>}
+        {player.state === 'failed'  &&  errors.map((failure, index) => (
+          <div key={index} className="player-error small">
+            <span className="muted">{formatTime(failure.createdAt)}</span> {failure.message}
+          </div>
+        ))}
+      </div>
     </li>
   );
 }
@@ -96,7 +104,10 @@ export function RunPage() {
       …show {label} {formatNumber(count)}…
     </button>
   );
+  // Player failures show under their players; the rest, failures of the run itself, in their own list.
   const failures = details.data?.failureList  ??  [];
+  const playerErrors = (playerId: string) => failures.filter((failure) => failure.playerId === playerId);
+  const runFailures = failures.filter((failure) => ! failure.playerId);
   const { previousRunId, nextRunId } = details.data!;
   // Stopping after the last player would change nothing.
   const onLastPlayer = run.status === 'running'  &&  run.playersTotal > 0  &&  run.playersDone >= run.playersTotal - 1;
@@ -150,19 +161,19 @@ export function RunPage() {
           <h2>Players</h2>
           {showButton(hiddenBefore, 'previous', () => setAllBeforeShown(true))}
           <ul className="run-players">
-            {shownPlayers.map((player) => <RunPlayer key={player.id} player={player} />)}
+            {shownPlayers.map((player) => <RunPlayer key={player.id} player={player} errors={playerErrors(player.id)} />)}
           </ul>
           {showButton(hiddenAfter, 'next', () => setAllAfterShown(true))}
         </>
       )}
 
-      {failures.length > 0  &&  (
+      {runFailures.length > 0  &&  (
         <>
-          <h2>Failures</h2>
+          <h2>Run failure</h2>
           <ul className="failures">
-            {failures.map((failure, index) => (
+            {runFailures.map((failure, index) => (
               <li key={index}>
-                <span className="muted small">{formatTime(failure.createdAt)}{failure.playerId ? ` · ${failure.playerId}` : ''}</span>
+                <span className="muted small">{formatTime(failure.createdAt)}</span>
                 <div>{failure.message}</div>
               </li>
             ))}

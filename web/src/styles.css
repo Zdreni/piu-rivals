@@ -175,6 +175,7 @@ td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
 .player-running { color: var(--warning); }
 .player-done { color: var(--accent); }
 .player-failed { color: var(--danger); }
+.player-error { color: var(--danger); margin-top: 0.1rem; }
 
 .failures { list-style: none; padding: 0; }
 .failures li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
