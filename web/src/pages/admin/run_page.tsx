@@ -1,4 +1,4 @@
-import type { ScrapeRunResponse } from '@piu-rivals/shared';
+import type { ScrapeRunPlayer, ScrapeRunPlayerState, ScrapeRunResponse } from '@piu-rivals/shared';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
@@ -7,6 +7,28 @@ import { formatNumber, formatTime, playerLabel, useLoad } from '../../util.ts';
 import { runsTabPath } from './runs_page.tsx';
 
 const POLL_MS = 3000;
+
+
+const PLAYER_STATES: Record<ScrapeRunPlayerState, { mark: string; title: string }> = {
+  waiting: { mark: '⧗', title: 'Waiting' },
+  running: { mark: '▶', title: 'Scraping now' },
+  done: { mark: '✓', title: 'Scraped' },
+  failed: { mark: '✗', title: 'Failed' },
+  skipped: { mark: '–', title: 'Not scraped: the run stopped first' },
+};
+
+
+function RunPlayer({ player }: { player: ScrapeRunPlayer }) {
+  const { mark, title } = PLAYER_STATES[player.state];
+  return (
+    <li>
+      <span className={`player-mark player-${player.state}`} title={title} aria-label={title}>{mark}</span>
+      {player.name
+        ? <span>{player.name} <span className="muted">({player.id})</span></span>
+        : <span>{player.id}</span>}
+    </li>
+  );
+}
 
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -51,6 +73,7 @@ export function RunPage() {
       : <p className="muted">Loading…</p>;
   }
 
+  const players = details.data?.players  ??  [];
   const failures = details.data?.failureList  ??  [];
   const { previousRunId, nextRunId } = details.data!;
   // Stopping after the last player would change nothing.
@@ -95,11 +118,19 @@ export function RunPage() {
           <dt>Queued</dt><dd>{formatTime(run.createdAt)}{run.startedBy ? ` by ${run.startedBy}` : ''}</dd>
           <dt>Started</dt><dd>{formatTime(run.startedAt)}</dd>
           <dt>Finished</dt><dd>{formatTime(run.finishedAt)}</dd>
-          {run.playerIds  &&  <><dt>Players</dt><dd className="ids">{run.playerIds.join(', ')}</dd></>}
         </dl>
       </div>
 
       {error  &&  <p className="error" role="alert">{error}</p>}
+
+      {players.length > 0  &&  (
+        <>
+          <h2>Players</h2>
+          <ul className="run-players">
+            {players.map((player) => <RunPlayer key={player.id} player={player} />)}
+          </ul>
+        </>
+      )}
 
       {failures.length > 0  &&  (
         <>

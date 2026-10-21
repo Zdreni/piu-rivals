@@ -1,4 +1,4 @@
-import type { ScrapeRun, ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
+import type { ScrapeRun, ScrapeRunPlayer, ScrapeRunPlayerState, ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { type Kysely, sql } from 'kysely';
@@ -78,6 +78,29 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
 }
 
 
+// The worker takes the players in order, so the first players_done of them are finished.
+async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<string | null>): Promise<ScrapeRunPlayer[]> {
+  const ids = row.player_ids  ??  [];
+  if (! ids.length)
+    return [];
+
+  const named = await db.selectFrom('players').select(['id', 'name']).where('id', 'in', ids).execute();
+  const names = new Map(named.map((p) => [p.id, p.name]));
+  const active = (ACTIVE_STATUSES as readonly string[]).includes(row.status);
+  const stateOf = (id: string, index: number): ScrapeRunPlayerState => {
+    if (failedIds.has(id))
+      return 'failed';
+    if (index < row.players_done)
+      return 'done';
+    if (row.status === 'running'  &&  id === row.current_player_id)
+      return 'running';
+    return active ? 'waiting' : 'skipped';
+  };
+
+  return ids.map((id, index) => ({ id, name: names.get(id)  ??  null, state: stateOf(id, index) }));
+}
+
+
 async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeRunResponse> {
   const row = await runQuery(db).where('r.id', '=', runId).executeTakeFirst();
   if (! row)
@@ -96,6 +119,7 @@ async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeR
 
   return {
     run: toRun(row),
+    players: await runPlayers(db, row, new Set(failureList.map((f) => f.player_id))),
     failureList: failureList.map((f) => ({ playerId: f.player_id, message: f.message, createdAt: toIso(f.created_at) })),
     previousRunId: previous?.id  ??  null,
     nextRunId: next?.id  ??  null,

@@ -224,12 +224,14 @@ test('admins queue and cancel scrape runs', { skip }, async () => {
   assert.deepEqual(run.body.run.playerIds, [OTHER]);
   assert.equal(run.body.run.status, 'queued');
   assert.equal(run.body.run.startedBy, 'admin@example.com');
+  assert.deepEqual(run.body.players, [{ id: OTHER, name: null, state: 'waiting' }]);
   assert.equal((await call('POST', '/admin/scrape-runs', {
     as: 'admin@example.com', body: { kind: 'selected', players: ['66666666-6666-4666-8666-666666666666'] },
   })).status, 404);
 
   const cancelled = await call<ScrapeRunResponse>('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' });
   assert.equal(cancelled.body.run.status, 'cancelled');
+  assert.deepEqual(cancelled.body.players.map((p) => p.state), ['skipped']);
   assert.equal((await call('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' })).status, 409);
 });
 

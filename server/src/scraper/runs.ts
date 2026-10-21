@@ -82,7 +82,11 @@ async function cancelRequested(db: Db, runId: number) {
 // before the next player, after the current one's sessions are stored.
 export async function executeRun(db: Db, run: ScrapeRun) {
   const playerIds = await runPlayerIds(db, run);
-  await db.updateTable('scrape_runs').set({ players_total: playerIds.length }).where('id', '=', run.id).execute();
+  // An "all" run keeps the players it resolved to, so its page can list them.
+  await db.updateTable('scrape_runs')
+    .set({ players_total: playerIds.length, player_ids: JSON.stringify(playerIds) })
+    .where('id', '=', run.id)
+    .execute();
   console.log(`Run ${run.id} (${run.kind}): ${playerIds.length} player(s)`);
 
   let browser: SessionsBrowser | null = null;

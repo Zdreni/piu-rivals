@@ -71,7 +71,7 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `POST /admin/scrape-runs` `{ kind, players? }` | Queue a run: `all`, or `register`/`selected`/`rescan` with player GUIDs or piuscores links |
 | `GET /admin/scrape-runs?state=current` | Queued and running runs with progress, in the order the worker takes them |
 | `GET /admin/scrape-runs?state=previous[&limit=<n>]` | Finished runs, newest first: `limit` of them (default 50); `hasMore` says whether there are older ones |
-| `GET /admin/scrape-runs/:id` | One run with its failures, and the IDs of the runs before and after it |
+| `GET /admin/scrape-runs/:id` | One run with its players and their states, its failures, and the IDs of the runs before and after it |
 | `POST /admin/scrape-runs/:id/cancel` | Cancel a queued run, or stop a running one after its current player |
 
 ## On the VPS

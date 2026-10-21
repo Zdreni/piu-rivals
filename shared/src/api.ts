@@ -127,9 +127,20 @@ export interface ScrapeFailure {
   createdAt: string;
 }
 
+// waiting: not reached yet; running: being scraped now; skipped: never reached (the run stopped).
+export type ScrapeRunPlayerState = 'waiting' | 'running' | 'done' | 'failed' | 'skipped';
+
+export interface ScrapeRunPlayer {
+  id: string;
+  // null while the player is unknown (not scraped yet).
+  name: string | null;
+  state: ScrapeRunPlayerState;
+}
+
 export interface ScrapeRun {
   id: number;
   kind: ScrapeRunKind;
+  // The players asked for; for an "all" run, the players it resolved to once started.
   playerIds: string[] | null;
   status: ScrapeRunStatus;
   startedBy: string | null;
@@ -158,6 +169,8 @@ export interface ScrapeRunsResponse {
 
 export interface ScrapeRunResponse {
   run: ScrapeRun;
+  // The run's players in the order the worker takes them.
+  players: ScrapeRunPlayer[];
   failureList: ScrapeFailure[];
   // The runs queued just before and after this one; null at either end.
   previousRunId: number | null;

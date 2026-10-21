@@ -65,7 +65,7 @@ If the worker crashes or the VPS restarts mid-run, every stored session is compl
 
 An admin can **cancel** a running run. The worker finishes the current session first, then stops.
 
-**Progress in the admin panel:** status; players done out of the total; sessions and plays added; new best results; current player; and failures, listing the player and error message. The panel polls `GET /admin/scrape-runs/:id` every few seconds while a run is active. The run list keeps a history of past runs.
+**Progress in the admin panel:** status; players done out of the total; sessions and plays added; new best results; current player; each of the run's players with its state (waiting, scraping now, scraped, failed, or skipped when the run stopped first); and failures, listing the player and error message. The panel polls `GET /admin/scrape-runs/:id` every few seconds while a run is active. The run list keeps a history of past runs.
 
 **Resources:** one headless Chromium page uses about 300–500 MB of RAM, which is fine on the 8 GB VPS. The first full scrape of all players with complete history takes hours; later runs only fetch new sessions. Scheduled runs (e.g. nightly) can be added later on top of the same queue.
 
@@ -104,7 +104,7 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 - `GET /admin/players`, `DELETE /admin/players/:id`
 - `POST /admin/scrape-runs` with `{ kind, players? }` queues a run; `players` are GUIDs or piuscores player links
 - `GET /admin/scrape-runs?state=current` lists queued and running runs in the order the worker takes them; `?state=previous[&limit=<n>]` lists finished ones, newest first, 50 per page by default
-- `GET /admin/scrape-runs/:id` returns progress and failures, and the IDs of the runs before and after it
+- `GET /admin/scrape-runs/:id` returns progress, the players with their states, and failures, and the IDs of the runs before and after it
 - `POST /admin/scrape-runs/:id/cancel`
 
 ## Rivals view
