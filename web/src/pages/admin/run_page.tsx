@@ -7,6 +7,8 @@ import { formatNumber, formatTime, playerLabel, useLoad } from '../../util.ts';
 import { runsTabPath } from './runs_page.tsx';
 
 const POLL_MS = 3000;
+// Only the first waiting players are listed; the rest hide behind a button.
+const WAITING_SHOWN = 20;
 
 
 const PLAYER_STATES: Record<ScrapeRunPlayerState, { mark: string; title: string }> = {
@@ -46,6 +48,7 @@ export function RunPage() {
   const navigate = useNavigate();
   const details = useLoad(() => api<ScrapeRunResponse>('GET', `/admin/scrape-runs/${id}`), [id]);
   const [error, setError] = useState<string | null>(null);
+  const [allWaitingShown, setAllWaitingShown] = useState(false);
   const run = details.data?.run;
   const active = run ? isActive(run) : false;
 
@@ -74,6 +77,10 @@ export function RunPage() {
   }
 
   const players = details.data?.players  ??  [];
+  let waitingCount = 0;
+  const shownPlayers = allWaitingShown ? players : players.filter((player) =>
+    player.state !== 'waiting'  ||  ++waitingCount <= WAITING_SHOWN);
+  const hiddenCount = players.length - shownPlayers.length;
   const failures = details.data?.failureList  ??  [];
   const { previousRunId, nextRunId } = details.data!;
   // Stopping after the last player would change nothing.
@@ -127,8 +134,13 @@ export function RunPage() {
         <>
           <h2>Players</h2>
           <ul className="run-players">
-            {players.map((player) => <RunPlayer key={player.id} player={player} />)}
+            {shownPlayers.map((player) => <RunPlayer key={player.id} player={player} />)}
           </ul>
+          {hiddenCount > 0  &&  (
+            <button type="button" className="secondary small-button" onClick={() => setAllWaitingShown(true)}>
+              …show {formatNumber(hiddenCount)} others…
+            </button>
+          )}
         </>
       )}
 
