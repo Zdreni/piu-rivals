@@ -149,12 +149,16 @@ bash server/deploy.sh   # latest origin/main; or pass a commit hash
 
 [`server/deploy.sh`](../server/deploy.sh) fast-forwards the checkout and, only when
 `package-lock.json` changed, runs `npm ci` and installs Playwright's Chromium. Then it runs the
-database migrations, restarts both pm2 apps and waits for `/health`. It never overwrites local
+database migrations, restarts the pm2 apps and waits for `/health`. It never overwrites local
 changes to tracked files: if there are any, it stops and changes nothing. `server/.env` isn't
 tracked, so it always stays.
 
 A worker restart stops the scrape run in progress; it shows as "interrupted", and everything
-stored up to then stays. Start a new run to continue.
+stored up to then stays. Start a new run to continue. So the worker restarts only when the
+deploy changes something it runs: the scraper, database code and migrations, config, packages or
+the pm2 config. A deploy that changes only the API (`server/src/api/`, `server/src/server.ts`),
+the site, the shared types, the extensions, tests or docs restarts just the API and leaves a scrape
+run going. To restart the worker by hand: `pm2 restart piu-rivals-worker`.
 
 When a new Playwright version needs more system libraries, run
 `sudo npx playwright install-deps chromium` in `server/` once; the deploy has no sudo.

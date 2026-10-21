@@ -43,9 +43,20 @@ fi
 echo "deploy: migrating the database"
 npm run migrate --workspace server
 
-# A worker restart stops the scrape run in progress; it shows as "interrupted" and can be started again.
+# A worker restart stops the scrape run in progress; it shows as "interrupted" and has to be started again.
+# So the worker restarts only when something it runs changed. Changes to just the API, the site, the shared
+# types (the worker imports them only as types), the extensions, tests and docs leave it running.
+api_only='^(server/src/api/|server/src/server\.ts$|server/test/|server/deploy\.sh$|server/README\.md$|shared/|web/|docs/|piuscores-extension/|piuscores-scrap-extension/|\.github/|[^/]+\.md$|\.gitignore$)'
+worker_changes=$(git diff --name-only "$previous" HEAD | grep -Ev "$api_only" || true)
+
 echo "deploy: restarting"
-pm2 startOrRestart server/ecosystem.config.cjs
+if [ -n "$worker_changes" ] || ! pm2 describe piu-rivals-worker > /dev/null 2>&1; then
+  pm2 startOrRestart server/ecosystem.config.cjs
+else
+  echo "deploy: the worker's code is unchanged, so it keeps running"
+  pm2 startOrRestart server/ecosystem.config.cjs --only piu-rivals-api
+fi
+
 pm2 save
 
 for _ in $(seq 30); do
