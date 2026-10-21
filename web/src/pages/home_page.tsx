@@ -47,7 +47,7 @@ export function HomePage() {
       {user.player  &&  <p><Link to="/rivals">Compare your scores with your rivals'</Link>.</p>}
       {user.isAdmin  &&  (
         <p>
-          Admin: manage <Link to="/admin/players">players</Link>, <Link to="/admin/runs">scrape runs</Link>
+          Admin: manage <Link to="/admin/players">players</Link>, <Link to="/admin/runs">scraping</Link>
           {' '}and <Link to="/admin/users">users</Link>.
         </p>
       )}

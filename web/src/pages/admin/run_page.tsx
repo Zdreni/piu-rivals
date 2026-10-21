@@ -64,7 +64,7 @@ export function RunPage() {
 
   return (
     <section>
-      <p><Link to={runsTabPath(active ? 'current' : 'previous')}>← Scrape runs</Link></p>
+      <p><Link to={runsTabPath(active ? 'current' : 'previous')}>← Scraping</Link></p>
       <div className="title-row">
         <h1>Run #{run.id}: {runKindLabel(run)}</h1>
         <div className="buttons">

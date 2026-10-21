@@ -98,7 +98,7 @@ export function RunsPage() {
   return (
     <section>
       <div className="title-row">
-        <h1>Scrape runs</h1>
+        <h1>Scraping</h1>
         <button type="button" onClick={() => void scrapeAll()}>Scrape all players</button>
       </div>
       <p className="muted">
@@ -107,7 +107,7 @@ export function RunsPage() {
 
       {(error  ??  shown.error)  &&  <p className="error" role="alert">{error  ??  shown.error}</p>}
 
-      <div className="page-tabs" role="tablist" aria-label="Scrape runs">
+      <div className="page-tabs" role="tablist" aria-label="Scraping">
         {tabButton('current', 'Current', current.data?.runs.length)}
         {tabButton('previous', 'Previous')}
       </div>

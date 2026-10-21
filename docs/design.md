@@ -102,10 +102,9 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 **Admin** (requires `is_admin`)
 - `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
 - `GET /admin/players`, `DELETE /admin/players/:id`
-- `POST /admin/players/import`: JSON exported from the old extension's `players`, importing GUID, name and PUMBILITY. Returns how many were added and how many already existed.
 - `POST /admin/scrape-runs` with `{ kind, players? }` queues a run; `players` are GUIDs or piuscores player links
-- `GET /admin/scrape-runs` lists runs, newest first
-- `GET /admin/scrape-runs/:id` returns progress and failures
+- `GET /admin/scrape-runs?state=current` lists queued and running runs in the order the worker takes them; `?state=previous[&limit=<n>]` lists finished ones, newest first, 50 per page by default
+- `GET /admin/scrape-runs/:id` returns progress and failures, and the IDs of the runs before and after it
 - `POST /admin/scrape-runs/:id/cancel`
 
 ## Rivals view
@@ -115,16 +114,6 @@ The Rivals tab (`/#/rivals`) is the old extension's rivals window, ported to the
 **Where settings live.** The rival list, with each rival's on/off switch, is in `user_rivals`. The view's settings (score cap, NP min rivals, count by) are the user's preferences. Each change is sent on its own (one rival, or only the changed settings), so two open pages changing different things don't undo each other's changes. Changes show at once and are saved in the background. Preference saves go one at a time, in order. When a save fails, the error is shown and the page reloads the user's state from the server. Solo mode, the focused rival, and the selected level and tabs are per-page state, not saved on the server (level and tab are kept in this browser's `localStorage`).
 
 **Keeping scores current.** Best results are cached in IndexedDB, keyed by player and chart, with the `serverTime` of each player's last download. On opening the view, cached rows are shown at once, then `/bests` is asked for what changed since each player's last download (a newly added rival is loaded in full). Deletions never arrive as changes, e.g. after a rescan, so the site compares each player's cached row count with `counts`. A player whose counts differ is dropped from the cache and loaded again in full. While the page is visible, it syncs again every 5 minutes, and when it comes back into view after more than a minute, reloading `/me` as well for fresh names and PUMBILITY (skipped while a change is being saved). Without IndexedDB (e.g. a private window) everything is loaded once per visit.
-
-## Exporting players from the old extension
-
-On `piuscores.arroweclip.se`, open DevTools. In the console's context dropdown, pick the "PIU Scores Scraper" extension, then run:
-
-```js
-chrome.storage.local.get('players').then(({ players }) => copy(JSON.stringify(players)));
-```
-
-This copies the players to the clipboard. Paste the result into the admin panel's import field. Imported players are then picked up by the next "all players" run.
 
 ## Deployment
 

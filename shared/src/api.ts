@@ -114,12 +114,6 @@ export interface AdminPlayersResponse {
   players: AdminPlayer[];
 }
 
-export interface ImportPlayersResponse {
-  added: number;
-  // Players that were stored already; they keep their name and the higher PUMBILITY.
-  existing: number;
-}
-
 export type ScrapeRunKind = 'all' | 'selected' | 'register' | 'rescan';
 export type ScrapeRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'interrupted';
 

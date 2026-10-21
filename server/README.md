@@ -68,7 +68,6 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `GET /bests?players=<id,...>[&since=<serverTime>]` | Best results with chart and try details; with `since`, only rows changed since an earlier response's `serverTime`. `counts` has each player's total number of best results |
 | `GET/POST /admin/users`, `PATCH/DELETE /admin/users/:id` | Manage users: email, display name, linked player, admin |
 | `GET /admin/players`, `DELETE /admin/players/:id` | Players with play counts; deleting removes their results |
-| `POST /admin/players/import` | Players exported from the old extension (see the design) |
 | `POST /admin/scrape-runs` `{ kind, players? }` | Queue a run: `all`, or `register`/`selected`/`rescan` with player GUIDs or piuscores links |
 | `GET /admin/scrape-runs?state=current` | Queued and running runs with progress, in the order the worker takes them |
 | `GET /admin/scrape-runs?state=previous[&limit=<n>]` | Finished runs, newest first: `limit` of them (default 50); `hasMore` says whether there are older ones |

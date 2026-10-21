@@ -133,9 +133,10 @@ curl https://api.pumpking.top:6767/health   # → {"ok":true}, from any machine
 ## 8. First use
 
 1. Open <https://zdreni.github.io/piu-rivals/> and sign in with zdreni@gmail.com; you become an admin.
-2. **Players → Import players from the old extension** to bring in your stored players.
-3. **Scrape all players**. The first full scrape takes a long time (expect most of a day for
-   hundreds of players); follow it on **Scrape runs**.
+2. **Players → Register players**: paste the PIU Scores links of the players to add. Each is added and
+   its whole Phoenix 2 history scraped; follow the runs on **Scraping**.
+3. Later, **Scraping → Scrape all players** picks up everyone's new sessions. A first full scrape of
+   many players takes a long time (expect most of a day for hundreds of players).
 4. **Users**: add the other people's Google emails and link each one to their player.
 
 ## Updating

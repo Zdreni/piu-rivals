@@ -1,12 +1,8 @@
-import type { AdminPlayer, AdminPlayersResponse, ImportPlayersResponse, ScrapeRunKind, ScrapeRunResponse } from '@piu-rivals/shared';
+import type { AdminPlayer, AdminPlayersResponse, ScrapeRunKind, ScrapeRunResponse } from '@piu-rivals/shared';
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { formatAgo, formatNumber, playerLabel, useLoad } from '../../util.ts';
-
-// The console command that copies the old extension's players, shown for the import.
-const EXPORT_COMMAND = "chrome.storage.local.get('players').then(({ players }) => copy(JSON.stringify(players)));";
-
 
 function RegisterForm({ onError }: { onError: (error: string | null) => void }) {
   const navigate = useNavigate();
@@ -34,49 +30,6 @@ function RegisterForm({ onError }: { onError: (error: string | null) => void }) 
       <textarea rows={3} required value={links} onChange={(event) => setLinks(event.target.value)} aria-label="Player links" />
       <button type="submit">Register and scrape</button>
     </form>
-  );
-}
-
-
-function ImportForm({ onDone, onError }: { onDone: () => void; onError: (error: string | null) => void }) {
-  const [json, setJson] = useState('');
-  const [result, setResult] = useState<ImportPlayersResponse | null>(null);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    let body: unknown;
-    try {
-      body = JSON.parse(json);
-    } catch {
-      onError("That isn't valid JSON");
-      return;
-    }
-
-    try {
-      setResult(await api<ImportPlayersResponse>('POST', '/admin/players/import', body));
-      setJson('');
-      onError(null);
-      onDone();
-    } catch (e) {
-      onError(errorText(e));
-    }
-  };
-
-  return (
-    <details className="card">
-      <summary>Import players from the old extension</summary>
-      <p className="muted small">
-        On piuscores.arroweclip.se, open DevTools, pick the "PIU Scores Scraper" extension in the console's context
-        dropdown, run the command below, and paste the result here. Only players are imported (GUID, name,
-        PUMBILITY); their scores come from scraping.
-      </p>
-      <code className="block">{EXPORT_COMMAND}</code>
-      <form onSubmit={(event) => void submit(event)}>
-        <textarea rows={4} required value={json} onChange={(event) => setJson(event.target.value)} aria-label="Exported players JSON" />
-        <button type="submit">Import</button>
-        {result  &&  <span className="muted"> Added {result.added}, already stored {result.existing}.</span>}
-      </form>
-    </details>
   );
 }
 
@@ -130,7 +83,6 @@ export function PlayersPage() {
     <section>
       <div className="title-row">
         <h1>Players</h1>
-        <button type="button" onClick={() => void startRun('all')}>Scrape all players</button>
       </div>
       <p className="muted">
         PIU Scores players whose sessions are scraped. "Scrape" opens only sessions newer than the last scraped one;
@@ -138,7 +90,6 @@ export function PlayersPage() {
       </p>
 
       <RegisterForm onError={setError} />
-      <ImportForm onDone={() => void players.reload()} onError={setError} />
 
       {(error  ??  players.error)  &&  <p className="error" role="alert">{error  ??  players.error}</p>}
 
@@ -201,7 +152,7 @@ export function PlayersPage() {
         </table>
       </div>
       {! players.data  &&  ! players.error  &&  <p className="muted">Loading…</p>}
-      {players.data  &&  ! list.length  &&  <p className="muted">No players yet: register some above, or import them from the old extension.</p>}
+      {players.data  &&  ! list.length  &&  <p className="muted">No players yet: register some above.</p>}
     </section>
   );
 }

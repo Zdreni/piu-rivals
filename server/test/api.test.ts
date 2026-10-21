@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminPlayersResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -212,20 +212,6 @@ test('best results come with their chart and try details, and since returns only
   assert.equal(changed.body.bests.length, 1);
   assert.equal(changed.body.bests[0]!.score, 905000);
   assert.equal(changed.body.bests[0]!.lastPlayedOn, '2026-10-02');
-});
-
-
-test('admins import players from the old extension', { skip }, async () => {
-  const imported = await call('POST', '/admin/players/import', {
-    as: 'admin@example.com',
-    body: { players: { [OTHER]: { name: 'Other #1234', pumbility: 15000 }, '55555555-5555-4555-8555-555555555555': { name: 'New' } } },
-  });
-
-  assert.deepEqual(imported.body, { added: 1, existing: 1 });
-  const players = (await call<AdminPlayersResponse>('GET', '/admin/players', { as: 'admin@example.com' })).body.players;
-  assert.equal(players.length, 4);
-  assert.equal(players.find((p) => p.id === OTHER)?.pumbility, 15000);
-  assert.equal(players.find((p) => p.id === ME)?.plays, 3);
 });
 
 
