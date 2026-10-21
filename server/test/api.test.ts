@@ -9,9 +9,10 @@ import { buildApp } from '../src/api/app.ts';
 import { HttpError } from '../src/api/errors.ts';
 import { createDatabase } from '../src/db/database.ts';
 import { migrateToLatest } from '../src/db/migrations/index.ts';
+import { ensurePlayers, playerIdsByGuid } from '../src/db/players.ts';
 import type { ParsedPlay } from '../src/scraper/session_page.ts';
 import { takePlayer } from '../src/scraper/runs.ts';
-import { ensurePlayer, storeSession } from '../src/scraper/store.ts';
+import { storeSession } from '../src/scraper/store.ts';
 
 // Runs the API against a real MySQL database, which it EMPTIES first: set TEST_DATABASE_URL to a
 // database meant for tests. Skipped without it.
@@ -66,15 +67,17 @@ const play = (songKey: string, score: number, passed = true): ParsedPlay => ({
 });
 
 
-async function scrapedSession(playerId: string, timestamp: string, date: string, plays: ParsedPlay[]) {
-  await ensurePlayer(db, playerId);
+const playerIdOf = async (guid: string) => (await playerIdsByGuid(db, [guid])).get(guid);
+
+
+async function scrapedSession(guid: string, timestamp: string, date: string, plays: ParsedPlay[]) {
+  const [playerId] = await ensurePlayers(db, [guid]);
   await storeSession(db, {
-    playerId,
+    playerId: playerId!,
     card: { mix: 'Phoenix 2', title: 'Official Import', timestamp, isOpen: false },
     date,
     plays,
     grown: false,
-    scrapeRunId: null,
   });
 }
 
@@ -95,7 +98,7 @@ before(async () => {
   await sql`SET FOREIGN_KEY_CHECKS = 1`.execute(db);
   await scrapedSession(ME, 'Mon 1', '2026-10-01', [play('Alpha', 900000), play('Beta', 950000)]);
   await scrapedSession(RIVAL, 'Mon 1', '2026-10-01', [play('Alpha', 910000), play('Alpha', 920000, false)]);
-  await ensurePlayer(db, OTHER);
+  await ensurePlayers(db, [OTHER]);
 });
 
 
@@ -288,7 +291,7 @@ test('added players join an active run, which takes them while it runs', { skip 
   const first = await add(NEW_1);
   const runId = first.run.id;
   // A registered player is stored right away, with only their GUID, before the run gets to them.
-  const stored = await db.selectFrom('players').select(['name', 'last_scraped_at']).where('id', '=', NEW_1).executeTakeFirst();
+  const stored = await db.selectFrom('players').select(['name', 'last_scraped_at']).where('piuscores_guid', '=', NEW_1).executeTakeFirst();
   assert.deepEqual(stored, { name: null, last_scraped_at: null });
   const joined = await add(NEW_2);
   assert.equal(joined.run.id, runId);
@@ -300,10 +303,10 @@ test('added players join an active run, which takes them while it runs', { skip 
 
   // The worker takes a player added after it got through the list; with no more players, the run is done.
   await db.updateTable('scrape_runs').set({ status: 'running' }).where('id', '=', runId).execute();
-  assert.deepEqual(await takePlayer(db, runId, 0), { playerId: NEW_1 });
+  assert.deepEqual(await takePlayer(db, runId, 0), { playerId: await playerIdOf(NEW_1) });
   await db.updateTable('scrape_runs').set({ players_done: 3 }).where('id', '=', runId).execute();
   assert.equal((await add(OTHER)).run.id, runId);
-  assert.deepEqual(await takePlayer(db, runId, 3), { playerId: OTHER });
+  assert.deepEqual(await takePlayer(db, runId, 3), { playerId: await playerIdOf(OTHER) });
   assert.deepEqual(await takePlayer(db, runId, 4), { finished: 'done' });
 
   // The run is finished, so the next player gets a new one.
@@ -315,11 +318,19 @@ test('added players join an active run, which takes them while it runs', { skip 
 
 
 test('deleting a player removes their results and unlinks them', { skip }, async () => {
-  assert.equal((await call('DELETE', `/admin/players/${RIVAL}`, { as: 'admin@example.com' })).status, 200);
+  const as = 'admin@example.com';
+  const run = await call<ScrapeRunResponse>('POST', '/admin/scrape-runs', { as, body: { kind: 'rescan', players: [RIVAL, OTHER] } });
+  assert.equal((await call('DELETE', `/admin/players/${RIVAL}`, { as })).status, 200);
   const me = await call<MeResponse>('GET', '/me', { as: 'player@example.com' });
   assert.deepEqual(me.body.rivals, []);
   const bests = await call<BestsResponse>('GET', `/bests?players=${RIVAL}`, { as: 'player@example.com' });
   assert.equal(bests.body.bests.length, 0);
+
+  // Runs leave the player out.
+  const after = await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${run.body.run.id}`, { as });
+  assert.deepEqual(after.body.run.playerIds, [OTHER]);
+  assert.deepEqual(after.body.players.map((p) => p.id), [OTHER]);
+  await call('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as });
 });
 
 

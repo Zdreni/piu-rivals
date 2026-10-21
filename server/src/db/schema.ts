@@ -6,7 +6,9 @@ import type { ColumnType, Generated, Insertable, Selectable } from 'kysely';
 type CreatedAt = ColumnType<string, string | undefined, never>;
 
 export interface PlayersTable {
-  id: string;
+  id: Generated<number>;
+  // How piuscores (and the API) knows the player.
+  piuscores_guid: string;
   name: string | null;
   pumbility: number | null;
   created_at: CreatedAt;
@@ -32,11 +34,10 @@ export interface ChartsTable {
 
 export interface PlaysTable {
   id: Generated<number>;
-  player_id: string;
+  player_id: number;
   chart_id: number;
   session_no: number;
   played_on: string | null;
-  scrape_run_id: number | null;
   score: number;
   grade: string | null;
   // MySQL booleans are TINYINT: 1 for a pass, 0 for a broken play.
@@ -51,7 +52,7 @@ export interface PlaysTable {
 }
 
 export interface BestResultsTable {
-  player_id: string;
+  player_id: number;
   chart_id: number;
   // The best try; its score, pass and date are read from the play.
   play_id: number;
@@ -66,7 +67,8 @@ export type { ScrapeRunKind, ScrapeRunStatus };
 export interface ScrapeRunsTable {
   id: Generated<number>;
   kind: ScrapeRunKind;
-  player_ids: ColumnType<string[] | null, string | null, string | null>;
+  // May hold players deleted since; 0 is one deleted before players had integer ids.
+  player_ids: ColumnType<number[] | null, string | null, string | null>;
   status: Generated<ScrapeRunStatus>;
   started_by_user_id: number | null;
   created_at: CreatedAt;
@@ -74,7 +76,7 @@ export interface ScrapeRunsTable {
   finished_at: string | null;
   players_total: Generated<number>;
   players_done: Generated<number>;
-  current_player_id: string | null;
+  current_player_id: number | null;
   sessions_added: Generated<number>;
   plays_added: Generated<number>;
   bests_improved: Generated<number>;
@@ -84,7 +86,7 @@ export interface ScrapeRunsTable {
 export interface ScrapeFailuresTable {
   id: Generated<number>;
   scrape_run_id: number;
-  player_id: string | null;
+  player_id: number | null;
   message: string;
   created_at: CreatedAt;
 }
@@ -93,7 +95,7 @@ export interface UsersTable {
   id: Generated<number>;
   email: string;
   display_name: string | null;
-  player_id: string | null;
+  player_id: number | null;
   is_admin: Generated<number>;
   created_at: CreatedAt;
   last_login_at: string | null;
@@ -101,7 +103,7 @@ export interface UsersTable {
 
 export interface UserRivalsTable {
   user_id: number;
-  player_id: string;
+  player_id: number;
   hidden: Generated<number>;
 }
 

@@ -8,7 +8,8 @@ DATETIME columns are in UTC. Dates come back from the server as strings: `YYYY-M
 
 ```
 players
-  id                        CHAR(36) PK            -- piuscores player GUID
+  id                        INT PK AUTO_INCREMENT  -- our own key; other tables point at players by it
+  piuscores_guid            CHAR(36) UNIQUE        -- how piuscores knows the player; the API uses it too
   name                      VARCHAR NULL
   pumbility                 INT NULL               -- highest seen
   created_at                DATETIME
@@ -31,11 +32,10 @@ charts
 
 plays
   id                        BIGINT PK AUTO_INCREMENT
-  player_id                 CHAR(36) FK players
+  player_id                 INT FK players
   chart_id                  INT FK charts
   session_no                INT                    -- per-player session counter, assigned by us
   played_on                 DATE NULL              -- date of the session the try was first seen in
-  scrape_run_id             INT NULL FK scrape_runs  -- run that stored it
   score                     INT
   grade                     VARCHAR NULL           -- e.g. "sssplus", "aa"
   passed                    BOOL                   -- false for a broken play
@@ -50,7 +50,7 @@ plays
   INDEX(player_id, chart_id, score)
 
 best_results                                       -- one row per player and chart
-  player_id                 CHAR(36) FK players
+  player_id                 INT FK players
   chart_id                  INT FK charts
   play_id                   BIGINT                 -- the best try; its score, pass and date are read from the play
   last_played_on            DATE NULL              -- date of the latest try
@@ -62,7 +62,7 @@ best_results                                       -- one row per player and cha
 scrape_runs
   id                        INT PK AUTO_INCREMENT
   kind                      ENUM(all, selected, register, rescan)
-  player_ids                JSON NULL              -- for every kind but "all"
+  player_ids                JSON NULL              -- player ids, for every kind but "all" (an "all" run fills it in when it starts)
   status                    ENUM(queued, running, done, failed, cancelled, interrupted)
   started_by_user_id        INT NULL FK users
   created_at                DATETIME
@@ -70,7 +70,7 @@ scrape_runs
   finished_at               DATETIME NULL
   players_total             INT
   players_done              INT
-  current_player_id         CHAR(36) NULL
+  current_player_id         INT NULL FK players
   sessions_added            INT
   plays_added               INT
   bests_improved            INT
@@ -79,7 +79,7 @@ scrape_runs
 scrape_failures
   id                        INT PK AUTO_INCREMENT
   scrape_run_id             INT FK scrape_runs
-  player_id                 CHAR(36) NULL          -- null when the whole run failed
+  player_id                 INT NULL FK players    -- null when the whole run failed
   message                   TEXT
   created_at                DATETIME
 
@@ -87,14 +87,14 @@ users
   id                        INT PK AUTO_INCREMENT
   email                     VARCHAR UNIQUE         -- Google account
   display_name              VARCHAR NULL
-  player_id                 CHAR(36) NULL UNIQUE FK players  -- "their" piuscores player
+  player_id                 INT NULL UNIQUE FK players  -- "their" piuscores player
   is_admin                  BOOL
   created_at                DATETIME
   last_login_at             DATETIME NULL
 
 user_rivals
   user_id                   INT FK users
-  player_id                 CHAR(36) FK players
+  player_id                 INT FK players
   hidden                    BOOL DEFAULT false     -- switched off in the Rivals view, but kept in the list
   PK(user_id, player_id)
 
@@ -116,4 +116,5 @@ auth_sessions
 - **Best for a chart** is the play with the highest score (the earliest one on ties). `best_results` points at that play and keeps the last try's date and the number of tries, so reading bests never has to go over all of a player's plays; the best try's score, pass and date come from its play. A row changes whenever a chart gets a new try.
 - **`updated_at`** is when our server last wrote the row, in UTC from the database clock; it is never a time read from piuscores. piu-rivals can ask for rows changed since its last download. The server sends its own current time with each response, and the next request asks from that time, so the browser's clock doesn't matter.
 - **PUMBILITY** is only raised, never lowered.
-- **Deleting a player** (admin only) removes their plays and best results, and unlinks them from any user or rival list.
+- **Players have two ids.** Tables point at a player by the integer `players.id`, which is much smaller than the GUID in every row and index of the large tables. The API and the site know players only by their piuscores GUID, `players.piuscores_guid`, and the server converts between the two.
+- **Deleting a player** (admin only) removes their plays, best results and scrape failures, and unlinks them from any user or rival list. Their id may stay in the `player_ids` of earlier runs; the run's page leaves them out, and a run that reaches them skips them.

@@ -2,10 +2,10 @@ import type { ScrapeRun, ScrapeRunPlayer, ScrapeRunPlayerState, ScrapeRunRespons
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { type Kysely, sql } from 'kysely';
+import { ensurePlayers, playerGuidsById, playerIdsByGuid } from '../../db/players.ts';
 import type { Database } from '../../db/schema.ts';
 import { parsePlayerId } from '../../scraper/player_id.ts';
 import { joinOrQueueRun, queueRun } from '../../scraper/runs.ts';
-import { ensurePlayers } from '../../scraper/store.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
@@ -30,7 +30,7 @@ function runQuery(db: Kysely<Database>) {
     .leftJoin(failures, 'failures.scrape_run_id', 'r.id')
     .selectAll('r')
     .select([
-      'u.email as started_by', 'p.id as player_id', 'p.name as player_name', 'p.pumbility as player_pumbility',
+      'u.email as started_by', 'p.piuscores_guid as player_guid', 'p.name as player_name', 'p.pumbility as player_pumbility',
       'p.last_scraped_at as player_last_scraped_at', 'failures.count as failure_count',
     ]);
 }
@@ -39,10 +39,11 @@ function runQuery(db: Kysely<Database>) {
 type RunRow = Awaited<ReturnType<ReturnType<typeof runQuery>['execute']>>[number];
 
 
-const toRun = (row: RunRow): ScrapeRun => ({
+// The API knows players by GUID; players deleted since the run are left out.
+const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun => ({
   id: row.id,
   kind: row.kind,
-  playerIds: row.player_ids,
+  playerIds: row.player_ids?.flatMap((id) => guids.get(id)  ??  [])  ??  null,
   status: row.status,
   startedBy: row.started_by,
   createdAt: toIso(row.created_at),
@@ -50,8 +51,8 @@ const toRun = (row: RunRow): ScrapeRun => ({
   finishedAt: toIsoOrNull(row.finished_at),
   playersTotal: row.players_total,
   playersDone: row.players_done,
-  currentPlayer: row.player_id
-    ? playerSummary({ id: row.player_id, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
+  currentPlayer: row.player_guid
+    ? playerSummary({ piuscores_guid: row.player_guid, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
     : null,
   sessionsAdded: row.sessions_added,
   playsAdded: row.plays_added,
@@ -61,12 +62,17 @@ const toRun = (row: RunRow): ScrapeRun => ({
 });
 
 
+const runGuids = (db: Kysely<Database>, rows: RunRow[]) =>
+  playerGuidsById(db, [...new Set(rows.flatMap((row) => row.player_ids  ??  []))]);
+
+
 // "current": the queued and running runs, in the order the worker takes them (the running one first).
 // "previous": the finished ones (done, failed, cancelled, interrupted), the newest `limit` of them first.
 async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', limit: number): Promise<ScrapeRunsResponse> {
   if (state === 'current') {
     const rows = await runQuery(db).where('r.status', 'in', ACTIVE_STATUSES).orderBy('r.id').execute();
-    return { runs: rows.map(toRun), hasMore: false, total: rows.length };
+    const guids = await runGuids(db, rows);
+    return { runs: rows.map((row) => toRun(row, guids)), hasMore: false, total: rows.length };
   }
 
   const [rows, count] = await Promise.all([
@@ -75,20 +81,23 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
       .executeTakeFirstOrThrow(),
   ]);
 
-  return { runs: rows.slice(0, limit).map(toRun), hasMore: rows.length > limit, total: Number(count.total) };
+  const shown = rows.slice(0, limit);
+  const guids = await runGuids(db, shown);
+  return { runs: shown.map((row) => toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total) };
 }
 
 
-// The worker takes the players in order, so the first players_done of them are finished.
-async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<string | null>): Promise<ScrapeRunPlayer[]> {
+// The worker takes the players in order, so the first players_done of them are finished. Players
+// deleted since are left out.
+async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<number | null>): Promise<ScrapeRunPlayer[]> {
   const ids = row.player_ids  ??  [];
   if (! ids.length)
     return [];
 
-  const named = await db.selectFrom('players').select(['id', 'name']).where('id', 'in', ids).execute();
-  const names = new Map(named.map((p) => [p.id, p.name]));
+  const stored = await db.selectFrom('players').select(['id', 'piuscores_guid', 'name']).where('id', 'in', ids).execute();
+  const players = new Map(stored.map((p) => [p.id, p]));
   const active = (ACTIVE_STATUSES as readonly string[]).includes(row.status);
-  const stateOf = (id: string, index: number): ScrapeRunPlayerState => {
+  const stateOf = (id: number, index: number): ScrapeRunPlayerState => {
     if (failedIds.has(id))
       return 'failed';
     if (index < row.players_done)
@@ -98,7 +107,10 @@ async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<stri
     return active ? 'waiting' : 'skipped';
   };
 
-  return ids.map((id, index) => ({ id, name: names.get(id)  ??  null, state: stateOf(id, index) }));
+  return ids.flatMap((id, index) => {
+    const player = players.get(id);
+    return player ? [{ id: player.piuscores_guid, name: player.name, state: stateOf(id, index) }] : [];
+  });
 }
 
 
@@ -107,10 +119,11 @@ async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeR
   if (! row)
     throw new HttpError(404, 'Unknown scrape run');
 
-  const failureList = await db.selectFrom('scrape_failures')
-    .select(['player_id', 'message', 'created_at'])
-    .where('scrape_run_id', '=', runId)
-    .orderBy('id')
+  const failureList = await db.selectFrom('scrape_failures as f')
+    .leftJoin('players as p', 'p.id', 'f.player_id')
+    .select(['f.player_id', 'p.piuscores_guid', 'f.message', 'f.created_at'])
+    .where('f.scrape_run_id', '=', runId)
+    .orderBy('f.id')
     .execute();
 
   const [previous, next] = await Promise.all([
@@ -119,9 +132,9 @@ async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeR
   ]);
 
   return {
-    run: toRun(row),
+    run: toRun(row, await runGuids(db, [row])),
     players: await runPlayers(db, row, new Set(failureList.map((f) => f.player_id))),
-    failureList: failureList.map((f) => ({ playerId: f.player_id, message: f.message, createdAt: toIso(f.created_at) })),
+    failureList: failureList.map((f) => ({ playerId: f.piuscores_guid, message: f.message, createdAt: toIso(f.created_at) })),
     previousRunId: previous?.id  ??  null,
     nextRunId: next?.id  ??  null,
   };
@@ -144,26 +157,27 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
     },
   }, async (request): Promise<ScrapeRunResponse> => {
     const { kind, players } = request.body;
-    let playerIds: string[] | null = null;
+    const userId = sessionUser(request).id;
+    let playerIds: number[] | null = null;
     if (kind !== 'all') {
       const parsed = (players  ??  []).map(parsePlayerId);
       if (! parsed.length  ||  parsed.includes(null))
         throw new HttpError(400, 'players must be player GUIDs or piuscores player links');
 
-      playerIds = [...new Set(parsed as string[])];
-      if (kind !== 'register') {
-        const known = (await db.selectFrom('players').select('id').where('id', 'in', playerIds).execute()).map((p) => p.id);
-        const unknown = playerIds.filter((id) => ! known.includes(id));
+      const guids = [...new Set(parsed as string[])];
+      if (kind === 'register') {
+        // Registered players are stored right away, so a run that doesn't get to them (cancelled,
+        // interrupted) still leaves them for the next "all" run, which takes never scraped players first.
+        playerIds = await ensurePlayers(db, guids, userId);
+      } else {
+        const ids = await playerIdsByGuid(db, guids);
+        const unknown = guids.filter((guid) => ! ids.has(guid));
         if (unknown.length)
           throw new HttpError(404, `Unknown players: ${unknown.join(', ')}`);
+
+        playerIds = guids.map((guid) => ids.get(guid)!);
       }
     }
-
-    const userId = sessionUser(request).id;
-    // Registered players are stored right away, so a run that doesn't get to them (cancelled,
-    // interrupted) still leaves them for the next "all" run, which takes never scraped players first.
-    if (kind === 'register')
-      await ensurePlayers(db, playerIds!, userId);
 
     const runId = kind === 'register'  ||  kind === 'selected'
       ? await joinOrQueueRun(db, kind, playerIds!, userId)

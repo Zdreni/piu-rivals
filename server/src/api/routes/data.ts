@@ -50,8 +50,8 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
   app.get('/bests', {
     schema: { querystring: Type.Object({ players: Type.String({ minLength: 1 }), since: Type.Optional(Type.String()) }) },
   }, async (request): Promise<BestsResponse> => {
-    const playerIds = [...new Set(request.query.players.split(',').map((id) => id.trim().toLowerCase()))];
-    if (playerIds.length > MAX_BEST_PLAYERS  ||  ! playerIds.every((id) => GUID_RE.test(id)))
+    const guids = [...new Set(request.query.players.split(',').map((id) => id.trim().toLowerCase()))];
+    if (guids.length > MAX_BEST_PLAYERS  ||  ! guids.every((id) => GUID_RE.test(id)))
       throw new HttpError(400, `players must be up to ${MAX_BEST_PLAYERS} comma-separated player GUIDs`);
 
     const since = request.query.since ? sinceValue(request.query.since) : null;
@@ -59,28 +59,30 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     const { rows: [now] } = await sql<{ now: string }>`SELECT CURRENT_TIMESTAMP(3) AS now`.execute(db);
 
     let query = db.selectFrom('best_results as b')
+      .innerJoin('players as pl', 'pl.id', 'b.player_id')
       .innerJoin('plays as p', 'p.id', 'b.play_id')
       .innerJoin('charts as c', 'c.id', 'b.chart_id')
       .select([
-        'b.player_id', 'b.chart_id', 'b.last_played_on', 'b.tries', 'b.updated_at',
+        'pl.piuscores_guid', 'b.chart_id', 'b.last_played_on', 'b.tries', 'b.updated_at',
         'p.score', 'p.passed', 'p.played_on', 'p.grade', 'p.plate', 'p.perfect', 'p.great', 'p.good', 'p.bad', 'p.miss', 'p.max_combo',
         'c.song_key', 'c.song_title', 'c.chart_type', 'c.level',
       ])
-      .where('b.player_id', 'in', playerIds);
+      .where('pl.piuscores_guid', 'in', guids);
 
     if (since)
       query = query.where('b.updated_at', '>=', since);
 
     const rows = await query.execute();
-    const countRows = await db.selectFrom('best_results')
-      .select(['player_id', (eb) => eb.fn.countAll<number>().as('count')])
-      .where('player_id', 'in', playerIds)
-      .groupBy('player_id')
+    const countRows = await db.selectFrom('best_results as b')
+      .innerJoin('players as pl', 'pl.id', 'b.player_id')
+      .select(['pl.piuscores_guid', (eb) => eb.fn.countAll<number>().as('count')])
+      .where('pl.piuscores_guid', 'in', guids)
+      .groupBy('pl.piuscores_guid')
       .execute();
 
-    const counts = Object.fromEntries(playerIds.map((playerId) => [playerId, 0]));
+    const counts = Object.fromEntries(guids.map((guid) => [guid, 0]));
     for (const row of countRows)
-      counts[row.player_id] = Number(row.count);
+      counts[row.piuscores_guid] = Number(row.count);
 
     const charts = new Map<number, Chart>();
     for (const row of rows) {
@@ -93,7 +95,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
       serverTime: toIso(now!.now),
       charts: [...charts.values()],
       bests: rows.map((row) => ({
-        playerId: row.player_id,
+        playerId: row.piuscores_guid,
         chartId: row.chart_id,
         score: row.score,
         passed: !! row.passed,

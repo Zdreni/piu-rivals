@@ -21,7 +21,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
     const rows = await db.selectFrom('players')
       .leftJoin(counts, 'counts.player_id', 'players.id')
       .select([
-        'players.id', 'players.name', 'players.pumbility', 'players.last_scraped_at', 'players.created_at',
+        'players.piuscores_guid', 'players.name', 'players.pumbility', 'players.last_scraped_at', 'players.created_at',
         'players.last_session_timestamp', 'counts.charts', 'counts.plays',
       ])
       .orderBy('players.name')
@@ -41,7 +41,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
 
   // Deletes the player with their plays and best results; users and rival lists lose them.
   app.delete('/admin/players/:id', { schema: { params: PlayerIdParams } }, async (request) => {
-    const { numDeletedRows } = await db.deleteFrom('players').where('id', '=', request.params.id.toLowerCase()).executeTakeFirst();
+    const { numDeletedRows } = await db.deleteFrom('players').where('piuscores_guid', '=', request.params.id.toLowerCase()).executeTakeFirst();
     if (! numDeletedRows)
       throw new HttpError(404, 'Unknown player');
 

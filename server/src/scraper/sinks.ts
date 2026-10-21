@@ -4,7 +4,7 @@ import type { ScrapeSink } from './scrape_player.ts';
 import { loadPlayer, playerCheckpoint, savePlayerInfo, skipSession, storeSession } from './store.ts';
 
 
-export function databaseSink(db: Kysely<Database>, playerId: string, scrapeRunId: number | null): ScrapeSink {
+export function databaseSink(db: Kysely<Database>, playerId: number): ScrapeSink {
   return {
     async checkpoint() {
       const player = await loadPlayer(db, playerId);
@@ -16,7 +16,7 @@ export function databaseSink(db: Kysely<Database>, playerId: string, scrapeRunId
 
     savePlayerInfo: (name, pumbility) => savePlayerInfo(db, playerId, name, pumbility),
 
-    storeSession: (session) => storeSession(db, { playerId, scrapeRunId, ...session }),
+    storeSession: (session) => storeSession(db, { playerId, ...session }),
 
     skipSession: (session) => skipSession(db, { playerId, ...session }),
   };

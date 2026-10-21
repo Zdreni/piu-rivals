@@ -15,7 +15,7 @@ type Trx = Transaction<Database>;
 const chartKey = (songKey: string, chartType: string, level: number) => `${songKey}|${chartType}|${level}`;
 
 
-export const loadPlayer = (db: Db, playerId: string) =>
+export const loadPlayer = (db: Db, playerId: number) =>
   db.selectFrom('players').selectAll().where('id', '=', playerId).executeTakeFirst();
 
 
@@ -30,26 +30,8 @@ export function playerCheckpoint(player: Player): Checkpoint {
 }
 
 
-// Creates the player when they aren't stored yet.
-export async function ensurePlayer(db: Db, playerId: string, createdByUserId: number | null = null) {
-  await ensurePlayers(db, [playerId], createdByUserId);
-}
-
-
-// Creates the players that aren't stored yet, with only their GUID: the rest comes with their first scrape.
-export async function ensurePlayers(db: Db, playerIds: string[], createdByUserId: number | null = null) {
-  if (! playerIds.length)
-    return;
-
-  await db.insertInto('players')
-    .values(playerIds.map((id) => ({ id, created_by_user_id: createdByUserId })))
-    .ignore()
-    .execute();
-}
-
-
 // PUMBILITY never decreases, so a lower value is ignored.
-export async function savePlayerInfo(db: Db, playerId: string, name: string | null, pumbility: number | null) {
+export async function savePlayerInfo(db: Db, playerId: number, name: string | null, pumbility: number | null) {
   await db.updateTable('players')
     .set((eb) => ({
       ...(name ? { name } : {}),
@@ -64,7 +46,7 @@ export async function savePlayerInfo(db: Db, playerId: string, name: string | nu
 
 
 // For a rescan: forgets the player's plays, best results and checkpoint.
-export async function resetPlayer(db: Db, playerId: string) {
+export async function resetPlayer(db: Db, playerId: number) {
   await db.transaction().execute(async (trx) => {
     await trx.deleteFrom('best_results').where('player_id', '=', playerId).execute();
     await trx.deleteFrom('plays').where('player_id', '=', playerId).execute();
@@ -111,7 +93,7 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
 
 // Recomputes the player's best results on `chartIdList`. The best try is the highest score,
 // the earliest one on ties. Returns how many best scores were raised or added.
-async function updateBests(trx: Trx, playerId: string, chartIdList: number[]): Promise<number> {
+async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): Promise<number> {
   if (! chartIdList.length)
     return 0;
 
@@ -164,14 +146,13 @@ async function updateBests(trx: Trx, playerId: string, chartIdList: number[]): P
 // A grown session (the previous latest one, with re-imported tries) only adds the tries not
 // stored from it before; a new session adds all of its tries under the next session number.
 export async function storeSession(db: Db, options: {
-  playerId: string;
+  playerId: number;
   card: SessionCard;
   date: string | null;
   plays: ParsedPlay[];
   grown: boolean;
-  scrapeRunId: number | null;
 }): Promise<StoredSessionResult> {
-  const { playerId, card, date, plays, grown, scrapeRunId } = options;
+  const { playerId, card, date, plays, grown } = options;
   return db.transaction().execute(async (trx) => {
     const player = await trx.selectFrom('players').selectAll().where('id', '=', playerId).forUpdate().executeTakeFirst();
     if (! player)
@@ -202,7 +183,6 @@ export async function storeSession(db: Db, options: {
           chart_id: p.chartId,
           session_no: sessionNo,
           played_on: date,
-          scrape_run_id: scrapeRunId,
           score: p.score,
           grade: p.grade,
           passed: p.passed ? 1 : 0,
@@ -225,7 +205,7 @@ export async function storeSession(db: Db, options: {
 
 
 // Moves the player's checkpoint to a session of another mix, whose plays aren't stored.
-export async function skipSession(db: Db, options: { playerId: string; card: SessionCard; grown: boolean }) {
+export async function skipSession(db: Db, options: { playerId: number; card: SessionCard; grown: boolean }) {
   const { playerId, card, grown } = options;
   await db.transaction().execute(async (trx) => {
     const player = await trx.selectFrom('players').selectAll().where('id', '=', playerId).forUpdate().executeTakeFirst();

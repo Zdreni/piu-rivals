@@ -2,6 +2,7 @@ import type { MeResponse, Preferences, PreferencesResponse, Rival, RivalsRespons
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import type { Kysely } from 'kysely';
+import { playerIdsByGuid } from '../../db/players.ts';
 import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireUser, sessionUser } from '../auth.ts';
@@ -40,15 +41,22 @@ function preferencesData(preferences: Preferences): string {
 }
 
 
-// Your own player can't be your rival, and only stored players can.
-async function checkRival(db: Kysely<Database>, userId: number, playerId: string) {
+async function playerId(db: Kysely<Database>, guid: string): Promise<number | undefined> {
+  return (await playerIdsByGuid(db, [guid])).get(guid);
+}
+
+
+// Your own player can't be your rival, and only stored players can. Returns the player's id.
+async function rivalId(db: Kysely<Database>, userId: number, guid: string): Promise<number> {
   const user = await loadUser(db, userId);
-  if (playerId === user?.player?.id)
+  if (guid === user?.player?.id)
     throw new HttpError(409, "Your own player can't be your rival");
 
-  const player = await db.selectFrom('players').select('id').where('id', '=', playerId).executeTakeFirst();
-  if (! player)
-    throw new HttpError(404, `Unknown player: ${playerId}`);
+  const id = await playerId(db, guid);
+  if (id === undefined)
+    throw new HttpError(404, `Unknown player: ${guid}`);
+
+  return id;
 }
 
 
@@ -102,14 +110,12 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
   }, async (request): Promise<RivalsResponse> => {
     const { id } = sessionUser(request);
     const user = await loadUser(db, id);
-    const wanted = [...new Set(request.body.playerIds.map((playerId) => playerId.toLowerCase()))]
-      .filter((playerId) => playerId !== user?.player?.id);
+    const wanted = [...new Set(request.body.playerIds.map((guid) => guid.toLowerCase()))]
+      .filter((guid) => guid !== user?.player?.id);
 
-    const known = wanted.length
-      ? (await db.selectFrom('players').select('id').where('id', 'in', wanted).execute()).map((row) => row.id)
-      : [];
-
-    const unknown = wanted.filter((playerId) => ! known.includes(playerId));
+    const ids = await playerIdsByGuid(db, wanted);
+    const known = [...ids.values()];
+    const unknown = wanted.filter((guid) => ! ids.has(guid));
     if (unknown.length)
       throw new HttpError(404, `Unknown players: ${unknown.join(', ')}`);
 
@@ -121,7 +127,7 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
       await removal.execute();
       if (known.length) {
         await trx.insertInto('user_rivals').ignore()
-          .values(known.map((playerId) => ({ user_id: id, player_id: playerId })))
+          .values(known.map((rival) => ({ user_id: id, player_id: rival })))
           .execute();
       }
     });
@@ -135,11 +141,10 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
     schema: { body: Type.Object({ playerId: GUID }) },
   }, async (request): Promise<RivalsResponse> => {
     const { id } = sessionUser(request);
-    const playerId = request.body.playerId.toLowerCase();
-    await checkRival(db, id, playerId);
+    const rival = await rivalId(db, id, request.body.playerId.toLowerCase());
 
     await db.transaction().execute(async (trx) => {
-      await trx.insertInto('user_rivals').ignore().values({ user_id: id, player_id: playerId }).execute();
+      await trx.insertInto('user_rivals').ignore().values({ user_id: id, player_id: rival }).execute();
       const { count } = await trx.selectFrom('user_rivals').select((eb) => eb.fn.countAll<number>().as('count'))
         .where('user_id', '=', id).executeTakeFirstOrThrow();
 
@@ -155,18 +160,22 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
     schema: { params: PlayerIdParams, body: Type.Object({ hidden: Type.Boolean() }) },
   }, async (request): Promise<RivalsResponse> => {
     const { id } = sessionUser(request);
+    const rival = await playerId(db, request.params.id.toLowerCase());
+    if (rival === undefined)
+      throw new HttpError(404, 'Not in your rival list');
+
     const { numUpdatedRows } = await db.updateTable('user_rivals')
       .set({ hidden: request.body.hidden ? 1 : 0 })
       .where('user_id', '=', id)
-      .where('player_id', '=', request.params.id.toLowerCase())
+      .where('player_id', '=', rival)
       .executeTakeFirst();
 
     // Without the FOUND_ROWS client flag MySQL counts only changed rows, so 0 may also be a rival already set that way.
     if (numUpdatedRows === 0n) {
-      const rival = await db.selectFrom('user_rivals').select('player_id')
-        .where('user_id', '=', id).where('player_id', '=', request.params.id.toLowerCase()).executeTakeFirst();
+      const row = await db.selectFrom('user_rivals').select('player_id')
+        .where('user_id', '=', id).where('player_id', '=', rival).executeTakeFirst();
 
-      if (! rival)
+      if (! row)
         throw new HttpError(404, 'Not in your rival list');
     }
 
@@ -177,7 +186,10 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
   // Removes one rival; their scores stay on the server.
   app.delete('/me/rivals/:id', { schema: { params: PlayerIdParams } }, async (request): Promise<RivalsResponse> => {
     const { id } = sessionUser(request);
-    await db.deleteFrom('user_rivals').where('user_id', '=', id).where('player_id', '=', request.params.id.toLowerCase()).execute();
+    const rival = await playerId(db, request.params.id.toLowerCase());
+    if (rival !== undefined)
+      await db.deleteFrom('user_rivals').where('user_id', '=', id).where('player_id', '=', rival).execute();
+
     return { rivals: await loadRivals(db, id) };
   });
 };

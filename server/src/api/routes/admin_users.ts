@@ -2,6 +2,7 @@ import type { AdminUsersResponse, User } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import type { Kysely } from 'kysely';
+import { playerIdsByGuid } from '../../db/players.ts';
 import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
@@ -16,17 +17,20 @@ const UserFields = {
 };
 
 
-// A player can be "their" player of only one user.
-async function checkPlayer(db: Kysely<Database>, playerId: string | null | undefined, userId: number | null) {
-  if (! playerId)
-    return;
+// A player can be "their" player of only one user. Returns the player's id, or null for no player.
+async function userPlayerId(db: Kysely<Database>, guid: string | null, userId: number | null): Promise<number | null> {
+  if (! guid)
+    return null;
 
-  if (! await db.selectFrom('players').select('id').where('id', '=', playerId).executeTakeFirst())
-    throw new HttpError(404, `Unknown player ${playerId}`);
+  const playerId = (await playerIdsByGuid(db, [guid])).get(guid);
+  if (playerId === undefined)
+    throw new HttpError(404, `Unknown player ${guid}`);
 
   const owner = await db.selectFrom('users').select(['id', 'email']).where('player_id', '=', playerId).executeTakeFirst();
   if (owner  &&  owner.id !== userId)
-    throw new HttpError(409, `Player ${playerId} already belongs to ${owner.email}`);
+    throw new HttpError(409, `Player ${guid} already belongs to ${owner.email}`);
+
+  return playerId;
 }
 
 
@@ -43,11 +47,10 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
     schema: { body: Type.Object({ email: Type.String({ format: 'email', maxLength: 191 }), ...UserFields }) },
   }, async (request): Promise<{ user: User }> => {
     const email = request.body.email.trim().toLowerCase();
-    const playerId = request.body.playerId?.toLowerCase()  ??  null;
     if (await db.selectFrom('users').select('id').where('email', '=', email).executeTakeFirst())
       throw new HttpError(409, `${email} is already a user`);
 
-    await checkPlayer(db, playerId, null);
+    const playerId = await userPlayerId(db, request.body.playerId?.toLowerCase()  ??  null, null);
     const { insertId } = await db.insertInto('users')
       .values({
         email,
@@ -72,10 +75,10 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
     if (id === sessionUser(request).id  &&  isAdmin === false)
       throw new HttpError(409, "You can't remove your own admin rights");
 
-    await checkPlayer(db, playerId?.toLowerCase(), id);
+    const newPlayerId = playerId !== undefined ? await userPlayerId(db, playerId?.toLowerCase()  ??  null, id) : undefined;
     const changes = {
       ...(displayName !== undefined ? { display_name: displayName } : {}),
-      ...(playerId !== undefined ? { player_id: playerId?.toLowerCase()  ??  null } : {}),
+      ...(newPlayerId !== undefined ? { player_id: newPlayerId } : {}),
       ...(isAdmin !== undefined ? { is_admin: isAdmin ? 1 : 0 } : {}),
     };
 
@@ -83,8 +86,8 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
       await db.transaction().execute(async (trx) => {
         await trx.updateTable('users').set(changes).where('id', '=', id).execute();
         // Your own player can't stay in your rival list.
-        if (playerId)
-          await trx.deleteFrom('user_rivals').where('user_id', '=', id).where('player_id', '=', playerId.toLowerCase()).execute();
+        if (newPlayerId)
+          await trx.deleteFrom('user_rivals').where('user_id', '=', id).where('player_id', '=', newPlayerId).execute();
       });
     }
 

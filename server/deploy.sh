@@ -40,14 +40,20 @@ if [ ! -d node_modules ] || ! git diff --quiet "$previous" HEAD -- package-lock.
   (cd server && npx playwright install chromium)
 fi
 
-echo "deploy: migrating the database"
-npm run migrate --workspace server
-
 # A worker restart stops the scrape run in progress; it shows as "interrupted" and has to be started again.
 # So the worker restarts only when something it runs changed. Changes to just the API, the site, the shared
 # types (the worker imports them only as types), the extensions, tests and docs leave it running.
 api_only='^(server/src/api/|server/src/server\.ts$|server/test/|server/deploy\.sh$|server/README\.md$|shared/|web/|docs/|piuscores-extension/|piuscores-scrap-extension/|\.github/|[^/]+\.md$|\.gitignore$)'
 worker_changes=$(git diff --name-only "$previous" HEAD | grep -Ev "$api_only" || true)
+
+# A worker that is going to restart stops before the migration, so its old code never writes to changed tables.
+if [ -n "$worker_changes" ] && pm2 describe piu-rivals-worker > /dev/null 2>&1; then
+  echo "deploy: stopping the worker"
+  pm2 stop piu-rivals-worker
+fi
+
+echo "deploy: migrating the database"
+npm run migrate --workspace server
 
 echo "deploy: restarting"
 if [ -n "$worker_changes" ] || ! pm2 describe piu-rivals-worker > /dev/null 2>&1; then

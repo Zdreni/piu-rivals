@@ -1,9 +1,9 @@
 import { createDatabase } from '../db/database.ts';
+import { ensurePlayers } from '../db/players.ts';
 import { SessionsBrowser } from '../scraper/browser.ts';
 import { parsePlayerId } from '../scraper/player_id.ts';
 import { scrapePlayer } from '../scraper/scrape_player.ts';
 import { databaseSink, dryRunSink } from '../scraper/sinks.ts';
-import { ensurePlayer } from '../scraper/store.ts';
 
 // Scrapes one player right away, without a scrape run, for testing:
 //   npm run scrape -- <player GUID or piuscores link> [--dry-run]
@@ -20,10 +20,7 @@ if (! playerId) {
 const db = dryRun ? null : createDatabase();
 const browser = await SessionsBrowser.launch();
 try {
-  if (db)
-    await ensurePlayer(db, playerId);
-
-  const sink = db ? databaseSink(db, playerId, null) : dryRunSink();
+  const sink = db ? databaseSink(db, (await ensurePlayers(db, [playerId]))[0]!) : dryRunSink();
   const result = await scrapePlayer(browser, playerId, sink, (progress) => {
     if (db) {
       console.log(`  ${progress.index + 1}/${progress.total} ${progress.card.timestamp}${progress.grown ? ' (grown)' : ''}: `

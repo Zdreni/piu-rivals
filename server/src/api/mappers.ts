@@ -10,13 +10,15 @@ export const toIso = (value: string) => new Date(`${value.replace(' ', 'T')}Z`).
 export const toIsoOrNull = (value: string | null) => (value === null ? null : toIso(value));
 
 
-export function playerSummary(row: { id: string; name: string | null; pumbility: number | null; last_scraped_at: string | null }):
-  PlayerSummary {
-  return { id: row.id, name: row.name, pumbility: row.pumbility, lastScrapedAt: toIsoOrNull(row.last_scraped_at) };
+// The API knows players by their piuscores GUID.
+export function playerSummary(row: {
+  piuscores_guid: string; name: string | null; pumbility: number | null; last_scraped_at: string | null;
+}): PlayerSummary {
+  return { id: row.piuscores_guid, name: row.name, pumbility: row.pumbility, lastScrapedAt: toIsoOrNull(row.last_scraped_at) };
 }
 
 
-export const playerSummaryColumns = ['players.id', 'players.name', 'players.pumbility', 'players.last_scraped_at'] as const;
+export const playerSummaryColumns = ['players.piuscores_guid', 'players.name', 'players.pumbility', 'players.last_scraped_at'] as const;
 
 
 export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
@@ -24,7 +26,7 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
     .leftJoin('players', 'players.id', 'users.player_id')
     .select([
       'users.id as user_id', 'users.email', 'users.display_name', 'users.is_admin', 'users.created_at',
-      'users.last_login_at', 'players.id', 'players.name', 'players.pumbility', 'players.last_scraped_at',
+      'users.last_login_at', ...playerSummaryColumns,
     ])
     .orderBy('users.email');
 
@@ -38,7 +40,7 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
       email: row.email,
       displayName: row.display_name,
       isAdmin: !! row.is_admin,
-      player: row.id ? playerSummary({ ...row, id: row.id }) : null,
+      player: row.piuscores_guid ? playerSummary({ ...row, piuscores_guid: row.piuscores_guid }) : null,
     } satisfies User,
     createdAt: toIso(row.created_at),
     lastLoginAt: toIsoOrNull(row.last_login_at),
