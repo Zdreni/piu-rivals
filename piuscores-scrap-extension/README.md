@@ -41,7 +41,7 @@ piuscores page.
 | File | What |
 |---|---|
 | `src/token_sync.js` | Content script on the piu-rivals site: copies the login session |
-| `src/background.js` | Service worker: API calls, the admin check, caches of `/me` and `/players` |
+| `src/background.js` | Service worker: API calls, the admin check, caches of `/me` and `/admin/players` |
 | `src/piuscores.js` | Content script on piuscores: finds the page's player, runs the status box |
 | `src/ui/badge.js` | The status box (top right, in its own shadow root) |
 | `src/player_links.js` | Marks links to players by whether they're in piu-rivals, with their scrape buttons |

@@ -47,7 +47,7 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 - `PATCH /me/preferences` with `{ changes }` changes only the given settings (`null` removes one); `PUT /me/preferences` replaces them all. The server stores preferences as given; the site checks them when reading.
 
 **Data**
-- `GET /players` lists players (id, name, PUMBILITY) for the Rivals view's Others tab.
+- `GET /players` lists players with scraped results and a name or PUMBILITY (id, name, PUMBILITY) for the Rivals view's Others tab.
 - `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. It also returns each player's total number of best results (`counts`), changed or not. The site keeps the rows in IndexedDB and filters locally (see [the Rivals view](#rivals-view)).
 
 **Admin** (requires `is_admin`)

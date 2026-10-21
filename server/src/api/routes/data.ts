@@ -26,6 +26,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
   app.addHook('preHandler', requireUser);
 
 
+  // Only players with scraped results, and a name or PUMBILITY, are listed.
   app.get('/players', async (): Promise<PlayersResponse> => {
     const counts = db.selectFrom('best_results')
       .select(['player_id', sql<number>`COUNT(*)`.as('charts'), sql<number>`SUM(tries)`.as('plays')])
@@ -33,13 +34,14 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
       .as('counts');
 
     const rows = await db.selectFrom('players')
-      .leftJoin(counts, 'counts.player_id', 'players.id')
+      .innerJoin(counts, 'counts.player_id', 'players.id')
       .select([...playerSummaryColumns, 'counts.charts', 'counts.plays'])
+      .where((eb) => eb.or([eb('players.name', 'is not', null), eb('players.pumbility', 'is not', null)]))
       .orderBy('players.name')
       .execute();
 
     return {
-      players: rows.map((row) => ({ ...playerSummary(row), plays: Number(row.plays  ??  0), charts: Number(row.charts  ??  0) })),
+      players: rows.map((row) => ({ ...playerSummary(row), plays: Number(row.plays), charts: Number(row.charts) })),
     };
   });
 

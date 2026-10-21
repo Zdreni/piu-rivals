@@ -64,7 +64,7 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `PUT /me/rivals` `{ playerIds }` | Replace the rival list; rivals that stay keep their `hidden` |
 | `PATCH /me/preferences` `{ changes }` | Change only the given settings; `null` removes one |
 | `PUT /me/preferences` `{ preferences }` | Replace the site's settings object |
-| `GET /players` | All players |
+| `GET /players` | Players with scraped results and a name or PUMBILITY |
 | `GET /bests?players=<id,...>[&since=<serverTime>]` | Best results with chart and try details; with `since`, only rows changed since an earlier response's `serverTime`. `counts` has each player's total number of best results |
 | `GET/POST /admin/users`, `PATCH/DELETE /admin/users/:id` | Manage users: email, display name, linked player, admin |
 | `GET /admin/players`, `DELETE /admin/players/:id` | Players with play counts; deleting removes their results |

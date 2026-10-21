@@ -56,7 +56,7 @@
   }
   async function knownPlayers() {
     if (!playersCache || Date.now() - playersCache.at > PLAYERS_TTL_MS) {
-      const { players } = await api("GET", "/players");
+      const { players } = await api("GET", "/admin/players");
       playersCache = { at: Date.now(), byId: new Map(players.map((p) => [p.id, p])) };
     }
     return playersCache.byId;

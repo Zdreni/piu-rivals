@@ -68,9 +68,10 @@ async function currentUser() {
 }
 
 
+// All registered players, scraped or not (GET /players lists only those with results).
 async function knownPlayers() {
   if (! playersCache  ||  Date.now() - playersCache.at > PLAYERS_TTL_MS) {
-    const { players } = await api('GET', '/players');
+    const { players } = await api('GET', '/admin/players');
     playersCache = { at: Date.now(), byId: new Map(players.map((p) => [p.id, p])) };
   }
 
