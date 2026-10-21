@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  openSessionMismatches, parseChartLabel, parseOpenSession, parseSessionPlays, parseSessionsPage, sameSessionTime,
+  openSessionMismatches, parseChartLabel, parseOpenSession, parseSessionPlays, parseSessionsPage, sameCard,
+  sameSessionTime,
 } from '../src/scraper/session_page.ts';
 
 // Fixtures are rendered piuscores Sessions pages (trimmed to <main>), saved on 2026-10-20 with
@@ -106,4 +107,13 @@ test('reads chart labels', () => {
   assert.deepEqual(parseChartLabel('S4'), { chartType: 'S', level: 4 });
   assert.deepEqual(parseChartLabel('CO-OP 2'), { chartType: 'CO-OP', level: 2 });
   assert.equal(parseChartLabel('???'), null);
+});
+
+
+test('tells sessions apart by name and start time, not by how long they ran', () => {
+  const card = (title: string, timestamp = 'Wed 21 Oct · 10:00 PM') => ({ mix: 'Phoenix 2', title, timestamp, isOpen: false });
+  assert.ok(sameCard(card('Play Session · 77 min'), card('Play Session · 87 min')));
+  assert.ok(! sameCard(card('Play Session · 77 min'), card('Play Session · 77 min', 'Wed 21 Oct · 11:00 PM')));
+  assert.ok(! sameCard(card('Play Session · 77 min'), card('Official Import · DINO #3869')));
+  assert.ok(! sameCard(card('Play Session'), { ...card('Play Session'), mix: 'Phoenix' }));
 });

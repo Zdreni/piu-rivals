@@ -164,6 +164,16 @@ export function sameSessionTime(cardTimestamp: string, summary: string): boolean
 }
 
 
+// A card's title up to its first "·", e.g. "Play Session" of "Play Session · 77 min". What follows
+// may change: a session's duration grows when more scores are imported into it.
+export const sessionName = (title: string) => clean(title.split('·')[0]  ||  '');
+
+
+// Whether two cards are the same session, though it may have grown in between.
+export const sameCard = (a: SessionCard, b: SessionCard) =>
+  a.mix === b.mix  &&  sessionName(a.title) === sessionName(b.title)  &&  a.timestamp === b.timestamp;
+
+
 // Lists why the open session doesn't match `card` yet; empty once it does.
 export function openSessionMismatches(open: OpenSession | null, card: SessionCard): string[] {
   if (! open)
@@ -173,7 +183,7 @@ export function openSessionMismatches(open: OpenSession | null, card: SessionCar
   if (open.mix !== card.mix)
     mismatches.push(`mix: opened "${open.mix}", expected "${card.mix}"`);
 
-  const cardTitle = clean(card.title.split('·')[0]  ||  '');
+  const cardTitle = sessionName(card.title);
   if (open.title !== cardTitle)
     mismatches.push(`title: opened "${open.title}", card "${cardTitle}"`);
 

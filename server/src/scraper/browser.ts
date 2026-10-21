@@ -1,7 +1,7 @@
 import { type Browser, chromium, type Page } from 'playwright';
 import { config } from '../config.ts';
 import {
-  openSessionMismatches, parseOpenSession, parseSessionsPage, type SessionCard, type SessionsPage,
+  openSessionMismatches, parseOpenSession, parseSessionsPage, sameCard, type SessionCard, type SessionsPage,
 } from './session_page.ts';
 
 const TIMEOUT_MS = 30000;
@@ -96,12 +96,15 @@ export class SessionsBrowser {
   }
 
 
-  // Opens `card`'s session (on the current page) with all of its plays shown; returns the page HTML.
-  async openSession(card: SessionCard): Promise<string> {
+  // Opens `card`'s session (on the current page) with all of its plays shown; returns the page HTML
+  // and the card as it reads now: the session may have grown since `card` was read.
+  async openSession(found: SessionCard): Promise<{ html: string; card: SessionCard }> {
     const { cards } = await this.readPage();
-    const index = cards.findIndex((c) => c.title === card.title  &&  c.timestamp === card.timestamp);
+    const index = cards.findIndex((c) => sameCard(c, found));
     if (index < 0)
-      throw new Error(`Session "${card.title}" (${card.timestamp}) is no longer on its page`);
+      throw new Error(`Session "${found.title}" (${found.timestamp}) is no longer on its page`);
+
+    const card = cards[index]!;
 
     await sleep(config.scrapeDelayMs);
     await this.page.locator('[data-testid="session-card"]').nth(index).click();
@@ -131,6 +134,6 @@ export class SessionsBrowser {
       throw new Error(`${error.message}: ${shown} shown`);
     });
 
-    return this.page.content();
+    return { html: await this.page.content(), card };
   }
 }

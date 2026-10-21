@@ -92,18 +92,19 @@ export async function scrapePlayer(
   ];
 
   const total = queue.filter(({ card }) => card.mix === 'Phoenix 2').length;
-  for (const { card, grown } of queue) {
-    if (card.mix !== 'Phoenix 2') {
-      await sink.skipSession({ card, grown });
+  for (const { card: found, grown } of queue) {
+    if (found.mix !== 'Phoenix 2') {
+      await sink.skipSession({ card: found, grown });
       continue;
     }
 
-    while (pageIndex > pageOf.get(card)!) {
+    while (pageIndex > pageOf.get(found)!) {
       await browser.goToPage('newer');
       pageIndex--;
     }
 
-    const html = await browser.openSession(card);
+    // The checkpoint keeps the card as it reads when opened, so it has the session's current length.
+    const { html, card } = await browser.openSession(found);
     const open = parseOpenSession(html);
     const { plays } = parseSessionPlays(html);
     const stored = await sink.storeSession({ card, date: open?.date  ??  null, plays, grown });
