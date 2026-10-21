@@ -12,8 +12,9 @@ export interface PlayersTable {
   created_at: CreatedAt;
   created_by_user_id: number | null;
   last_scraped_at: string | null;
-  // Checkpoint: the two latest scanned sessions, as shown on their cards. The anchor (second
-  // latest) never changes, while the latest one may grow and move later.
+  // Checkpoint: the two latest scanned sessions of any mix, as shown on their cards. The anchor
+  // (second latest) never changes, while the latest one may grow and move later.
+  // last_session_no counts Phoenix 2 sessions only: it's the session_no of the latest one.
   last_session_no: Generated<number>;
   last_session_title: string | null;
   last_session_timestamp: string | null;

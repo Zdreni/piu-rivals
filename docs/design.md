@@ -29,56 +29,7 @@ There is no scraper extension. Scraping runs on the VPS in a background worker, 
 
 ## Scraping
 
-### Why a browser
-
-piuscores is a Blazor Server app. A plain HTTP request returns only an empty page shell; the content arrives over a live connection after the page loads. The worker therefore drives headless Chromium with Playwright, just as the old extension drove a real page. Sessions pages are public, so no piuscores login is needed. This was tested on 2026-10-19 with a script that rendered `/Player/<id>/Sessions` and expanded all plays.
-
-Session times are formatted by piuscores' own server, not the browser. Renders with the browser time zone set to Kyiv and to Los Angeles were identical. Since all scraping now comes from one place, a session always gets the same timestamp.
-
-### Runs
-
-An admin starts a **scrape run** from the admin panel. A run covers one of:
-- **all players**: each player gets their new sessions since their checkpoint
-- **selected players**: the same, for chosen players only
-- **register player**: paste a piuscores player link or GUID; the player is created and fully scraped
-- **rescan**: chosen players' plays are deleted, their checkpoints cleared and their full history scraped again (for when a checkpoint is broken)
-
-The API only inserts a `scrape_runs` row with status `queued`. Register and selected players instead join a register or selected run that is already queued or running, so players added one after another (e.g. from the scrape extension) are scraped together; a player still waiting in an active run isn't added again. The worker reads the run's player list again before each player, under the run's row lock, as does a request adding players, so a run that is finishing either takes the new players or is seen finished and they go to a new run. The worker (a separate pm2 process) picks up queued runs, one at a time, and works through the players:
-
-1. Open the player's Sessions page and read their name and PUMBILITY. PUMBILITY is read only when the newest session is Phoenix 2; a Phoenix session shows Phoenix's PUMBILITY.
-2. **Check for new results.** If the first session card still has exactly the stored title and timestamp of the latest scanned session, nothing changed and the player is done (one page load).
-3. **Find what to scan.** A session's timestamp is not stable: when a player keeps importing scores, they land in their newest session, whose timestamp moves later. Only the newest session can grow, so the second-newest scanned session (the **anchor**) never changes. The worker pages back through Phoenix 2 sessions until it finds the latest stored session unchanged, or the anchor, or reaches the first Phoenix (1) session or the end of the history:
-   - **Latest stored session found unchanged:** only the sessions above it are scanned, and all of them are new.
-   - **Only the anchor found:** the latest stored session has grown. The session right above the anchor is that grown session, and the sessions above it are new.
-   - **Neither found:** if the player has exactly one stored session (latest but no anchor), that session has grown, and it is the oldest Phoenix 2 session in the history. A player with no stored sessions gets their full Phoenix 2 history scanned, all of it new. In any other case the checkpoint is broken (see below).
-4. **Scan, oldest first.** Open each session, expand all plays, and parse every play row. Each session is stored in its own transaction:
-   - A **new session** (the latest stored session is still on the page unchanged, or this session is above the grown one) can't contain stored tries. All its tries are inserted with `session_no = last_session_no + 1` and this session's date.
-   - The **grown session** (the latest stored session is gone from the page, and this is the session right above the anchor) is the previous latest session with re-imported tries. It is compared only with the stored tries of `session_no = last_session_no`, counting identical tries (same chart, score, judgments and max combo). Tries already stored stay as they are, keeping their original date. Only the extra ones are inserted, with the same `session_no` and the grown session's date.
-   - Best results are updated for the charts that got new tries.
-   - The player's checkpoint moves: the latest session's title and timestamp become the anchor's (unless this is the grown session, which keeps the anchor), and this session's become the latest, along with `last_session_no`. The checkpoint moves even when the session had nothing worth storing (e.g. only stage breaks).
-   - Then the counters on the run are updated.
-
-If the anchor can't be found (e.g. piuscores changed or removed old sessions), the player is reported as a failure. An admin can then run a **rescan** for that player, which deletes their plays, clears their checkpoint and scans their full history again.
-5. Pause between pages (configurable, default ~2 s) so the load on piuscores is like one person browsing.
-
-If the worker crashes or the VPS restarts mid-run, every stored session is complete. Sessions are scanned oldest first and the checkpoint moves in the same transaction as the plays, so the checkpoint never skips past an unstored session. Restarting the run (or the next run) continues from each player's checkpoint. Interrupted work is never half-stored, so nothing is counted twice. A run that is `running` while the worker isn't (e.g. after a restart) is marked `interrupted`, and the admin can start it again.
-
-An admin can **cancel** a running run. The worker finishes the current session first, then stops.
-
-**Progress in the admin panel:** status; players done out of the total; sessions and plays added; new best results; current player; each of the run's players with its state (waiting, scraping now, scraped, failed, or skipped when the run stopped first); and failures, listing the player and error message. The panel polls `GET /admin/scrape-runs/:id` every few seconds while a run is active. The run list keeps a history of past runs.
-
-**Resources:** one headless Chromium page uses about 300–500 MB of RAM, which is fine on the 8 GB VPS. The first full scrape of all players with complete history takes hours; later runs only fetch new sessions. Scheduled runs (e.g. nightly) can be added later on top of the same queue.
-
-### Parsing a play row
-
-From each row of a session's "All plays" list:
-- song title and song key (from the song image file name, e.g. `DizzyDanceStreetLight`)
-- chart type and level (from the difficulty bubble, e.g. `D24`)
-- score, grade and plate, stored as their image names (e.g. grade `sssplus`, `aplus`; plate `pg`). piuscores doesn't show a plate on every play.
-- `passed`: false for a broken play (the life bar broke, but the play went on to the result screen). piuscores marks these only with a `_broken` grade image (e.g. `aa_broken`), which is stored as grade `aa` and `passed = false`. Broken plays are collected like any other.
-- perfect, great, good, bad and miss counts, and max combo (from the judgment strip). Some older imports have no judgment strip, so these may be empty.
-
-Rows without a score, like stage breaks, are skipped. All levels are stored. Only Phoenix 2 is scraped for now; Phoenix may be added later, which will need a `mix` column on plays and a separate checkpoint per mix. The parser is built and tested against saved rendered pages, kept as test fixtures.
+A background worker on the VPS scrapes players' sessions from piuscores with headless Chromium, in runs that admins start and watch from the admin panel. How it finds new sessions, keeps each player's checkpoint and parses plays is in [scraping.md](scraping.md).
 
 ## Database
 

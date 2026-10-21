@@ -1,5 +1,5 @@
 import type { SessionsBrowser } from './browser.ts';
-import { type CardStep, type Checkpoint, planScan, stepCard } from './scan_plan.ts';
+import { type CardStep, cardDates, type Checkpoint, planScan, stepCard } from './scan_plan.ts';
 import { parseOpenSession, parseSessionPlays, type ParsedPlay, type SessionCard } from './session_page.ts';
 import type { StoredSessionResult } from './store.ts';
 
@@ -9,6 +9,8 @@ export interface ScrapeSink {
   savePlayerInfo(name: string | null, pumbility: number | null): Promise<void>;
   storeSession(session: { card: SessionCard; date: string | null; plays: ParsedPlay[]; grown: boolean }):
     Promise<StoredSessionResult>;
+  // A session of another mix: only the checkpoint moves.
+  skipSession(session: { card: SessionCard; grown: boolean }): Promise<void>;
 }
 
 export interface SessionProgress extends StoredSessionResult {
@@ -29,8 +31,9 @@ export interface PlayerScrapeResult {
 const MAX_PAGES = 500;
 
 
-// Scrapes a player's Phoenix 2 sessions newer than their checkpoint, oldest first, storing each
-// session as soon as it's read, so an interrupted scrape keeps everything up to that point.
+// Scrapes a player's sessions newer than their checkpoint, oldest first, storing each session as
+// soon as it's read, so an interrupted scrape keeps everything up to that point. Sessions of other
+// mixes than Phoenix 2 aren't opened: they only move the checkpoint.
 export async function scrapePlayer(
   browser: SessionsBrowser,
   playerId: string,
@@ -53,23 +56,22 @@ export async function scrapePlayer(
   if (! hasSessions)
     return result;
 
-  // Page back through the history until a stored session or the end of Phoenix 2 is reached.
+  // Page back through the history until a stored session or the end of Phoenix 2 history is reached.
   const collected: SessionCard[] = [];
   const pageOf = new Map<SessionCard, number>();
   let pageIndex = 0;
   let stop: CardStep | null = null;
+  const dateOf = cardDates();
   while (true) {
     for (const card of page.cards) {
-      const step = stepCard(checkpoint, card);
+      const step = stepCard(checkpoint, card, dateOf(card.timestamp));
       if (step.kind !== 'continue') {
         stop = step;
         break;
       }
 
-      if (card.mix === 'Phoenix 2') {
-        collected.push(card);
-        pageOf.set(card, pageIndex);
-      }
+      collected.push(card);
+      pageOf.set(card, pageIndex);
     }
 
     if (stop  ||  ! page.hasOlderPage)
@@ -89,7 +91,13 @@ export async function scrapePlayer(
     ...plan.fresh.map((card) => ({ card, grown: false })),
   ];
 
-  for (const [index, { card, grown }] of queue.entries()) {
+  const total = queue.filter(({ card }) => card.mix === 'Phoenix 2').length;
+  for (const { card, grown } of queue) {
+    if (card.mix !== 'Phoenix 2') {
+      await sink.skipSession({ card, grown });
+      continue;
+    }
+
     while (pageIndex > pageOf.get(card)!) {
       await browser.goToPage('newer');
       pageIndex--;
@@ -102,7 +110,7 @@ export async function scrapePlayer(
     result.sessions++;
     result.playsAdded += stored.playsAdded;
     result.bestsImproved += stored.bestsImproved;
-    await onSession({ ...stored, card, grown, index, total: queue.length });
+    await onSession({ ...stored, card, grown, index: result.sessions - 1, total });
   }
 
   return result;

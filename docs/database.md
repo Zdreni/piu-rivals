@@ -1,6 +1,6 @@
 # piu-rivals: database
 
-MySQL schema of the piu-rivals server, created by the Kysely migrations in [server/src/db/migrations/](../server/src/db/migrations/). For how scraping fills it, see [the design](design.md#scraping).
+MySQL schema of the piu-rivals server, created by the Kysely migrations in [server/src/db/migrations/](../server/src/db/migrations/). For how scraping fills it, see [scraping.md](scraping.md).
 
 DATETIME columns are in UTC. Dates come back from the server as strings: `YYYY-MM-DD` for DATE, `YYYY-MM-DD HH:MM:SS` for DATETIME.
 
@@ -14,8 +14,8 @@ players
   created_at                DATETIME
   created_by_user_id        INT NULL FK users
   last_scraped_at           DATETIME NULL
-  -- checkpoint: the two latest scanned sessions, as shown on their cards
-  last_session_no           INT DEFAULT 0          -- session_no of the latest scanned session
+  -- checkpoint: the two latest scanned sessions of any mix, as shown on their cards
+  last_session_no           INT DEFAULT 0          -- session_no of the latest scanned Phoenix 2 session
   last_session_title        VARCHAR NULL
   last_session_timestamp    VARCHAR NULL
   anchor_session_title      VARCHAR NULL           -- the session before the latest one

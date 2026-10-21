@@ -5,8 +5,8 @@ The backend of piu-rivals:
 - **Scrape worker** (`src/worker.ts`): reads players' Phoenix 2 sessions from piuscores with
   headless Chromium, for scrape runs queued by admins.
 
-Both use the same MySQL database. See [the design](../docs/design.md) and
-[the database tables](../docs/database.md). API response types are in
+Both use the same MySQL database. See [the design](../docs/design.md),
+[how scraping works](../docs/scraping.md) and [the database tables](../docs/database.md). API response types are in
 [shared/src/api.ts](../shared/src/api.ts).
 
 ## Setup

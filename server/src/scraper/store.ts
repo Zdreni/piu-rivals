@@ -212,19 +212,37 @@ export async function storeSession(db: Db, options: {
     }
 
     const bestsImproved = await updateBests(trx, playerId, [...new Set(toInsert.map((p) => p.chartId))]);
-    await trx.updateTable('players')
-      .set(grown
-        ? { last_session_title: card.title, last_session_timestamp: card.timestamp }
-        : {
-          last_session_no: sessionNo,
-          last_session_title: card.title,
-          last_session_timestamp: card.timestamp,
-          anchor_session_title: player.last_session_title,
-          anchor_session_timestamp: player.last_session_timestamp,
-        })
-      .where('id', '=', playerId)
-      .execute();
-
+    await moveCheckpoint(trx, player, card, grown, sessionNo);
     return { playsAdded: toInsert.length, bestsImproved };
   });
+}
+
+
+// Moves the player's checkpoint to a session of another mix, whose plays aren't stored.
+export async function skipSession(db: Db, options: { playerId: string; card: SessionCard; grown: boolean }) {
+  const { playerId, card, grown } = options;
+  await db.transaction().execute(async (trx) => {
+    const player = await trx.selectFrom('players').selectAll().where('id', '=', playerId).forUpdate().executeTakeFirst();
+    if (! player)
+      throw new Error(`Player ${playerId} is not stored`);
+
+    await moveCheckpoint(trx, player, card, grown, player.last_session_no);
+  });
+}
+
+
+// A grown session stays the latest one; a new one becomes it, and the previous latest the anchor.
+async function moveCheckpoint(trx: Trx, player: Player, card: SessionCard, grown: boolean, sessionNo: number) {
+  const latest = { last_session_title: card.title, last_session_timestamp: card.timestamp };
+  await trx.updateTable('players')
+    .set(grown
+      ? latest
+      : {
+        ...latest,
+        last_session_no: sessionNo,
+        anchor_session_title: player.last_session_title,
+        anchor_session_timestamp: player.last_session_timestamp,
+      })
+    .where('id', '=', player.id)
+    .execute();
 }

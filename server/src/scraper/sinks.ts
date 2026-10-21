@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema.ts';
 import type { ScrapeSink } from './scrape_player.ts';
-import { loadPlayer, playerCheckpoint, savePlayerInfo, storeSession } from './store.ts';
+import { loadPlayer, playerCheckpoint, savePlayerInfo, skipSession, storeSession } from './store.ts';
 
 
 export function databaseSink(db: Kysely<Database>, playerId: string, scrapeRunId: number | null): ScrapeSink {
@@ -17,11 +17,13 @@ export function databaseSink(db: Kysely<Database>, playerId: string, scrapeRunId
     savePlayerInfo: (name, pumbility) => savePlayerInfo(db, playerId, name, pumbility),
 
     storeSession: (session) => storeSession(db, { playerId, scrapeRunId, ...session }),
+
+    skipSession: (session) => skipSession(db, { playerId, ...session }),
   };
 }
 
 
-// Stores nothing: every session is new, and each one is printed.
+// Stores nothing: every session is new, and each Phoenix 2 one is printed.
 export function dryRunSink(): ScrapeSink {
   return {
     checkpoint: async () => ({ latest: null, anchor: null }),
@@ -41,5 +43,7 @@ export function dryRunSink(): ScrapeSink {
 
       return { playsAdded: plays.length, bestsImproved: 0 };
     },
+
+    skipSession: async () => {},
   };
 }
