@@ -287,6 +287,9 @@ test('added players join an active run, which takes them while it runs', { skip 
 
   const first = await add(NEW_1);
   const runId = first.run.id;
+  // A registered player is stored right away, with only their GUID, before the run gets to them.
+  const stored = await db.selectFrom('players').select(['name', 'last_scraped_at']).where('id', '=', NEW_1).executeTakeFirst();
+  assert.deepEqual(stored, { name: null, last_scraped_at: null });
   const joined = await add(NEW_2);
   assert.equal(joined.run.id, runId);
   assert.deepEqual(joined.players.map((p) => p.id), [NEW_1, NEW_2]);

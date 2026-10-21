@@ -5,6 +5,7 @@ import { type Kysely, sql } from 'kysely';
 import type { Database } from '../../db/schema.ts';
 import { parsePlayerId } from '../../scraper/player_id.ts';
 import { joinOrQueueRun, queueRun } from '../../scraper/runs.ts';
+import { ensurePlayers } from '../../scraper/store.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
@@ -159,6 +160,11 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
     }
 
     const userId = sessionUser(request).id;
+    // Registered players are stored right away, so a run that doesn't get to them (cancelled,
+    // interrupted) still leaves them for the next "all" run, which takes never scraped players first.
+    if (kind === 'register')
+      await ensurePlayers(db, playerIds!, userId);
+
     const runId = kind === 'register'  ||  kind === 'selected'
       ? await joinOrQueueRun(db, kind, playerIds!, userId)
       : await queueRun(db, kind, playerIds, userId);

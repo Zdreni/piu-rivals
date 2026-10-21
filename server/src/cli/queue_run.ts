@@ -2,6 +2,7 @@ import { createDatabase } from '../db/database.ts';
 import type { ScrapeRunKind } from '../db/schema.ts';
 import { parsePlayerId } from '../scraper/player_id.ts';
 import { queueRun } from '../scraper/runs.ts';
+import { ensurePlayers } from '../scraper/store.ts';
 
 // Queues a scrape run for the worker, until the admin panel can do it:
 //   npm run queue -- all
@@ -16,6 +17,9 @@ if (! kinds.includes(kind as ScrapeRunKind)  ||  (kind === 'all') !== (rest.leng
 }
 
 const db = createDatabase();
+if (kind === 'register')
+  await ensurePlayers(db, playerIds as string[]);
+
 const runId = await queueRun(db, kind as ScrapeRunKind, kind === 'all' ? null : playerIds as string[]);
 console.log(`Queued scrape run ${runId}`);
 await db.destroy();

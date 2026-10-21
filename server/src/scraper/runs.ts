@@ -176,7 +176,8 @@ export async function executeRun(db: Db, run: ScrapeRun) {
 
       const { playerId } = next;
       try {
-        // A registered player can join a selected run too, so both make sure the player is stored.
+        // Registering stores the player already; this brings back one deleted while waiting. A
+        // registered player can join a selected run too, so both do it.
         if (run.kind === 'register'  ||  run.kind === 'selected')
           await ensurePlayer(db, playerId, run.started_by_user_id);
 

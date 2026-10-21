@@ -32,8 +32,17 @@ export function playerCheckpoint(player: Player): Checkpoint {
 
 // Creates the player when they aren't stored yet.
 export async function ensurePlayer(db: Db, playerId: string, createdByUserId: number | null = null) {
+  await ensurePlayers(db, [playerId], createdByUserId);
+}
+
+
+// Creates the players that aren't stored yet, with only their GUID: the rest comes with their first scrape.
+export async function ensurePlayers(db: Db, playerIds: string[], createdByUserId: number | null = null) {
+  if (! playerIds.length)
+    return;
+
   await db.insertInto('players')
-    .values({ id: playerId, created_by_user_id: createdByUserId })
+    .values(playerIds.map((id) => ({ id, created_by_user_id: createdByUserId })))
     .ignore()
     .execute();
 }

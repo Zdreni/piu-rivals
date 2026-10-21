@@ -13,7 +13,7 @@ Session times are formatted by piuscores' own server, not the browser. Renders w
 An admin starts a **scrape run** from the admin panel. A run covers one of:
 - **all players**: each player gets their new sessions since their checkpoint
 - **selected players**: the same, for chosen players only
-- **register player**: paste a piuscores player link or GUID; the player is created and fully scraped
+- **register player**: paste a piuscores player link or GUID; the player is created (with only the GUID) as soon as it's requested, then fully scraped. If the run doesn't get to them (cancelled, interrupted), the next "all" run does, as it takes never scraped players first
 - **rescan**: chosen players' plays are deleted, their checkpoints cleared and their full history scraped again (for when a checkpoint is broken)
 
 The API only inserts a `scrape_runs` row with status `queued`. Register and selected players instead join a register or selected run that is already queued or running, so players added one after another (e.g. from the scrape extension) are scraped together; a player still waiting in an active run isn't added again. The worker reads the run's player list again before each player, under the run's row lock, as does a request adding players, so a run that is finishing either takes the new players or is seen finished and they go to a new run.
