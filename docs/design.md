@@ -45,7 +45,7 @@ An admin starts a **scrape run** from the admin panel. A run covers one of:
 
 The API only inserts a `scrape_runs` row with status `queued`. Register and selected players instead join a register or selected run that is already queued or running, so players added one after another (e.g. from the scrape extension) are scraped together; a player still waiting in an active run isn't added again. The worker reads the run's player list again before each player, under the run's row lock, as does a request adding players, so a run that is finishing either takes the new players or is seen finished and they go to a new run. The worker (a separate pm2 process) picks up queued runs, one at a time, and works through the players:
 
-1. Open the player's Sessions page and read their name and PUMBILITY.
+1. Open the player's Sessions page and read their name and PUMBILITY. PUMBILITY is read only when the newest session is Phoenix 2; a Phoenix session shows Phoenix's PUMBILITY.
 2. **Check for new results.** If the first session card still has exactly the stored title and timestamp of the latest scanned session, nothing changed and the player is done (one page load).
 3. **Find what to scan.** A session's timestamp is not stable: when a player keeps importing scores, they land in their newest session, whose timestamp moves later. Only the newest session can grow, so the second-newest scanned session (the **anchor**) never changes. The worker pages back through Phoenix 2 sessions until it finds the latest stored session unchanged, or the anchor, or reaches the first Phoenix (1) session or the end of the history:
    - **Latest stored session found unchanged:** only the sessions above it are scanned, and all of them are new.

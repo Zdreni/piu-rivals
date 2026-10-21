@@ -42,8 +42,10 @@ export async function scrapePlayer(
   let page = await browser.readPage();
 
   // The open session shows PUMBILITY as of that session, so it is current only for the newest one,
-  // which is open when the page loads.
-  const newestOpen = !! page.cards[0]?.isOpen  &&  ! page.hasNewerPage;
+  // which is open when the page loads. A Phoenix session shows Phoenix's PUMBILITY, so it's read
+  // only when the newest session is Phoenix 2.
+  const newest = page.hasNewerPage ? undefined : page.cards[0];
+  const newestOpen = !! newest?.isOpen  &&  newest.mix === 'Phoenix 2';
   const pumbility = newestOpen ? await browser.readOpenPumbility() : null;
   await sink.savePlayerInfo(page.playerName, pumbility);
 
