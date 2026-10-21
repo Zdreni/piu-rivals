@@ -1,11 +1,14 @@
 import { TAG, TOKEN_KEY } from './config.js';
+import { createPlayerLinks } from './player_links.js';
 import { createBadge } from './ui/badge.js';
 
 // Runs on piuscores: on a player's profile or Sessions page, shows whether the player is in
-// piu-rivals and offers to add and scrape one that isn't. Shows nothing unless you're signed in
-// to piu-rivals as an admin.
+// piu-rivals and offers to add and scrape one that isn't, and on every page marks the links to
+// players by whether they're in piu-rivals, with a button to add and scrape the ones who aren't. Shows nothing unless you're signed in to piu-rivals
+// as an admin.
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RUN_POLL_MS = 3000;
+const LINKS_POLL_MS = 10_000;
 const ACTIVE_STATUSES = ['queued', 'running'];
 
 const text = (el) => (el ? el.textContent.trim() : '');
@@ -29,10 +32,10 @@ function ownPlayerId() {
 const accountUsername = () => text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1]  ??  null;
 
 
-// Profile (/Player/<id>) and Sessions (/Player/<id>/Sessions) pages. Your own pages can also be
-// addressed by your username, e.g. /Player/Dino.
-function pagePlayerId() {
-  const segment = location.pathname.match(/^\/Player\/([^/]+)(?:\/Sessions)?\/?$/)?.[1];
+// The player of a profile (/Player/<id>) or Sessions (/Player/<id>/Sessions) path. Your own pages
+// can also be addressed by your username, e.g. /Player/Dino.
+function playerIdOf(pathname) {
+  const segment = pathname.match(/^\/Player\/([^/]+)(?:\/Sessions)?\/?$/)?.[1];
   if (! segment)
     return null;
 
@@ -43,6 +46,9 @@ function pagePlayerId() {
   const username = accountUsername();
   return username  &&  id.toLowerCase() === username.toLowerCase() ? ownPlayerId() : null;
 }
+
+
+const pagePlayerId = () => playerIdOf(location.pathname);
 
 
 const pagePlayerName = () => text(document.querySelector('main h5')).replace(/\s+[—–-]\s+Sessions$/i, '').trim();
@@ -90,6 +96,44 @@ async function refresh() {
 }
 
 
+// A player added from a link's button who is shown here gets the status box updated too.
+async function scrapeFromLink(playerId) {
+  const result = await send({ type: 'register', playerId });
+  if (playerId === shownPlayerId  &&  ! status?.run)
+    refresh().catch((error) => console.error(TAG, error));
+
+  return result;
+}
+
+
+const playerLinks = createPlayerLinks({ playerIdOf, onScrape: scrapeFromLink });
+
+// Answers can come back out of order; only the latest request's is used.
+let marksRequest = 0;
+let marksTimer = null;
+
+
+// While a player requested from a link isn't in piu-rivals yet, the marks are checked again now and
+// then, so the link turns green once the player is scraped.
+async function markLinks() {
+  const request = ++marksRequest;
+  clearTimeout(marksTimer);
+  const result = await send({ type: 'players' });
+  if (request !== marksRequest)
+    return;
+
+  // Marks already shown stay when the server can't be asked.
+  if (result.state !== 'error')
+    playerLinks.mark(result.ids ? new Set(result.ids) : null);
+
+  if (playerLinks.waiting())
+    marksTimer = setTimeout(markLinksLogged, LINKS_POLL_MS);
+}
+
+
+const markLinksLogged = () => markLinks().catch((error) => console.error(TAG, error));
+
+
 function watchRun(runId) {
   const playerId = shownPlayerId;
   clearTimeout(pollTimer);
@@ -115,6 +159,7 @@ function watchRun(runId) {
     }
 
     finished = { run, runPlayer };
+    markLinksLogged();
     await refresh();
   }, RUN_POLL_MS);
 }
@@ -167,15 +212,19 @@ let timer = null;
 
 new MutationObserver(() => {
   clearTimeout(timer);
-  timer = setTimeout(showPage, 300);
+  timer = setTimeout(() => {
+    showPage();
+    markLinksLogged();
+  }, 300);
 }).observe(document.body, { childList: true, subtree: true });
 
 
 // Signing in or out on the piu-rivals site, or coming back to this tab, checks again.
-const recheck = () => {
+function recheck() {
+  markLinksLogged();
   if (shownPlayerId  &&  ! status?.run)
     refresh().catch((error) => console.error(TAG, error));
-};
+}
 
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -191,3 +240,4 @@ document.addEventListener('visibilitychange', () => {
 
 
 showPage();
+markLinksLogged();

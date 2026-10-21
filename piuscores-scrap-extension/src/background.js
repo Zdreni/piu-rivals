@@ -100,13 +100,20 @@ async function runDetails(runId, playerId) {
 }
 
 
-// The extension works only for admins; for anyone else the page shows nothing.
-async function playerStatus({ playerId }) {
+// The extension works only for admins; for anyone else the page shows nothing. Gives the state to
+// answer with when the user isn't a signed-in admin, null when they are.
+async function notAdminState() {
   if (! await storedToken())
     return { state: 'signed-out' };
 
-  if (! (await currentUser()).isAdmin)
-    return { state: 'not-admin' };
+  return (await currentUser()).isAdmin ? null : { state: 'not-admin' };
+}
+
+
+async function playerStatus({ playerId }) {
+  const notAdmin = await notAdminState();
+  if (notAdmin)
+    return notAdmin;
 
   const [players, run] = await Promise.all([knownPlayers(), activeRunFor(playerId)]);
   const player = players.get(playerId)  ??  null;
@@ -132,7 +139,14 @@ async function scrapeRun({ runId, playerId }) {
 }
 
 
-const handlers = { status: playerStatus, register: registerPlayer, run: scrapeRun };
+// The IDs of the players in piu-rivals, to mark the links to players on piuscores pages.
+async function knownPlayerIds() {
+  const notAdmin = await notAdminState();
+  return notAdmin  ??  { state: 'ok', ids: [...(await knownPlayers()).keys()] };
+}
+
+
+const handlers = { status: playerStatus, register: registerPlayer, run: scrapeRun, players: knownPlayerIds };
 
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

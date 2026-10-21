@@ -2,7 +2,11 @@
 
 A Chrome extension for piu-rivals admins. On a player's profile (`/Player/<id>`) or Sessions
 page (`/Player/<id>/Sessions`) on `piuscores.arroweclip.se`, it shows whether the player is in
-piu-rivals and when they were last scraped.
+piu-rivals and when they were last scraped. On every piuscores page, links to players' profiles
+and Sessions pages get a green frame for players in piu-rivals and an orange one for players who
+aren't, followed by a small yellow **+** button that adds the player and scrapes them, as the
+status box's button does. Its title tells how the request went; the link turns green once the
+player is scraped.
 
 The extension never scrapes by itself. Its only button, **Add to piu-rivals and scrape**, asks
 for a `register` scrape run (`POST /admin/scrape-runs`) and shows the player's progress in it
@@ -40,6 +44,7 @@ piuscores page.
 | `src/background.js` | Service worker: API calls, the admin check, caches of `/me` and `/players` |
 | `src/piuscores.js` | Content script on piuscores: finds the page's player, runs the status box |
 | `src/ui/badge.js` | The status box (top right, in its own shadow root) |
+| `src/player_links.js` | Marks links to players by whether they're in piu-rivals, with their scrape buttons |
 
 ## Build
 

@@ -72,11 +72,15 @@
   async function runDetails(runId, playerId) {
     return withRunPlayer(await api("GET", `/admin/scrape-runs/${runId}`), playerId);
   }
-  async function playerStatus({ playerId }) {
+  async function notAdminState() {
     if (!await storedToken())
       return { state: "signed-out" };
-    if (!(await currentUser()).isAdmin)
-      return { state: "not-admin" };
+    return (await currentUser()).isAdmin ? null : { state: "not-admin" };
+  }
+  async function playerStatus({ playerId }) {
+    const notAdmin = await notAdminState();
+    if (notAdmin)
+      return notAdmin;
     const [players, run] = await Promise.all([knownPlayers(), activeRunFor(playerId)]);
     const player = players.get(playerId) ?? null;
     return { state: player ? "known" : "unknown", player, ...run ? await runDetails(run.id, playerId) : { run: null } };
@@ -92,7 +96,11 @@
       playersCache = null;
     return details;
   }
-  var handlers = { status: playerStatus, register: registerPlayer, run: scrapeRun };
+  async function knownPlayerIds() {
+    const notAdmin = await notAdminState();
+    return notAdmin ?? { state: "ok", ids: [...(await knownPlayers()).keys()] };
+  }
+  var handlers = { status: playerStatus, register: registerPlayer, run: scrapeRun, players: knownPlayerIds };
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const handler = handlers[message?.type];
     if (!handler)
