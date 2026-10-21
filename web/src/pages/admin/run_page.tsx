@@ -22,12 +22,17 @@ const PLAYER_STATES: Record<ScrapeRunPlayerState, { mark: string; title: string 
 
 function RunPlayer({ player }: { player: ScrapeRunPlayer }) {
   const { mark, title } = PLAYER_STATES[player.state];
+  const sessions = (
+    <a href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`} target="_blank" rel="noreferrer">
+      {player.id}
+    </a>
+  );
   return (
     <li>
       <span className={`player-mark player-${player.state}`} title={title} aria-label={title}>{mark}</span>
       {player.name
-        ? <span>{player.name} <span className="muted">({player.id})</span></span>
-        : <span>{player.id}</span>}
+        ? <span>{player.name} <span className="muted">({sessions})</span></span>
+        : <span>{sessions}</span>}
     </li>
   );
 }
