@@ -12,6 +12,11 @@ export interface HiddenGroup {
 
 const capitalized = (word: string) => word[0]!.toUpperCase() + word.slice(1);
 
+// Unplayed and lost charts list only this many lowest scores until expanded.
+const KEEP_LOWEST = 6;
+// Each click on a fold button lists this many more of its scores.
+const SHOW_STEP = 10;
+
 const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
 
 
@@ -32,8 +37,11 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   scoreCap: number;
   onSelectTab: (tab: TabId) => void;
 }) {
-  // Charts in the "Lost", "Tied" and "Hidden" tabs whose folded rivals were shown.
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  // By chart, how many of its folded rivals, and of its scores above the lowest ones, were shown.
+  const [shownFolded, setShownFolded] = useState<Map<number, number>>(new Map());
+  const [shownHigher, setShownHigher] = useState<Map<number, number>>(new Map());
+  const showMore = (shown: Map<number, number>, chartId: number) =>
+    new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
   const groups = hiddenGroups.filter(({ charts }) => charts.length);
   const tabCounts = Object.fromEntries(TABS.map((id) => [
     id, id === 'hidden'
@@ -57,17 +65,22 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   // Tabs are named after what their numbers count.
   const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
-  // Rivals whose result is one of `fold` are folded until their "show N others..." button is clicked.
-  const cards = (charts: ChartRow[], fold: Stat[], colorByRealDiff = false) => charts.map((chart) => (
+  // Rivals whose result is one of `fold`, or above the `keepLowest` lowest scores, are folded; each click on their
+  // button shows SHOW_STEP more.
+  const cards = (charts: ChartRow[], fold: Stat[], colorByRealDiff = false, keepLowest: number | null = null) => charts.map((chart) => (
     <ChartResultsItem
       key={chart.id}
       chart={chart}
       myName={myName}
-      fold={expanded.has(chart.id) ? [] : fold}
+      fold={fold}
+      foldedShown={shownFolded.get(chart.id)  ??  0}
+      keepLowest={keepLowest}
+      higherShown={shownHigher.get(chart.id)  ??  0}
       colorByRealDiff={colorByRealDiff}
       markTies={ties}
       scoreCap={scoreCap}
-      onExpand={() => setExpanded(new Set(expanded).add(chart.id))}
+      onExpandFolded={() => setShownFolded(showMore(shownFolded, chart.id))}
+      onExpandHigher={() => setShownHigher(showMore(shownHigher, chart.id))}
     />
   ));
 
@@ -87,8 +100,10 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
     } else {
       const visible = levelCharts.filter((chart) => chartTier(chart, ties) === tab);
       visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
-      // Lost charts fold the rivals you beat or truly tie with; tied ones only those you beat.
-      content = cards(visible, tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : []);
+      // Lost charts fold the rivals you beat or truly tie with; tied ones only those you beat. Lost and unplayed ones
+      // also fold all but the lowest scores.
+      content = cards(visible, tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : [], false,
+        tab === 'not-played'  ||  tab === 'rivals-win' ? KEEP_LOWEST : null);
     }
 
     body = <div className="chart-grid">{content}</div>;
