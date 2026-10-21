@@ -43,6 +43,24 @@
       return ["Scraped", run.failures ? `${counts(run)}; ${run.failures} failed` : counts(run)];
     return [`Scrape ${run.status}`, run.failures ? `${run.failures} failed` : `${counts(run)} before it stopped`];
   }
+  function playerText(run, runPlayer) {
+    const solo = run.playersTotal <= 1;
+    const others = run.playersTotal - 1;
+    switch (runPlayer.state) {
+      case "waiting": {
+        const ahead = runPlayer.index - run.playersDone;
+        return ["Queued for scraping", run.status === "queued" || ahead <= 0 ? "Waiting for the scrape worker\u2026" : `${ahead} player${ahead === 1 ? "" : "s"} ahead in the run\u2026`];
+      }
+      case "running":
+        return ["Scraping", solo ? `${counts(run)} so far\u2026` : `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run\u2026`];
+      case "done":
+        return ["Scraped", solo ? counts(run) : `Scraped in a run with ${others} other player${others === 1 ? "" : "s"}`];
+      case "failed":
+        return ["Scrape failed", "The run on piu-rivals has the error"];
+      default:
+        return ["Scrape stopped", `The run was ${run.status} before this player`];
+    }
+  }
   var ADD_LABEL = "Add to piu-rivals and scrape";
   var ADDED_LABEL = "Already in piu-rivals";
   function buttonFor(view) {
@@ -54,10 +72,10 @@
     if (view.state === "error")
       return { kind: "error", title: "piu-rivals", detail: view.message, button: null };
     const button = buttonFor(view);
-    const run = view.run || view.finishedRun;
+    const { run, runPlayer } = view.run ? view : view.finished ?? {};
     if (run) {
-      const [title, detail] = runText(run);
-      const failed = !ACTIVE_STATUSES.includes(run.status) && run.status !== "done";
+      const [title, detail] = runPlayer ? playerText(run, runPlayer) : runText(run);
+      const failed = runPlayer ? ["failed", "skipped"].includes(runPlayer.state) : !ACTIVE_STATUSES.includes(run.status) && run.status !== "done";
       return { kind: failed ? "error" : "known", title, detail, button };
     }
     if (view.state === "known") {
@@ -142,14 +160,14 @@
   var badge = createBadge({ onRegister: register });
   var shownPlayerId = null;
   var status = null;
-  var finishedRun = null;
+  var finished = null;
   var pollTimer = null;
   function render() {
     if (status.state === "signed-out" || status.state === "not-admin") {
       badge.hide();
       return;
     }
-    badge.show({ ...status, finishedRun, name: pagePlayerName() });
+    badge.show({ ...status, finished, name: pagePlayerName() });
   }
   async function refresh() {
     const playerId = shownPlayerId;
@@ -165,7 +183,7 @@
     const playerId = shownPlayerId;
     clearTimeout(pollTimer);
     pollTimer = setTimeout(async () => {
-      const result = await send({ type: "run", runId });
+      const result = await send({ type: "run", runId, playerId });
       if (playerId !== shownPlayerId)
         return;
       if (result.state === "error" || result.state === "signed-out") {
@@ -173,13 +191,14 @@
         render();
         return;
       }
-      if (ACTIVE_STATUSES2.includes(result.run.status)) {
-        status = { ...status, run: result.run };
+      const { run, runPlayer } = result;
+      if (runPlayer ? ["waiting", "running"].includes(runPlayer.state) : ACTIVE_STATUSES2.includes(run.status)) {
+        status = { ...status, run, runPlayer };
         render();
         watchRun(runId);
         return;
       }
-      finishedRun = result.run;
+      finished = { run, runPlayer };
       await refresh();
     }, RUN_POLL_MS);
   }
@@ -189,8 +208,8 @@
     if (playerId !== shownPlayerId)
       return;
     if (result.run) {
-      finishedRun = null;
-      status = { ...status, run: result.run };
+      finished = null;
+      status = { ...status, run: result.run, runPlayer: result.runPlayer };
       watchRun(result.run.id);
     } else {
       status = result;
@@ -206,7 +225,7 @@
     }
     shownPlayerId = playerId;
     status = null;
-    finishedRun = null;
+    finished = null;
     clearTimeout(pollTimer);
     if (!playerId) {
       badge.hide();

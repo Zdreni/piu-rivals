@@ -43,7 +43,7 @@ An admin starts a **scrape run** from the admin panel. A run covers one of:
 - **register player**: paste a piuscores player link or GUID; the player is created and fully scraped
 - **rescan**: chosen players' plays are deleted, their checkpoints cleared and their full history scraped again (for when a checkpoint is broken)
 
-The API only inserts a `scrape_runs` row with status `queued`. The worker (a separate pm2 process) picks up queued runs, one at a time, and works through the players:
+The API only inserts a `scrape_runs` row with status `queued`. Register and selected players instead join a register or selected run that is already queued or running, so players added one after another (e.g. from the scrape extension) are scraped together; a player still waiting in an active run isn't added again. The worker reads the run's player list again before each player, under the run's row lock, as does a request adding players, so a run that is finishing either takes the new players or is seen finished and they go to a new run. The worker (a separate pm2 process) picks up queued runs, one at a time, and works through the players:
 
 1. Open the player's Sessions page and read their name and PUMBILITY.
 2. **Check for new results.** If the first session card still has exactly the stored title and timestamp of the latest scanned session, nothing changed and the player is done (one page load).
@@ -102,7 +102,7 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 **Admin** (requires `is_admin`)
 - `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
 - `GET /admin/players`, `DELETE /admin/players/:id`
-- `POST /admin/scrape-runs` with `{ kind, players? }` queues a run; `players` are GUIDs or piuscores player links
+- `POST /admin/scrape-runs` with `{ kind, players? }` queues a run, or adds register and selected players to an active register or selected run; `players` are GUIDs or piuscores player links
 - `GET /admin/scrape-runs?state=current` lists queued and running runs in the order the worker takes them; `?state=previous[&limit=<n>]` lists finished ones, newest first, 50 per page by default
 - `GET /admin/scrape-runs/:id` returns progress, the players with their states, and failures, and the IDs of the runs before and after it
 - `POST /admin/scrape-runs/:id/cancel`

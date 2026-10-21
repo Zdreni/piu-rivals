@@ -78,11 +78,25 @@ async function knownPlayers() {
 }
 
 
-// A queued or running scrape run that covers the player.
+// A queued or running scrape run the player is still waiting in or being scraped by. A run's players
+// from playersDone on are the ones not finished yet.
 async function activeRunFor(playerId) {
   const { runs } = await api('GET', '/admin/scrape-runs?state=current');
   return runs.find((run) => ACTIVE_STATUSES.includes(run.status)
-    &&  (run.playerIds?.includes(playerId)  ||  run.currentPlayer?.id === playerId))  ??  null;
+    &&  (run.playerIds?.slice(run.playersDone).includes(playerId)  ||  run.currentPlayer?.id === playerId))  ??  null;
+}
+
+
+// A run response as { run, runPlayer }: runPlayer is the player's entry in the run, { id, name, state,
+// index }, the latest one when the player was added again after being scraped.
+function withRunPlayer({ run, players }, playerId) {
+  const index = players.findLastIndex((p) => p.id === playerId);
+  return { run, runPlayer: index >= 0 ? { ...players[index], index } : null };
+}
+
+
+async function runDetails(runId, playerId) {
+  return withRunPlayer(await api('GET', `/admin/scrape-runs/${runId}`), playerId);
 }
 
 
@@ -96,23 +110,25 @@ async function playerStatus({ playerId }) {
 
   const [players, run] = await Promise.all([knownPlayers(), activeRunFor(playerId)]);
   const player = players.get(playerId)  ??  null;
-  return { state: player ? 'known' : 'unknown', player, run };
+  return { state: player ? 'known' : 'unknown', player, ...(run ? await runDetails(run.id, playerId) : { run: null }) };
 }
 
 
+// The server adds the player to an active run when there is one, so players added one after another
+// are scraped together.
 async function registerPlayer({ playerId }) {
-  const { run } = await api('POST', '/admin/scrape-runs', { kind: 'register', players: [playerId] });
+  const response = await api('POST', '/admin/scrape-runs', { kind: 'register', players: [playerId] });
   playersCache = null;
-  return { run };
+  return withRunPlayer(response, playerId);
 }
 
 
-async function scrapeRun({ runId }) {
-  const { run } = await api('GET', `/admin/scrape-runs/${runId}`);
-  if (! ACTIVE_STATUSES.includes(run.status))
+async function scrapeRun({ runId, playerId }) {
+  const details = await runDetails(runId, playerId);
+  if (! ['waiting', 'running'].includes(details.runPlayer?.state))
     playersCache = null;
 
-  return { run };
+  return details;
 }
 
 

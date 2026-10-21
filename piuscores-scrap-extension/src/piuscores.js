@@ -62,7 +62,8 @@ const badge = createBadge({ onRegister: register });
 
 let shownPlayerId = null;
 let status = null;
-let finishedRun = null;
+// The run that last scraped the player, once the player is finished in it: { run, runPlayer }.
+let finished = null;
 let pollTimer = null;
 
 
@@ -72,7 +73,7 @@ function render() {
     return;
   }
 
-  badge.show({ ...status, finishedRun, name: pagePlayerName() });
+  badge.show({ ...status, finished, name: pagePlayerName() });
 }
 
 
@@ -94,7 +95,7 @@ function watchRun(runId) {
   clearTimeout(pollTimer);
 
   pollTimer = setTimeout(async () => {
-    const result = await send({ type: 'run', runId });
+    const result = await send({ type: 'run', runId, playerId });
     if (playerId !== shownPlayerId)
       return;
 
@@ -104,14 +105,16 @@ function watchRun(runId) {
       return;
     }
 
-    if (ACTIVE_STATUSES.includes(result.run.status)) {
-      status = { ...status, run: result.run };
+    // A run can go on with other players after this one is finished.
+    const { run, runPlayer } = result;
+    if (runPlayer ? ['waiting', 'running'].includes(runPlayer.state) : ACTIVE_STATUSES.includes(run.status)) {
+      status = { ...status, run, runPlayer };
       render();
       watchRun(runId);
       return;
     }
 
-    finishedRun = result.run;
+    finished = { run, runPlayer };
     await refresh();
   }, RUN_POLL_MS);
 }
@@ -124,8 +127,8 @@ async function register() {
     return;
 
   if (result.run) {
-    finishedRun = null;
-    status = { ...status, run: result.run };
+    finished = null;
+    status = { ...status, run: result.run, runPlayer: result.runPlayer };
     watchRun(result.run.id);
   } else {
     status = result;
@@ -146,7 +149,7 @@ function showPage() {
 
   shownPlayerId = playerId;
   status = null;
-  finishedRun = null;
+  finished = null;
   clearTimeout(pollTimer);
   if (! playerId) {
     badge.hide();

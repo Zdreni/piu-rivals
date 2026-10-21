@@ -54,6 +54,31 @@ function runText(run) {
 }
 
 
+// The player's own state in the run. A run can hold other players too (players added one after
+// another are scraped together); its counts then cover them all, so they're shown only for a run
+// of this player alone.
+function playerText(run, runPlayer) {
+  const solo = run.playersTotal <= 1;
+  const others = run.playersTotal - 1;
+  switch (runPlayer.state) {
+    case 'waiting': {
+      const ahead = runPlayer.index - run.playersDone;
+      return ['Queued for scraping', run.status === 'queued'  ||  ahead <= 0
+        ? 'Waiting for the scrape worker…'
+        : `${ahead} player${ahead === 1 ? '' : 's'} ahead in the run…`];
+    }
+    case 'running':
+      return ['Scraping', solo ? `${counts(run)} so far…` : `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run…`];
+    case 'done':
+      return ['Scraped', solo ? counts(run) : `Scraped in a run with ${others} other player${others === 1 ? '' : 's'}`];
+    case 'failed':
+      return ['Scrape failed', 'The run on piu-rivals has the error'];
+    default:
+      return ['Scrape stopped', `The run was ${run.status} before this player`];
+  }
+}
+
+
 const ADD_LABEL = 'Add to piu-rivals and scrape';
 const ADDED_LABEL = 'Already in piu-rivals';
 
@@ -68,16 +93,19 @@ function buttonFor(view) {
 }
 
 
-// What the box says for a view: { state, player, run, finishedRun, name, message }.
+// What the box says for a view: { state, player, run, runPlayer, finished, name, message }, where
+// finished is { run, runPlayer } of the run that last scraped the player.
 function describe(view) {
   if (view.state === 'error')
     return { kind: 'error', title: 'piu-rivals', detail: view.message, button: null };
 
   const button = buttonFor(view);
-  const run = view.run  ||  view.finishedRun;
+  const { run, runPlayer } = view.run ? view : view.finished  ??  {};
   if (run) {
-    const [title, detail] = runText(run);
-    const failed = ! ACTIVE_STATUSES.includes(run.status)  &&  run.status !== 'done';
+    const [title, detail] = runPlayer ? playerText(run, runPlayer) : runText(run);
+    const failed = runPlayer
+      ? ['failed', 'skipped'].includes(runPlayer.state)
+      : ! ACTIVE_STATUSES.includes(run.status)  &&  run.status !== 'done';
     return { kind: failed ? 'error' : 'known', title, detail, button };
   }
 

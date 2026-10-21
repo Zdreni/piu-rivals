@@ -63,7 +63,14 @@
   }
   async function activeRunFor(playerId) {
     const { runs } = await api("GET", "/admin/scrape-runs?state=current");
-    return runs.find((run) => ACTIVE_STATUSES.includes(run.status) && (run.playerIds?.includes(playerId) || run.currentPlayer?.id === playerId)) ?? null;
+    return runs.find((run) => ACTIVE_STATUSES.includes(run.status) && (run.playerIds?.slice(run.playersDone).includes(playerId) || run.currentPlayer?.id === playerId)) ?? null;
+  }
+  function withRunPlayer({ run, players }, playerId) {
+    const index = players.findLastIndex((p) => p.id === playerId);
+    return { run, runPlayer: index >= 0 ? { ...players[index], index } : null };
+  }
+  async function runDetails(runId, playerId) {
+    return withRunPlayer(await api("GET", `/admin/scrape-runs/${runId}`), playerId);
   }
   async function playerStatus({ playerId }) {
     if (!await storedToken())
@@ -72,18 +79,18 @@
       return { state: "not-admin" };
     const [players, run] = await Promise.all([knownPlayers(), activeRunFor(playerId)]);
     const player = players.get(playerId) ?? null;
-    return { state: player ? "known" : "unknown", player, run };
+    return { state: player ? "known" : "unknown", player, ...run ? await runDetails(run.id, playerId) : { run: null } };
   }
   async function registerPlayer({ playerId }) {
-    const { run } = await api("POST", "/admin/scrape-runs", { kind: "register", players: [playerId] });
+    const response = await api("POST", "/admin/scrape-runs", { kind: "register", players: [playerId] });
     playersCache = null;
-    return { run };
+    return withRunPlayer(response, playerId);
   }
-  async function scrapeRun({ runId }) {
-    const { run } = await api("GET", `/admin/scrape-runs/${runId}`);
-    if (!ACTIVE_STATUSES.includes(run.status))
+  async function scrapeRun({ runId, playerId }) {
+    const details = await runDetails(runId, playerId);
+    if (!["waiting", "running"].includes(details.runPlayer?.state))
       playersCache = null;
-    return { run };
+    return details;
   }
   var handlers = { status: playerStatus, register: registerPlayer, run: scrapeRun };
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -10,6 +10,7 @@ import { HttpError } from '../src/api/errors.ts';
 import { createDatabase } from '../src/db/database.ts';
 import { migrateToLatest } from '../src/db/migrations/index.ts';
 import type { ParsedPlay } from '../src/scraper/session_page.ts';
+import { takePlayer } from '../src/scraper/runs.ts';
 import { ensurePlayer, storeSession } from '../src/scraper/store.ts';
 
 // Runs the API against a real MySQL database, which it EMPTIES first: set TEST_DATABASE_URL to a
@@ -271,6 +272,42 @@ test('the run list has current runs in queue order and previous ones newest firs
 
   for (const id of queued)
     await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
+});
+
+
+test('added players join an active run, which takes them while it runs', { skip }, async () => {
+  const as = 'admin@example.com';
+  const NEW_1 = '44444444-4444-4444-8444-444444444444';
+  const NEW_2 = '55555555-5555-4555-8555-555555555555';
+  const add = async (playerId: string, kind = 'register') => {
+    const response = await call<ScrapeRunResponse>('POST', '/admin/scrape-runs', { as, body: { kind, players: [playerId] } });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    return response.body;
+  };
+
+  const first = await add(NEW_1);
+  const runId = first.run.id;
+  const joined = await add(NEW_2);
+  assert.equal(joined.run.id, runId);
+  assert.deepEqual(joined.players.map((p) => p.id), [NEW_1, NEW_2]);
+  assert.equal(joined.run.playersTotal, 2);
+  // A player still waiting isn't added twice; a stored player selected for scraping joins too.
+  assert.equal((await add(NEW_1)).players.length, 2);
+  assert.deepEqual((await add(RIVAL, 'selected')).players.map((p) => p.id), [NEW_1, NEW_2, RIVAL]);
+
+  // The worker takes a player added after it got through the list; with no more players, the run is done.
+  await db.updateTable('scrape_runs').set({ status: 'running' }).where('id', '=', runId).execute();
+  assert.deepEqual(await takePlayer(db, runId, 0), { playerId: NEW_1 });
+  await db.updateTable('scrape_runs').set({ players_done: 3 }).where('id', '=', runId).execute();
+  assert.equal((await add(OTHER)).run.id, runId);
+  assert.deepEqual(await takePlayer(db, runId, 3), { playerId: OTHER });
+  assert.deepEqual(await takePlayer(db, runId, 4), { finished: 'done' });
+
+  // The run is finished, so the next player gets a new one.
+  const next = await add(NEW_1);
+  assert.notEqual(next.run.id, runId);
+  assert.deepEqual(next.players.map((p) => p.id), [NEW_1]);
+  await call('POST', `/admin/scrape-runs/${next.run.id}/cancel`, { as });
 });
 
 

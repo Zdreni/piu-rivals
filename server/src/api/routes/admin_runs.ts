@@ -4,7 +4,7 @@ import { Type } from '@sinclair/typebox';
 import { type Kysely, sql } from 'kysely';
 import type { Database } from '../../db/schema.ts';
 import { parsePlayerId } from '../../scraper/player_id.ts';
-import { queueRun } from '../../scraper/runs.ts';
+import { joinOrQueueRun, queueRun } from '../../scraper/runs.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
@@ -132,7 +132,8 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
 
 
   // "all" scrapes every stored player; "register" adds players (by GUID or piuscores link) and
-  // scrapes them; "selected" and "rescan" work on stored players.
+  // scrapes them; "selected" and "rescan" work on stored players. Register and selected players join
+  // an active register or selected run when there is one.
   app.post('/admin/scrape-runs', {
     schema: {
       body: Type.Object({
@@ -157,7 +158,10 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
       }
     }
 
-    const runId = await queueRun(db, kind, playerIds, sessionUser(request).id);
+    const userId = sessionUser(request).id;
+    const runId = kind === 'register'  ||  kind === 'selected'
+      ? await joinOrQueueRun(db, kind, playerIds!, userId)
+      : await queueRun(db, kind, playerIds, userId);
     return runResponse(db, runId);
   });
 
