@@ -28,8 +28,11 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
   const { charts: byCharts, results: byResults } = stats[level]!;
   const counts = stats[level]![countBy];
   // The hidden segment has no number; its count is in the tooltip, which shows both countings. Charts are never tied.
+  // A segment shows at least 5% of the bar and never less than its label with 6px on either side; digits are 1ch each.
   const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}) =>
-    (n ? <span className={className} style={{ flexGrow: n, ...style }}>{label}</span> : null);
+    (n ? <span className={className} style={{ flexGrow: n, minWidth: `calc(max(5%, ${String(label).length}ch + 12px) + var(--overlap))`, ...style }}>
+      {label}
+    </span> : null);
 
   const tipLine = (stat: keyof Counts) => `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
     + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;

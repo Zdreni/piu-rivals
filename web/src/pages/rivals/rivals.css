@@ -165,9 +165,11 @@
 .rivals .level-bar:hover { opacity: 1; }
 .rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
 .rivals .level-bar.placeholder { visibility: hidden; }
-/* Each segment shows its count and is always wide enough for it, even if that bends the proportions. */
-.rivals .level-segs > span { flex: 0 0 0; min-width: max-content; padding: 0 3px; overflow: hidden; display: flex; align-items: center;
-                            justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; color: rgba(0,0,0,.55); }
+/* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 6px on
+   either side (see LevelBar), even if that bends the proportions. There's no padding, so it can't add to small segments. */
+.rivals .level-segs > span { flex: 0 0 0; box-sizing: border-box; --overlap: 0px; overflow: hidden; display: flex; align-items: center;
+                            justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums;
+                            color: rgba(0,0,0,.55); }
 /* Wins and np darken from the level number outward. Losses burn from red in the middle to orange at
    the end; how orange is set by --heat (0..1), and only the most losses of any level reach full orange. */
 .rivals .level-bar .win { background: linear-gradient(to right, #72C457, #3F7D24); }
@@ -180,16 +182,17 @@
 .rivals .level-bar .tie { background: linear-gradient(to right, #F2E8B6, #B8AC72); }
 .rivals .level-bar.single .tie { background: linear-gradient(to left, #F2E8B6, #B8AC72); }
 .rivals .level-bar .hidden-loss { background: #34140E; }
-/* Segments round their outer corners and lie over the next segment, which slides under them. */
+/* Segments round their outer corners and lie over the next segment, which slides 2px under them. Its padding and
+   min-width make up for those 2px, so what shows stays proportional and the count stays centered. */
 .rivals .level-segs > span { position: relative; }
 .rivals .level-bar .win { z-index: 4; }
 .rivals .level-bar .tie { z-index: 3; }
 .rivals .level-bar .unplayed { z-index: 2; }
 .rivals .level-bar .hidden-loss { z-index: 1; }
 .rivals .level-segs > span:not(.lose) { border-radius: 0 2px 2px 0; }
-.rivals .level-segs > span + span { margin-left: -2px; padding-left: 5px; }
+.rivals .level-segs > span + span { --overlap: 2px; margin-left: -2px; padding-left: 2px; }
 .rivals .level-bar.single .level-segs > span:not(.lose) { border-radius: 2px 0 0 2px; }
-.rivals .level-bar.single .level-segs > span + span { margin: 0 -2px 0 0; padding: 0 5px 0 3px; }
+.rivals .level-bar.single .level-segs > span + span { margin: 0 -2px 0 0; padding: 0 2px 0 0; }
 .rivals .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
 .rivals .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
 .rivals .level-other .level-bar { grid-column: 2 / -1; }
