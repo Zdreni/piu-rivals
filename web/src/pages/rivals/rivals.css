@@ -224,7 +224,7 @@
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
 .rivals .chart-card-results { padding: 4px 0; }
 .rivals .result { display: grid; grid-template-columns: minmax(0, 1fr) 96px 76px; gap: 8px; padding: 3px 12px; font-size: 16px; }
-.rivals .result:nth-child(even) { background: rgba(255,255,255,.04); }
+.rivals .result:nth-child(even of .result) { background: rgba(255,255,255,.04); }
 /* Names are indented under the track name. */
 .rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rivals .result .score { color: #9AB3A3; }
@@ -239,7 +239,7 @@
 .rivals .show-others { display: block; width: 100%; padding: 2px 12px 6px; text-align: center; color: #9AB3A3; opacity: .6;
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .show-others .blue { color: #3FA9F5; }
-.rivals .show-others.top { padding: 6px 12px 2px; }
+.rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
 /* Narrow screens (e.g. a tablet in portrait): rivals and levels side by side, the results below them,

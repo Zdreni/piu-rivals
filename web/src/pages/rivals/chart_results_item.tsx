@@ -3,6 +3,12 @@ import { Delta, Score } from './format.tsx';
 import { type ChartRow, type Dates, displayName, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
+// How many of the highest and of the lowest scores a card lists before folding the ones between.
+export interface Keep {
+  top: number;
+  bottom: number;
+}
+
 type Entry = (RivalResult & { me?: false }) | (Dates & { me: true; score: number });
 
 
@@ -25,18 +31,19 @@ function foldTone(entries: Entry[], markTies: boolean) {
 
 // One chart's card: the track and chart in its header, then you and its rivals by score, with each rival's diff.
 // Rivals whose result is one of `fold` (e.g. won), when 2 or more, are folded into a "N more..." button, which
-// calls `onExpandFolded`; `foldedShown` of them, highest first, are listed anyway. With `keepLowest`, only that many
-// lowest of the other scores are listed, the higher ones (when 2 or more) folded into a "N more..." button on top,
-// which calls `onExpandHigher`; `higherShown` more of them, lowest first, are listed anyway. With `colorByRealDiff`, the diff is coloured by the real diff instead of the
-// capped one. `markTies` colours the diffs of true ties.
+// calls `onExpandFolded`; `foldedShown` of them, highest first, are listed anyway. With `keep`, only its `top` highest
+// and `bottom` lowest of the other scores are listed, the ones between (when 2 or more) folded into a "N more..."
+// button, which calls `onExpandHigher`; `higherShown` of them, highest first, are listed above the button anyway.
+// With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
+// diffs of true ties.
 export function ChartResultsItem({
-  chart, myName, fold, foldedShown, keepLowest, higherShown, colorByRealDiff, markTies, scoreCap, onExpandFolded, onExpandHigher,
+  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, markTies, scoreCap, onExpandFolded, onExpandHigher,
 }: {
   chart: ChartRow;
   myName: string;
   fold: Stat[];
   foldedShown: number;
-  keepLowest: number | null;
+  keep: Keep | null;
   higherShown: number;
   colorByRealDiff: boolean;
   markTies: boolean;
@@ -59,9 +66,11 @@ export function ChartResultsItem({
   const folded = lower >= 2 ? lower : 0;
   const hiddenBelow = foldable.slice(foldable.length - folded);
   const kept = all.filter((entry) => ! isFolded(entry));
-  const higher = keepLowest === null ? 0 : kept.length - keepLowest - higherShown;
+  const firstHidden = (keep?.top  ??  0) + higherShown;
+  const higher = keep === null ? 0 : kept.length - firstHidden - keep.bottom;
   const above = higher >= 2 ? higher : 0;
-  const hiddenAbove = kept.slice(0, above);
+  // The rivals you don't fold are the top of the list, so the ones after the shown highest are hidden.
+  const hiddenAbove = kept.slice(firstHidden, firstHidden + above);
   const hidden = new Set([...hiddenAbove, ...hiddenBelow]);
   const list = all.filter((entry) => ! hidden.has(entry));
 
@@ -91,15 +100,20 @@ export function ChartResultsItem({
     );
   });
 
+  if (above > 0) {
+    rows.splice(firstHidden, 0, (
+      <button key="higher" className="show-others top" type="button" onClick={onExpandHigher}>
+        ...<span className={foldTone(hiddenAbove, markTies)}>{above}</span> more...
+      </button>
+    ));
+  }
+
   return (
     <section className="chart-card">
       <header className="chart-card-head">
         <span className="track" title={chart.track}>{chart.track}</span>
         <span className="chart-label">{chart.chart}</span>
       </header>
-      {above > 0  &&  (
-        <button className="show-others top" type="button" onClick={onExpandHigher}>...<span className={foldTone(hiddenAbove, markTies)}>{above}</span> more...</button>
-      )}
       <div className="chart-card-results">{rows}</div>
       {folded > 0  &&  (
         <button className="show-others" type="button" onClick={onExpandFolded}>...<span className={foldTone(hiddenBelow, markTies)}>{folded}</span> more...</button>
