@@ -34,7 +34,7 @@ function Header() {
           )}
           <div className="account">
             <span className="muted" title={me.user.email}>{me.user.displayName  ||  me.user.email}</span>
-            <button type="button" className="link-button" onClick={() => void signOut()}>Sign out</button>
+            <button type="button" className="secondary small-button" onClick={() => void signOut()}>Sign out</button>
           </div>
         </>
       )}
