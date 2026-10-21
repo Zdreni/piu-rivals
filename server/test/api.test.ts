@@ -257,6 +257,8 @@ test('the run list has current runs in queue order and previous ones newest firs
   assert.equal(page.hasMore, true);
   const all = await list('?state=previous');
   assert.equal(all.hasMore, false);
+  assert.equal(page.total, all.runs.length);
+  assert.equal(current.total, queued.length);
   assert.equal(all.runs.every((r) => r.status === 'cancelled'), true);
   assert.equal((await call('GET', '/admin/scrape-runs', { as })).status, 400);
 

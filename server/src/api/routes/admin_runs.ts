@@ -65,16 +65,16 @@ const toRun = (row: RunRow): ScrapeRun => ({
 async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', limit: number): Promise<ScrapeRunsResponse> {
   if (state === 'current') {
     const rows = await runQuery(db).where('r.status', 'in', ACTIVE_STATUSES).orderBy('r.id').execute();
-    return { runs: rows.map(toRun), hasMore: false };
+    return { runs: rows.map(toRun), hasMore: false, total: rows.length };
   }
 
-  const rows = await runQuery(db)
-    .where('r.status', 'not in', ACTIVE_STATUSES)
-    .orderBy('r.id', 'desc')
-    .limit(limit + 1)
-    .execute();
+  const [rows, count] = await Promise.all([
+    runQuery(db).where('r.status', 'not in', ACTIVE_STATUSES).orderBy('r.id', 'desc').limit(limit + 1).execute(),
+    db.selectFrom('scrape_runs').select(sql<number>`COUNT(*)`.as('total')).where('status', 'not in', ACTIVE_STATUSES)
+      .executeTakeFirstOrThrow(),
+  ]);
 
-  return { runs: rows.slice(0, limit).map(toRun), hasMore: rows.length > limit };
+  return { runs: rows.slice(0, limit).map(toRun), hasMore: rows.length > limit, total: Number(count.total) };
 }
 
 

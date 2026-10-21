@@ -109,7 +109,7 @@ export function RunsPage() {
 
       <div className="page-tabs" role="tablist" aria-label="Scraping">
         {tabButton('current', 'Current', current.data?.runs.length)}
-        {tabButton('previous', 'Previous')}
+        {tabButton('previous', 'Previous', previous.data?.total)}
       </div>
 
       <div role="tabpanel">

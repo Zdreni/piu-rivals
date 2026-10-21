@@ -152,6 +152,8 @@ export interface ScrapeRunsResponse {
   runs: ScrapeRun[];
   // There are older finished runs beyond the limit.
   hasMore: boolean;
+  // How many runs there are in that state in all, beyond the limit too.
+  total: number;
 }
 
 export interface ScrapeRunResponse {
