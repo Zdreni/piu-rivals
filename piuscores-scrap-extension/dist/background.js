@@ -62,7 +62,7 @@
     return playersCache.byId;
   }
   async function activeRunFor(playerId) {
-    const { runs } = await api("GET", "/admin/scrape-runs?active=true");
+    const { runs } = await api("GET", "/admin/scrape-runs?state=current");
     return runs.find((run) => ACTIVE_STATUSES.includes(run.status) && (run.playerIds?.includes(playerId) || run.currentPlayer?.id === playerId)) ?? null;
   }
   async function playerStatus({ playerId }) {

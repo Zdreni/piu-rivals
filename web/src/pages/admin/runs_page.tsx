@@ -1,30 +1,83 @@
-import type { ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
+import type { ScrapeRun, ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
-import { isActive, RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
+import { RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
 import { formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
-// Runs per page; "Show older runs" asks the server for this many more.
+// Finished runs per page; "Show older runs" asks the server for this many more.
 const PAGE_SIZE = 50;
+
+// Current: queued and running runs, in the order the worker takes them. Previous: finished ones, newest first.
+export type RunsTab = 'current' | 'previous';
+
+
+// The run list's address with a tab open; Current is the default.
+export const runsTabPath = (tab: RunsTab) => (tab === 'previous' ? '/admin/runs?tab=previous' : '/admin/runs');
+
+
+function RunsTable({ runs }: { runs: ScrapeRun[] }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Run</th>
+            <th>Status</th>
+            <th>Players</th>
+            <th className="number">Sessions</th>
+            <th className="number">Plays</th>
+            <th className="number">Bests</th>
+            <th className="number">Failures</th>
+            <th>Started</th>
+          </tr>
+        </thead>
+        <tbody>
+          {runs.map((run) => (
+            <tr key={run.id}>
+              <td>
+                <Link to={`/admin/runs/${run.id}`}>#{run.id} {runKindLabel(run)}</Link>
+                {run.startedBy  &&  <div className="muted small">{run.startedBy}</div>}
+              </td>
+              <td><RunStatus run={run} /></td>
+              <td><RunProgress run={run} /></td>
+              <td className="number">{formatNumber(run.sessionsAdded)}</td>
+              <td className="number">{formatNumber(run.playsAdded)}</td>
+              <td className="number">{formatNumber(run.bestsImproved)}</td>
+              <td className={`number${run.failures ? ' error' : ''}`}>{formatNumber(run.failures)}</td>
+              <td className="muted">{formatTime(run.startedAt  ??  run.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 
 export function RunsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: RunsTab = searchParams.get('tab') === 'previous' ? 'previous' : 'current';
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const runs = useLoad(() => api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?limit=${limit}`), [limit]);
+  const current = useLoad(() => api<ScrapeRunsResponse>('GET', '/admin/scrape-runs?state=current'), []);
+  const previous = useLoad(() => api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?state=previous&limit=${limit}`), [limit]);
   const [error, setError] = useState<string | null>(null);
-  const active = runs.data?.runs.some(isActive)  ??  false;
+  const active = !! current.data?.runs.length;
 
-  // Refreshes while a run is queued or running.
+  // Refreshes both lists while a run is queued or running: finished runs move from Current to Previous.
   useEffect(() => {
     if (! active)
       return;
 
-    const timer = setInterval(() => void runs.reload(), POLL_MS);
+    const timer = setInterval(() => {
+      void current.reload();
+      void previous.reload();
+    }, POLL_MS);
+
     return () => clearInterval(timer);
-  }, [active, runs.reload]);
+  }, [active, current.reload, previous.reload]);
 
   const scrapeAll = async () => {
     try {
@@ -34,6 +87,13 @@ export function RunsPage() {
       setError(errorText(e));
     }
   };
+
+  const shown = tab === 'current' ? current : previous;
+  const tabButton = (id: RunsTab, label: string, count?: number) => (
+    <button type="button" role="tab" aria-selected={tab === id} onClick={() => setSearchParams(id === 'previous' ? { tab: id } : {})}>
+      {label}{count !== undefined  &&  <span className="tab-count"> {count}</span>}
+    </button>
+  );
 
   return (
     <section>
@@ -45,46 +105,23 @@ export function RunsPage() {
         The scrape worker runs one run at a time, in order. Start runs for single players from the Players page.
       </p>
 
-      {(error  ??  runs.error)  &&  <p className="error" role="alert">{error  ??  runs.error}</p>}
+      {(error  ??  shown.error)  &&  <p className="error" role="alert">{error  ??  shown.error}</p>}
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Run</th>
-              <th>Status</th>
-              <th>Players</th>
-              <th className="number">Sessions</th>
-              <th className="number">Plays</th>
-              <th className="number">Bests</th>
-              <th className="number">Failures</th>
-              <th>Started</th>
-            </tr>
-          </thead>
-          <tbody>
-            {runs.data?.runs.map((run) => (
-              <tr key={run.id}>
-                <td>
-                  <Link to={`/admin/runs/${run.id}`}>#{run.id} {runKindLabel(run)}</Link>
-                  {run.startedBy  &&  <div className="muted small">{run.startedBy}</div>}
-                </td>
-                <td><RunStatus run={run} /></td>
-                <td><RunProgress run={run} /></td>
-                <td className="number">{formatNumber(run.sessionsAdded)}</td>
-                <td className="number">{formatNumber(run.playsAdded)}</td>
-                <td className="number">{formatNumber(run.bestsImproved)}</td>
-                <td className={`number${run.failures ? ' error' : ''}`}>{formatNumber(run.failures)}</td>
-                <td className="muted">{formatTime(run.startedAt  ??  run.createdAt)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="page-tabs" role="tablist" aria-label="Scrape runs">
+        {tabButton('current', 'Current', current.data?.runs.length)}
+        {tabButton('previous', 'Previous')}
       </div>
-      {! runs.data  &&  ! runs.error  &&  <p className="muted">Loading…</p>}
-      {runs.data  &&  ! runs.data.runs.length  &&  <p className="muted">No scrape runs yet.</p>}
-      {runs.data?.hasMore  &&  (
-        <p><button type="button" className="secondary" onClick={() => setLimit(limit + PAGE_SIZE)}>Show older runs</button></p>
-      )}
+
+      <div role="tabpanel">
+        {shown.data  &&  shown.data.runs.length > 0  &&  <RunsTable runs={shown.data.runs} />}
+        {! shown.data  &&  ! shown.error  &&  <p className="muted">Loading…</p>}
+        {shown.data  &&  ! shown.data.runs.length  &&  (
+          <p className="muted">{tab === 'current' ? 'Nothing is queued or running.' : 'No finished runs yet.'}</p>
+        )}
+        {tab === 'previous'  &&  previous.data?.hasMore  &&  (
+          <p><button type="button" className="secondary" onClick={() => setLimit(limit + PAGE_SIZE)}>Show older runs</button></p>
+        )}
+      </div>
     </section>
   );
 }

@@ -248,7 +248,7 @@ test('admins queue and cancel scrape runs', { skip }, async () => {
 });
 
 
-test('the run list pages by limit and always includes queued runs', { skip }, async () => {
+test('the run list has current runs in queue order and previous ones newest first', { skip }, async () => {
   const as = 'admin@example.com';
   const queue = async () => (await call<ScrapeRunResponse>('POST', '/admin/scrape-runs', { as, body: { kind: 'all' } })).body.run.id;
   const list = async (query: string) => {
@@ -257,20 +257,30 @@ test('the run list pages by limit and always includes queued runs', { skip }, as
     return response.body;
   };
 
-  const queued = await queue();
-  const newer = [await queue(), await queue()];
-  for (const id of newer)
+  const queued = [await queue(), await queue()];
+  const finished = [await queue(), await queue()];
+  for (const id of finished)
     await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
 
-  const page = await list('?limit=2');
-  assert.deepEqual(page.runs.map((r) => r.id), [newer[1], newer[0], queued]);
-  assert.equal(page.hasMore, true);
-  assert.deepEqual((await list('?active=true')).runs.map((r) => r.id), [queued]);
+  const current = await list('?state=current');
+  assert.deepEqual(current.runs.map((r) => r.id), queued);
+  assert.equal(current.hasMore, false);
 
-  const all = await list('');
+  const page = await list('?state=previous&limit=2');
+  assert.deepEqual(page.runs.map((r) => r.id), [finished[1], finished[0]]);
+  assert.equal(page.hasMore, true);
+  const all = await list('?state=previous');
   assert.equal(all.hasMore, false);
-  assert.equal(all.runs[all.runs.length - 1]!.id < queued, true);
-  await call('POST', `/admin/scrape-runs/${queued}/cancel`, { as });
+  assert.equal(all.runs.every((r) => r.status === 'cancelled'), true);
+  assert.equal((await call('GET', '/admin/scrape-runs', { as })).status, 400);
+
+  const run = (await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${queued[1]}`, { as })).body;
+  assert.equal(run.previousRunId, queued[0]);
+  assert.equal(run.nextRunId, finished[0]);
+  assert.equal((await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${finished[1]}`, { as })).body.nextRunId, null);
+
+  for (const id of queued)
+    await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
 });
 
 

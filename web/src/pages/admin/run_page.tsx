@@ -1,9 +1,10 @@
 import type { ScrapeRunResponse } from '@piu-rivals/shared';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { isActive, RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
 import { formatNumber, formatTime, playerLabel, useLoad } from '../../util.ts';
+import { runsTabPath } from './runs_page.tsx';
 
 const POLL_MS = 3000;
 
@@ -20,6 +21,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function RunPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const details = useLoad(() => api<ScrapeRunResponse>('GET', `/admin/scrape-runs/${id}`), [id]);
   const [error, setError] = useState<string | null>(null);
   const run = details.data?.run;
@@ -50,16 +52,31 @@ export function RunPage() {
   }
 
   const failures = details.data?.failureList  ??  [];
+  const { previousRunId, nextRunId } = details.data!;
+  // Stopping after the last player would change nothing.
+  const onLastPlayer = run.status === 'running'  &&  run.playersTotal > 0  &&  run.playersDone >= run.playersTotal - 1;
+  const stepButton = (runId: number | null, label: string) => (
+    <button type="button" className="secondary" disabled={! runId} title={runId ? `Run #${runId}` : undefined}
+            onClick={() => navigate(`/admin/runs/${runId}`)}>
+      {label}
+    </button>
+  );
+
   return (
     <section>
-      <p><Link to="/admin/runs">← Scrape runs</Link></p>
+      <p><Link to={runsTabPath(active ? 'current' : 'previous')}>← Scrape runs</Link></p>
       <div className="title-row">
         <h1>Run #{run.id}: {runKindLabel(run)}</h1>
-        {active  &&  ! run.cancelRequested  &&  (
-          <button type="button" className="secondary" onClick={() => void cancel()}>
-            {run.status === 'queued' ? 'Cancel' : 'Stop after current player'}
-          </button>
-        )}
+        <div className="buttons">
+          {active  &&  ! run.cancelRequested  &&  (
+            <button type="button" className="secondary" disabled={onLastPlayer} onClick={() => void cancel()}
+                    title={onLastPlayer ? "This is the run's last player; the run ends after it anyway" : undefined}>
+              {run.status === 'queued' ? 'Cancel' : 'Stop after current player'}
+            </button>
+          )}
+          {stepButton(previousRunId, '← Previous')}
+          {stepButton(nextRunId, 'Next →')}
+        </div>
       </div>
 
       <div className="card">

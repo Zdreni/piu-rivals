@@ -149,13 +149,17 @@ export interface ScrapeRun {
 }
 
 export interface ScrapeRunsResponse {
-  // Newest first: the newest runs up to the asked limit, plus any older ones still queued or running.
+  // Current runs (queued, running) in the order the worker takes them; previous (finished) ones newest
+  // first, up to the asked limit.
   runs: ScrapeRun[];
-  // There are older runs beyond the limit.
+  // There are older finished runs beyond the limit.
   hasMore: boolean;
 }
 
 export interface ScrapeRunResponse {
   run: ScrapeRun;
   failureList: ScrapeFailure[];
+  // The runs queued just before and after this one; null at either end.
+  previousRunId: number | null;
+  nextRunId: number | null;
 }
