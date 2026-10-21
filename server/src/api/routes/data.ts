@@ -27,8 +27,20 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
 
 
   app.get('/players', async (): Promise<PlayersResponse> => {
-    const rows = await db.selectFrom('players').select(playerSummaryColumns).orderBy('players.name').execute();
-    return { players: rows.map(playerSummary) };
+    const counts = db.selectFrom('best_results')
+      .select(['player_id', sql<number>`COUNT(*)`.as('charts'), sql<number>`SUM(tries)`.as('plays')])
+      .groupBy('player_id')
+      .as('counts');
+
+    const rows = await db.selectFrom('players')
+      .leftJoin(counts, 'counts.player_id', 'players.id')
+      .select([...playerSummaryColumns, 'counts.charts', 'counts.plays'])
+      .orderBy('players.name')
+      .execute();
+
+    return {
+      players: rows.map((row) => ({ ...playerSummary(row), plays: Number(row.plays  ??  0), charts: Number(row.charts  ??  0) })),
+    };
   });
 
 

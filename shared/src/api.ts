@@ -50,8 +50,14 @@ export interface PreferencesResponse {
   preferences: Preferences;
 }
 
+// A registered player with how much of them is scraped: `plays` scores in all, on `charts` charts.
+export interface ListedPlayer extends PlayerSummary {
+  plays: number;
+  charts: number;
+}
+
 export interface PlayersResponse {
-  players: PlayerSummary[];
+  players: ListedPlayer[];
 }
 
 export interface Chart {
@@ -103,10 +109,8 @@ export interface AdminUsersResponse {
   users: AdminUser[];
 }
 
-export interface AdminPlayer extends PlayerSummary {
+export interface AdminPlayer extends ListedPlayer {
   createdAt: string;
-  plays: number;
-  charts: number;
   lastSessionTimestamp: string | null;
 }
 

@@ -109,6 +109,7 @@
 .rivals .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
 .rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
+.rivals .rival-stats .error { color: #FF5A5A; }
 .rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                       font-size: 13px; text-decoration: none; }
 .rivals .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
@@ -134,9 +135,7 @@
                            padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
 .rivals .rival-add input::placeholder { color: #8A9590; }
 .rivals .rival-add input:focus { border-color: #4FE33F; }
-.rivals .rival.other { padding: 6px; cursor: default; }
-.rivals .rival.other:hover { background: rgba(255,255,255,.05); }
-.rivals .rival.other:nth-child(even):hover { background: none; }
+.rivals .rival.other { padding: 6px; }
 .rivals .rival-plus { flex-shrink: 0; width: 28px; height: 22px; background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034;
                       border-radius: 4px; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .rival-plus-spacer { flex-shrink: 0; width: 28px; }

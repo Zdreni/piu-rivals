@@ -62,6 +62,24 @@ export function tierCounts(charts: ChartRow[]): Counts {
 }
 
 
+// Each rival's results lost / non-matched / won, judged on the real scores, with none of the settings applied (a
+// true tie counts as won).
+export function realCounts(charts: ChartRow[]): Map<string, Counts> {
+  const stats = new Map<string, Counts>();
+  for (const chart of charts) {
+    for (const rival of chart.rivals) {
+      let counts = stats.get(rival.playerId);
+      if (! counts)
+        stats.set(rival.playerId, counts = { ...NO_COUNTS });
+
+      counts[rival.realDelta === null ? 'unplayed' : rival.realDelta < 0 ? 'lose' : 'win']++;
+    }
+  }
+
+  return stats;
+}
+
+
 // Like tierCounts, but counts rival results instead of charts, whatever the chart's tier.
 export function resultCounts(charts: ChartRow[]): Counts {
   const counts = { ...NO_COUNTS };

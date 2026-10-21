@@ -12,7 +12,7 @@ export interface ListedPlayer {
   lastScrapedAt: string | null;
 }
 
-const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap filter';
+export const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap filter';
 
 const statsSoloTip = 'Solo: the same counts as in the header, with the score cap and NP min rivals applied';
 
@@ -45,7 +45,7 @@ function ScrapeBadge({ lastScrapedAt, href }: { lastScrapedAt: string | null; hr
 }
 
 
-function Count({ value, label }: { value: number; label: string }) {
+export function Count({ value, label }: { value: number; label: string }) {
   return <><span className={value === 0 ? 'zero' : undefined}>{formatNumber(value)}</span> {label}</>;
 }
 

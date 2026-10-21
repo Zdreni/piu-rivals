@@ -4,7 +4,7 @@ import { type ChartRow, displayName, type PlayerBests } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { OtherPlayers, usePlayers } from './other_players.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
-import { type Counts, NO_COUNTS, STAT_WORDS } from './stats.ts';
+import { type Counts, NO_COUNTS, realCounts, STAT_WORDS } from './stats.ts';
 import type { RivalTab } from './ui_state.ts';
 
 
@@ -42,20 +42,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
 }) {
   const container = useRef<HTMLDivElement>(null);
   const { players: allPlayers, error: playersError } = usePlayers();
-  const rivalStats = useMemo(() => {
-    const stats = new Map<string, Counts>();
-    for (const chart of charts) {
-      for (const rival of chart.rivals) {
-        let counts = stats.get(rival.playerId);
-        if (! counts)
-          stats.set(rival.playerId, counts = { ...NO_COUNTS });
-
-        counts[rival.realDelta === null ? 'unplayed' : rival.realDelta < 0 ? 'lose' : 'win']++;
-      }
-    }
-
-    return stats;
-  }, [charts]);
+  const rivalStats = useMemo(() => realCounts(charts), [charts]);
 
   // You and your rivals by PUMBILITY (highest first); those without one follow alphabetically.
   const players = [me, ...rivals].map(listed).sort((a, b) => (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
@@ -88,7 +75,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
         {tabButton('others', 'Others', othersCount)}
       </div>
       {tab === 'others'
-        ? <OtherPlayers me={me} players={allPlayers} error={playersError} rivals={rivalIds} onAdd={add} />
+        ? <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivals={rivalIds} onAdd={add} />
         : (
           <div className="rival-scroll" ref={container}>
             {players.map((player) => {
