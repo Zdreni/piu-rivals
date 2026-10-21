@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
   AdminPlayersResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
 import { buildApp } from '../src/api/app.ts';
@@ -244,6 +245,32 @@ test('admins queue and cancel scrape runs', { skip }, async () => {
   const cancelled = await call<ScrapeRunResponse>('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' });
   assert.equal(cancelled.body.run.status, 'cancelled');
   assert.equal((await call('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' })).status, 409);
+});
+
+
+test('the run list pages by limit and always includes queued runs', { skip }, async () => {
+  const as = 'admin@example.com';
+  const queue = async () => (await call<ScrapeRunResponse>('POST', '/admin/scrape-runs', { as, body: { kind: 'all' } })).body.run.id;
+  const list = async (query: string) => {
+    const response = await call<ScrapeRunsResponse>('GET', `/admin/scrape-runs${query}`, { as });
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    return response.body;
+  };
+
+  const queued = await queue();
+  const newer = [await queue(), await queue()];
+  for (const id of newer)
+    await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
+
+  const page = await list('?limit=2');
+  assert.deepEqual(page.runs.map((r) => r.id), [newer[1], newer[0], queued]);
+  assert.equal(page.hasMore, true);
+  assert.deepEqual((await list('?active=true')).runs.map((r) => r.id), [queued]);
+
+  const all = await list('');
+  assert.equal(all.hasMore, false);
+  assert.equal(all.runs[all.runs.length - 1]!.id < queued, true);
+  await call('POST', `/admin/scrape-runs/${queued}/cancel`, { as });
 });
 
 

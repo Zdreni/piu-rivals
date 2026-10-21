@@ -11,16 +11,19 @@ import { HttpError } from '../errors.ts';
 import { playerSummary, toIso, toIsoOrNull } from '../mappers.ts';
 import { IdParams } from './params.ts';
 
-const RUN_LIST_LIMIT = 50;
+// Runs per page of the run list; the site asks for more pages by raising the limit.
+const RUN_PAGE_SIZE = 50;
+const MAX_RUN_LIMIT = 1000;
+const ACTIVE_STATUSES = ['queued', 'running'] as const;
 
 
-async function loadRuns(db: Kysely<Database>, runId?: number): Promise<ScrapeRun[]> {
+function runQuery(db: Kysely<Database>) {
   const failures = db.selectFrom('scrape_failures')
     .select(['scrape_run_id', sql<number>`COUNT(*)`.as('count')])
     .groupBy('scrape_run_id')
     .as('failures');
 
-  let query = db.selectFrom('scrape_runs as r')
+  return db.selectFrom('scrape_runs as r')
     .leftJoin('users as u', 'u.id', 'r.started_by_user_id')
     .leftJoin('players as p', 'p.id', 'r.current_player_id')
     .leftJoin(failures, 'failures.scrape_run_id', 'r.id')
@@ -29,38 +32,57 @@ async function loadRuns(db: Kysely<Database>, runId?: number): Promise<ScrapeRun
       'u.email as started_by', 'p.id as player_id', 'p.name as player_name', 'p.pumbility as player_pumbility',
       'p.last_scraped_at as player_last_scraped_at', 'failures.count as failure_count',
     ])
-    .orderBy('r.id', 'desc')
-    .limit(RUN_LIST_LIMIT);
+    .orderBy('r.id', 'desc');
+}
 
-  if (runId)
-    query = query.where('r.id', '=', runId);
 
-  return (await query.execute()).map((row) => ({
-    id: row.id,
-    kind: row.kind,
-    playerIds: row.player_ids,
-    status: row.status,
-    startedBy: row.started_by,
-    createdAt: toIso(row.created_at),
-    startedAt: toIsoOrNull(row.started_at),
-    finishedAt: toIsoOrNull(row.finished_at),
-    playersTotal: row.players_total,
-    playersDone: row.players_done,
-    currentPlayer: row.player_id
-      ? playerSummary({ id: row.player_id, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
-      : null,
-    sessionsAdded: row.sessions_added,
-    playsAdded: row.plays_added,
-    bestsImproved: row.bests_improved,
-    cancelRequested: !! row.cancel_requested,
-    failures: Number(row.failure_count  ??  0),
-  }));
+type RunRow = Awaited<ReturnType<ReturnType<typeof runQuery>['execute']>>[number];
+
+
+const toRun = (row: RunRow): ScrapeRun => ({
+  id: row.id,
+  kind: row.kind,
+  playerIds: row.player_ids,
+  status: row.status,
+  startedBy: row.started_by,
+  createdAt: toIso(row.created_at),
+  startedAt: toIsoOrNull(row.started_at),
+  finishedAt: toIsoOrNull(row.finished_at),
+  playersTotal: row.players_total,
+  playersDone: row.players_done,
+  currentPlayer: row.player_id
+    ? playerSummary({ id: row.player_id, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
+    : null,
+  sessionsAdded: row.sessions_added,
+  playsAdded: row.plays_added,
+  bestsImproved: row.bests_improved,
+  cancelRequested: !! row.cancel_requested,
+  failures: Number(row.failure_count  ??  0),
+});
+
+
+// The newest `limit` runs, plus older ones still queued or running, so the run in progress is always
+// listed. With `activeOnly`, just the queued and running runs.
+async function loadRuns(db: Kysely<Database>, limit: number, activeOnly: boolean): Promise<ScrapeRunsResponse> {
+  const newest = activeOnly
+    ? []
+    : await db.selectFrom('scrape_runs').select('id').orderBy('id', 'desc').limit(limit + 1).execute();
+
+  const shownIds = newest.slice(0, limit).map((run) => run.id);
+  const rows = await runQuery(db)
+    .where((eb) => eb.or([
+      eb('r.status', 'in', ACTIVE_STATUSES),
+      ...(shownIds.length ? [eb('r.id', 'in', shownIds)] : []),
+    ]))
+    .execute();
+
+  return { runs: rows.map(toRun), hasMore: newest.length > limit };
 }
 
 
 async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeRunResponse> {
-  const [run] = await loadRuns(db, runId);
-  if (! run)
+  const row = await runQuery(db).where('r.id', '=', runId).executeTakeFirst();
+  if (! row)
     throw new HttpError(404, 'Unknown scrape run');
 
   const failureList = await db.selectFrom('scrape_failures')
@@ -70,7 +92,7 @@ async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeR
     .execute();
 
   return {
-    run,
+    run: toRun(row),
     failureList: failureList.map((f) => ({ playerId: f.player_id, message: f.message, createdAt: toIso(f.created_at) })),
   };
 }
@@ -111,7 +133,16 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
   });
 
 
-  app.get('/admin/scrape-runs', async (): Promise<ScrapeRunsResponse> => ({ runs: await loadRuns(db) }));
+  // The newest runs, `limit` of them (more pages: a higher limit), and any still queued or running;
+  // `active=true` lists only those.
+  app.get('/admin/scrape-runs', {
+    schema: {
+      querystring: Type.Object({
+        limit: Type.Integer({ minimum: 1, maximum: MAX_RUN_LIMIT, default: RUN_PAGE_SIZE }),
+        active: Type.Optional(Type.Boolean()),
+      }),
+    },
+  }, async (request) => loadRuns(db, request.query.limit, request.query.active  ??  false));
 
 
   app.get('/admin/scrape-runs/:id', { schema: { params: IdParams } }, async (request) => runResponse(db, request.params.id));

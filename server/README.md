@@ -70,7 +70,8 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `GET /admin/players`, `DELETE /admin/players/:id` | Players with play counts; deleting removes their results |
 | `POST /admin/players/import` | Players exported from the old extension (see the design) |
 | `POST /admin/scrape-runs` `{ kind, players? }` | Queue a run: `all`, or `register`/`selected`/`rescan` with player GUIDs or piuscores links |
-| `GET /admin/scrape-runs`, `GET /admin/scrape-runs/:id` | Runs with progress; one run with its failures |
+| `GET /admin/scrape-runs[?limit=<n>][&active=true]` | Runs with progress, newest first: the newest `limit` (default 50; `hasMore` says whether there are older ones) plus any still queued or running; `active=true` lists only those |
+| `GET /admin/scrape-runs/:id` | One run with its failures |
 | `POST /admin/scrape-runs/:id/cancel` | Cancel a queued run, or stop a running one after its current player |
 
 ## On the VPS

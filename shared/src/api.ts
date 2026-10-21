@@ -149,7 +149,10 @@ export interface ScrapeRun {
 }
 
 export interface ScrapeRunsResponse {
+  // Newest first: the newest runs up to the asked limit, plus any older ones still queued or running.
   runs: ScrapeRun[];
+  // There are older runs beyond the limit.
+  hasMore: boolean;
 }
 
 export interface ScrapeRunResponse {

@@ -6,11 +6,14 @@ import { isActive, RunProgress, runKindLabel, RunStatus } from '../../components
 import { formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
+// Runs per page; "Show older runs" asks the server for this many more.
+const PAGE_SIZE = 50;
 
 
 export function RunsPage() {
   const navigate = useNavigate();
-  const runs = useLoad(() => api<ScrapeRunsResponse>('GET', '/admin/scrape-runs'), []);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const runs = useLoad(() => api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?limit=${limit}`), [limit]);
   const [error, setError] = useState<string | null>(null);
   const active = runs.data?.runs.some(isActive)  ??  false;
 
@@ -79,6 +82,9 @@ export function RunsPage() {
       </div>
       {! runs.data  &&  ! runs.error  &&  <p className="muted">Loading…</p>}
       {runs.data  &&  ! runs.data.runs.length  &&  <p className="muted">No scrape runs yet.</p>}
+      {runs.data?.hasMore  &&  (
+        <p><button type="button" className="secondary" onClick={() => setLimit(limit + PAGE_SIZE)}>Show older runs</button></p>
+      )}
     </section>
   );
 }
