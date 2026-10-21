@@ -114,14 +114,22 @@ export class SessionsBrowser {
       throw new Error(`${error.message}: ${mismatches.join('; ')  ||  'all plays list is missing'}`);
     });
 
+    // The "Plays" tally counts every row of the list, stage breaks too, so the session is read only
+    // once that many rows are shown; the button may go away before they all render. Without a
+    // tally, the button going away is all there is to wait for.
+    const total = parseOpenSession(await this.openSessionHtml())?.playsTotal  ??  null;
     const showAll = this.page.locator('[data-testid="session-show-all-plays"]');
-    if (await showAll.count()) {
-      const total = parseOpenSession(await this.openSessionHtml())?.playsTotal  ??  0;
+    if (await showAll.count())
       await showAll.click();
-      await waitFor(async () => await showAll.count() === 0
-        ||  await this.page.locator('[data-testid="session-score-row"]').count() >= total,
-      `all plays of "${card.title}" (${card.timestamp}) to load`);
-    }
+
+    const rows = this.page.locator('[data-testid="session-all-plays"] [data-testid="session-score-row"]');
+    let shown = 0;
+    await waitFor(async () => {
+      shown = await rows.count();
+      return total === null ? await showAll.count() === 0 : shown >= total;
+    }, `${total === null ? 'all' : `all ${total}`} plays of "${card.title}" (${card.timestamp}) to load`).catch((error) => {
+      throw new Error(`${error.message}: ${shown} shown`);
+    });
 
     return this.page.content();
   }
