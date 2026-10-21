@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "piu-rivals admin scraper",
+  "version": "0.1.0",
+  "description": "For piu-rivals admins: shows on piuscores player pages whether the player is in piu-rivals, and adds and scrapes new ones.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.pumpking.top:6767/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://piuscores.arroweclip.se/*"
+      ],
+      "js": [
+        "piuscores.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://zdreni.github.io/piu-rivals/*"
+      ],
+      "js": [
+        "token_sync.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

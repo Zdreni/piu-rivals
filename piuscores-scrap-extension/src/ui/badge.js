@@ -1,0 +1,135 @@
+// The piu-rivals status box on piuscores player pages, in its own shadow root so the page's
+// styles don't leak in. It sits top right, clear of the old extension's buttons (bottom left)
+// and toasts (bottom right).
+const styles = `
+  .box { position: fixed; top: 72px; right: 16px; z-index: 2147483647; max-width: 300px;
+         background: #14201A; color: #EAF5EC; border-left: 4px solid #4FE33F; border-radius: 6px;
+         padding: 10px 12px; font: 13px/1.4 Roboto, Arial, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.5);
+         display: flex; flex-direction: column; gap: 8px; }
+  .box[hidden] { display: none; }
+  .box.unknown { border-left-color: #FFB020; }
+  .box.error { border-left-color: #FF2A00; }
+  .title { font-weight: 600; color: #4FE33F; }
+  .box.unknown .title { color: #FFB020; }
+  .box.error .title { color: #FF2A00; }
+  .muted { color: #9FB5A4; }
+  .btn { align-self: flex-start; background: #14201A; color: #4FE33F; border: 1px solid #4FE33F;
+         border-radius: 6px; padding: 7px 10px; font: 600 13px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: #1C2B22; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn[hidden] { display: none; }
+`;
+
+const ACTIVE_STATUSES = ['queued', 'running'];
+
+
+function ago(iso) {
+  const minutes = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  if (minutes < 60)
+    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24)
+    return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
+
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+
+const counts = (run) => `${run.sessionsAdded} new sessions, ${run.playsAdded} plays`;
+
+
+function runText(run) {
+  if (run.status === 'queued')
+    return ['Queued for scraping', 'Waiting for the scrape worker…'];
+
+  if (run.status === 'running')
+    return ['Scraping', `${counts(run)} so far…`];
+
+  if (run.status === 'done')
+    return ['Scraped', run.failures ? `${counts(run)}; ${run.failures} failed` : counts(run)];
+
+  return [`Scrape ${run.status}`, run.failures ? `${run.failures} failed` : `${counts(run)} before it stopped`];
+}
+
+
+const ADD_LABEL = 'Add to piu-rivals and scrape';
+const ADDED_LABEL = 'Already in piu-rivals';
+
+
+// The button that adds and scrapes the player. Nothing is scraped without it; it is disabled while
+// a scrape of the player is under way and once the player is in piu-rivals.
+function buttonFor(view) {
+  if (view.run)
+    return { label: 'Scraping…', enabled: false };
+
+  return view.state === 'known' ? { label: ADDED_LABEL, enabled: false } : { label: ADD_LABEL, enabled: true };
+}
+
+
+// What the box says for a view: { state, player, run, finishedRun, name, message }.
+function describe(view) {
+  if (view.state === 'error')
+    return { kind: 'error', title: 'piu-rivals', detail: view.message, button: null };
+
+  const button = buttonFor(view);
+  const run = view.run  ||  view.finishedRun;
+  if (run) {
+    const [title, detail] = runText(run);
+    const failed = ! ACTIVE_STATUSES.includes(run.status)  &&  run.status !== 'done';
+    return { kind: failed ? 'error' : 'known', title, detail, button };
+  }
+
+  if (view.state === 'known') {
+    const scraped = view.player.lastScrapedAt;
+    return { kind: 'known', title: 'In piu-rivals', detail: scraped ? `Last scraped ${ago(scraped)}` : 'Not scraped yet', button };
+  }
+
+  return { kind: 'unknown', title: 'Not in piu-rivals', detail: `${view.name  ||  'This player'} isn't stored yet.`, button };
+}
+
+
+export function createBadge({ onRegister }) {
+  const host = document.createElement('div');
+  const root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = `<style>${styles}</style>
+    <div class="box" hidden>
+      <div class="title"></div>
+      <div class="detail muted"></div>
+      <button class="btn" hidden></button>
+    </div>`;
+
+  const box = root.querySelector('.box');
+  const button = root.querySelector('.btn');
+
+  button.addEventListener('click', () => {
+    button.disabled = true;
+    onRegister();
+  });
+
+
+  // The page may drop the host when it re-renders its body, so it is put back on every call.
+  function attach() {
+    if (! host.isConnected)
+      document.body.appendChild(host);
+  }
+
+  function show(view) {
+    attach();
+    const { kind, title, detail, button: buttonState } = describe(view);
+    box.className = `box ${kind}`;
+    box.querySelector('.title').textContent = title;
+    box.querySelector('.detail').textContent = detail;
+    button.hidden = ! buttonState;
+    button.textContent = buttonState?.label  ??  '';
+    button.disabled = ! buttonState?.enabled;
+    box.hidden = false;
+  }
+
+  return {
+    attach,
+    show,
+    hide: () => { box.hidden = true; },
+  };
+}
