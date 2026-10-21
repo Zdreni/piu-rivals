@@ -37,19 +37,22 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 
 
 // The title, named by what is counted, with your totals, and the score cap, np minimal rivals and count by settings.
-// `status` is a short note on loading scores, if any.
-export function WindowHeader({ totals, preferences, status, onChange }: {
+// `status` is a short note on loading scores, if any. While a rival is `solo`, results are counted whatever the
+// count by setting says, and the setting is locked.
+export function WindowHeader({ totals, preferences, solo, status, onChange }: {
   totals: Counts;
   preferences: Preferences;
+  solo: boolean;
   status: { text: string; error: boolean } | null;
   onChange: (changes: Partial<Preferences>) => void;
 }) {
-  const { scoreCap, npMinimalRivals, countBy } = preferences;
+  const { scoreCap, npMinimalRivals } = preferences;
+  const countBy = solo ? 'results' : preferences.countBy;
   return (
     <div className="dlg-head">
       <h2>
         {countBy === 'charts' ? 'Rival charts' : 'Rival results'}
-        <span className="head-stats"> — <StatWords counts={totals} words={STAT_WORDS[countBy]} /></span>
+        <span className="head-stats"> — <StatWords counts={totals} words={STAT_WORDS[countBy]} ties={solo} /></span>
       </h2>
       {status  &&  <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>}
       <div className="head-settings">
@@ -81,7 +84,9 @@ export function WindowHeader({ totals, preferences, status, onChange }: {
           className="switch count-by"
           role="radiogroup"
           aria-label="Count by"
-          title="Count lost / non-matched / won rival results, or inferior / not played / superior charts"
+          title={solo
+            ? 'Solo: results are always counted'
+            : 'Count lost / non-matched / won rival results, or inferior / not played / superior charts'}
         >
           <span className="stepper-label">Count by</span>
           {COUNT_BY_BUTTONS.map(({ value, label, title }) => (
@@ -91,7 +96,8 @@ export function WindowHeader({ totals, preferences, status, onChange }: {
               role="radio"
               aria-checked={value === countBy}
               className={value === countBy ? 'on' : undefined}
-              title={title}
+              title={solo ? undefined : title}
+              disabled={solo}
               onClick={() => value !== countBy  &&  onChange({ countBy: value })}
             >
               {label}

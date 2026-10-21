@@ -4,10 +4,8 @@ import { type ChartRow, displayName, type PlayerBests } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { OtherPlayers, usePlayers } from './other_players.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
-import { type Counts, STAT_WORDS } from './stats.ts';
+import { type Counts, NO_COUNTS, STAT_WORDS } from './stats.ts';
 import type { RivalTab } from './ui_state.ts';
-
-const NO_COUNTS: Counts = { lose: 0, win: 0, unplayed: 0 };
 
 
 const listed = (player: PlayerSummary): ListedPlayer => ({

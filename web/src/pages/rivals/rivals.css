@@ -17,6 +17,8 @@
 .rivals .neg { color: #FF2A00; }
 .rivals .pos.muted { color: #7BA874; }
 .rivals .neg.muted { color: #B86A5C; }
+/* True ties, only told apart in the solo view. */
+.rivals .tie { color: #F2E8B6; }
 
 /* Header */
 
@@ -40,6 +42,7 @@
 .rivals .switch button:first-of-type { border-radius: 4px 0 0 4px; }
 .rivals .switch button:last-of-type { border-radius: 0 4px 4px 0; margin-left: -1px; }
 .rivals .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
+.rivals .switch button:disabled:not(.on) { opacity: .4; cursor: default; color: #9AB3A3; border-color: #2B4034; }
 .rivals .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
 .rivals .head-stats { font-weight: 400; color: #9AB3A3; }
 .rivals .head-stats .blue { color: #3FA9F5; }
@@ -104,7 +107,7 @@
 .rivals .rival-visit:hover { color: #4FE33F; }
 .rivals .rival-visit svg { width: 13px; height: 13px; }
 .rivals .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
-.rivals .rival-stats { white-space: nowrap; color: #9AB3A3; }
+.rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
 .rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
                       font-size: 13px; text-decoration: none; }
@@ -175,10 +178,13 @@
 .rivals .level-bar .lose { --hot: color-mix(in srgb, #FF8A00 calc(var(--heat) * 100%), #D01E00);
                            background: linear-gradient(to left, var(--hot), #B01C00); }
 .rivals .level-bar.single .lose { background: linear-gradient(to right, var(--hot), #B01C00); }
+.rivals .level-bar .tie { background: linear-gradient(to right, #F2E8B6, #B8AC72); }
+.rivals .level-bar.single .tie { background: linear-gradient(to left, #F2E8B6, #B8AC72); }
 .rivals .level-bar .hidden-loss { background: #34140E; }
 /* Segments round their outer corners and lie over the next segment, which slides under them. */
 .rivals .level-segs > span { position: relative; }
-.rivals .level-bar .win { z-index: 3; }
+.rivals .level-bar .win { z-index: 4; }
+.rivals .level-bar .tie { z-index: 3; }
 .rivals .level-bar .unplayed { z-index: 2; }
 .rivals .level-bar .hidden-loss { z-index: 1; }
 .rivals .level-segs > span:not(.lose) { border-radius: 0 2px 2px 0; }
@@ -198,6 +204,7 @@
 .rivals .tab-count.rivals-win { color: #FF2A00; }
 .rivals .tab-count.not-played { color: #3FA9F5; }
 .rivals .tab-count.you-win { color: #4FE33F; }
+.rivals .tab-count.tie { color: #F2E8B6; }
 .rivals .tab[data-tab="hidden"] { margin-left: auto; }
 .rivals .tab-count.hidden { color: #8C2E1C; }
 .rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 12px 16px; flex: 1;

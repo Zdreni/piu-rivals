@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from 'react';
 import { ChartResultsItem } from './chart_results_item.tsx';
 import { byLeadWeight, byTargetWeight, type ChartRow } from './model.ts';
-import { chartTier, type LevelCounts, STAT_WORDS, TABS, type TabId, TIER_STAT } from './stats.ts';
+import type { CountBy } from './preferences.ts';
+import { chartTier, resultCounts, type Stat, STAT_WORDS, TABS, type TabId, TIER_STAT } from './stats.ts';
 
 export interface HiddenGroup {
   label: string;
@@ -15,50 +16,56 @@ const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.le
 
 
 // The results column: tabs splitting the charts of the selected level, and a grid of their cards.
-// `levelCharts` are the charts of the selected level. `hiddenGroups` are its losses left out of the "Lost" tab;
-// the "Hidden" tab lists them group by group. `emptyMessage` replaces the per-tab message when there is nothing
-// to show at all. `results`, when given, are the numbers the tabs show instead of their chart counts.
-// `scoreCap` is named in the tooltip of diffs that the cap turns into ties.
-export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap, onSelectTab }: {
+// `levelCharts` are the charts of the selected level, each in the tab of its tier by `countBy`. `hiddenGroups` are
+// its charts in the "Hidden" tab, which lists them group by group. `emptyMessage` replaces the per-tab message when
+// there is nothing to show at all. Counted by results, the tabs show the level's result counts instead of their
+// chart counts. `ties` (the solo view) adds a "Tied" tab and colours the true ties. `scoreCap` is named in the
+// tooltip of diffs that the cap turns into ties.
+export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, onSelectTab }: {
   levelCharts: ChartRow[];
   hiddenGroups: HiddenGroup[];
   selectedTab: TabId;
   myName: string;
   emptyMessage: string | null;
-  results: LevelCounts | null;
+  countBy: CountBy;
+  ties: boolean;
   scoreCap: number;
   onSelectTab: (tab: TabId) => void;
 }) {
-  // Charts in the "Lost" and "Hidden" tabs whose rivals you beat are unrolled.
+  // Charts in the "Lost", "Tied" and "Hidden" tabs whose folded rivals were shown.
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const groups = hiddenGroups.filter(({ charts }) => charts.length);
   const tabCounts = Object.fromEntries(TABS.map((id) => [
     id, id === 'hidden'
       ? groups.reduce((acc, { charts }) => acc + charts.length, 0)
-      : levelCharts.filter((chart) => chartTier(chart) === id).length,
+      : levelCharts.filter((chart) => chartTier(chart, ties) === id).length,
   ])) as Record<TabId, number>;
 
-  // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
-  const hiddenGone = selectedTab === 'hidden'  &&  tabCounts.hidden === 0;
-  const tab = hiddenGone ? 'rivals-win' : selectedTab;
+  // The "Hidden" tab only shows up when there is something hidden, and "Tied" only in the solo view;
+  // if a missing one was open, "Lost" takes over.
+  const tabs = TABS.filter((id) => (id !== 'hidden'  ||  tabCounts.hidden)  &&  (id !== 'tie'  ||  ties));
+  const tabGone = ! tabs.includes(selectedTab);
+  const tab = tabGone ? 'rivals-win' : selectedTab;
 
   useEffect(() => {
-    if (hiddenGone)
+    if (tabGone)
       onSelectTab('rivals-win');
-  }, [hiddenGone, onSelectTab]);
+  }, [tabGone, onSelectTab]);
 
+  const results = countBy === 'results' ? resultCounts(levelCharts) : null;
   const tabNumber = (id: TabId) => (results ? results[TIER_STAT[id]] : tabCounts[id]);
   // Tabs are named after what their numbers count.
-  const tabWord = (id: TabId) => STAT_WORDS[results ? 'results' : 'charts'][TIER_STAT[id]];
+  const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
-  // With `collapseWon`, rivals you beat are folded until their "show N others..." button is clicked.
-  const cards = (charts: ChartRow[], collapseWon: boolean, colorByRealDiff = false) => charts.map((chart) => (
+  // Rivals whose result is one of `fold` are folded until their "show N others..." button is clicked.
+  const cards = (charts: ChartRow[], fold: Stat[], colorByRealDiff = false) => charts.map((chart) => (
     <ChartResultsItem
       key={chart.id}
       chart={chart}
       myName={myName}
-      collapseWon={collapseWon  &&  ! expanded.has(chart.id)}
+      fold={expanded.has(chart.id) ? [] : fold}
       colorByRealDiff={colorByRealDiff}
+      markTies={ties}
       scoreCap={scoreCap}
       onExpand={() => setExpanded(new Set(expanded).add(chart.id))}
     />
@@ -74,13 +81,14 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       content = groups.map(({ label, charts }) => (
         <Fragment key={label}>
           <h3 className="group-title">{label} · {charts.length}</h3>
-          {cards(charts, true, true)}
+          {cards(charts, ['win', 'tie'], true)}
         </Fragment>
       ));
     } else {
-      const visible = levelCharts.filter((chart) => chartTier(chart) === tab);
-      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight }[tab]);
-      content = cards(visible, tab === 'rivals-win');
+      const visible = levelCharts.filter((chart) => chartTier(chart, ties) === tab);
+      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
+      // Lost charts fold the rivals you beat or truly tie with; tied ones only those you beat.
+      content = cards(visible, tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : []);
     }
 
     body = <div className="chart-grid">{content}</div>;
@@ -89,7 +97,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   return (
     <div className="score-content">
       <div className="tabs" role="tablist" aria-label="Score results">
-        {TABS.filter((id) => id !== 'hidden'  ||  tabCounts.hidden).map((id) => (
+        {tabs.map((id) => (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={() => onSelectTab(id)}>
             {capitalized(tabWord(id))}<span className={`tab-count ${id}`}>{tabNumber(id)}</span>
           </button>

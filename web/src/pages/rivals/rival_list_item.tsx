@@ -102,7 +102,7 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
         </div>
         {! me  &&  (
           <div className="rival-stats" title={solo ? statsSoloTip : statsTip}>
-            <StatWords counts={stats} separator=" · " words={statsWords} />
+            <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
           </div>
         )}
       </div>

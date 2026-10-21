@@ -1,21 +1,23 @@
 import type { CSSProperties } from 'react';
 import type { ChartRow } from './model.ts';
 import type { CountBy } from './preferences.ts';
-import { type LevelCounts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from './stats.ts';
+import { type Counts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from './stats.ts';
 
-type Stats = Record<string, { charts: LevelCounts; results: LevelCounts }>;
+type Stats = Record<string, { charts: Counts; results: Counts }>;
 
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 
-// One bar, split by the share of wins / not played / hidden losses / losses. Wins sit next to the level number and
-// losses at the outer end, so singles grow to the left and doubles to the right.
-function LevelBar({ level, side, stats, countBy, selected, heat, onSelect }: {
+// One bar, split by the share of wins / ties / not played / hidden / losses. Wins sit next to the level number and
+// losses at the outer end, so singles grow to the left and doubles to the right. Ties get a segment only with
+// `showTies`.
+function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSelect }: {
   level: string | undefined;
   side: 'single' | 'double';
   stats: Stats;
   countBy: CountBy;
+  showTies: boolean;
   selected: boolean;
   heat: (n: number) => string;
   onSelect: (level: string) => void;
@@ -25,12 +27,13 @@ function LevelBar({ level, side, stats, countBy, selected, heat, onSelect }: {
 
   const { charts: byCharts, results: byResults } = stats[level]!;
   const counts = stats[level]![countBy];
-  // The hidden-losses segment has no number; its count is in the tooltip, which shows both countings.
+  // The hidden segment has no number; its count is in the tooltip, which shows both countings. Charts are never tied.
   const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}) =>
     (n ? <span className={className} style={{ flexGrow: n, ...style }}>{label}</span> : null);
 
-  const tipLine = (stat: keyof LevelCounts) => `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
+  const tipLine = (stat: keyof Counts) => `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
     + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;
+  const tieLine = showTies ? `\n${plural(byResults.tie, `${STAT_WORDS.results.tie} result`)}` : '';
 
   return (
     <button
@@ -38,11 +41,12 @@ function LevelBar({ level, side, stats, countBy, selected, heat, onSelect }: {
       type="button"
       role="radio"
       aria-checked={selected}
-      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tipLine('win')}`}
+      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tieLine}${tipLine('win')}`}
       onClick={() => onSelect(level)}
     >
       <span className="level-segs">
         {part('win', counts.win)}
+        {showTies  &&  part('tie', counts.tie)}
         {part('unplayed', counts.unplayed)}
         {part('hidden-loss', counts.hidden, '')}
         {part('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
@@ -53,21 +57,19 @@ function LevelBar({ level, side, stats, countBy, selected, heat, onSelect }: {
 
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
-// `hiddenCharts` are the losses hidden by the score cap; they get their own dark segment.
-// `countBy` picks what sizes and labels the segments.
-export function ChartsGroups({ charts, hiddenCharts, selectedLevel, countBy, onSelect }: {
+// What the score cap hides gets its own dark segment. `countBy` picks what sizes and labels the segments;
+// `showTies` gives ties their own segment (counted by results).
+export function ChartsGroups({ charts, selectedLevel, countBy, showTies, onSelect }: {
   charts: ChartRow[];
-  hiddenCharts: ChartRow[];
   selectedLevel: string | null;
   countBy: CountBy;
+  showTies: boolean;
   onSelect: (level: string) => void;
 }) {
-  const levels = sortedLevels([...charts, ...hiddenCharts]);
+  const levels = sortedLevels(charts);
   const stats: Stats = {};
-  for (const level of levels) {
-    const atLevel = (chart: ChartRow) => chart.chart === level;
-    stats[level] = levelStats(charts.filter(atLevel), hiddenCharts.filter(atLevel));
-  }
+  for (const level of levels)
+    stats[level] = levelStats(charts.filter((chart) => chart.chart === level));
 
   // A level's heat grows with the square of its losses, relative to the level with the most.
   const maxLose = Math.max(1, ...levels.map((level) => stats[level]![countBy].lose));
@@ -81,7 +83,7 @@ export function ChartsGroups({ charts, hiddenCharts, selectedLevel, countBy, onS
   const nums = sideLevels.length ? Array.from({ length: maxNum - minNum + 1 }, (_, i) => maxNum - i) : [];
   const find = (type: string, num: number) => sideLevels.find((level) => levelType(level) === type  &&  levelNum(level) === num);
   const headOn = (type: string) => (selectedLevel !== null  &&  levelType(selectedLevel) === type ? ' on' : '');
-  const bar = { stats, countBy, heat, onSelect };
+  const bar = { stats, countBy, showTies: showTies  &&  countBy === 'results', heat, onSelect };
 
   return (
     <div className="filters">

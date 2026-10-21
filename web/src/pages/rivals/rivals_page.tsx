@@ -6,7 +6,7 @@ import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
-import { chartTier, levelStats, resultCounts, sortedLevels, type TabId, tierCounts } from './stats.ts';
+import { chartTier, countCharts, sortedLevels, type TabId } from './stats.ts';
 import { readUiState, saveUiState, type UiState } from './ui_state.ts';
 import { useBests } from './use_bests.ts';
 import { useRivalSettings } from './use_rival_settings.ts';
@@ -52,7 +52,7 @@ function useAutoRefresh(refresh: () => void) {
 function RivalsView({ me }: { me: PlayerSummary }) {
   const settings = useRivalSettings();
   const { rivals, preferences } = settings;
-  const { scoreCap, npMinimalRivals, countBy } = preferences;
+  const { scoreCap, npMinimalRivals } = preferences;
   const playerIds = useMemo(() => [me.id, ...rivals.map((rival) => rival.id)], [me.id, rivals]);
   const data = useBests(playerIds);
   const [ui, setUi] = useState<UiState>(readUiState);
@@ -87,6 +87,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   );
 
   const soloRival = rivals.some((rival) => rival.id === solo) ? solo : null;
+  // A solo rival is always counted by results, whatever the setting says.
+  const countBy = soloRival ? 'results' : preferences.countBy;
   const view = useMemo(() => {
     const hidden = new Set(rivals.filter((rival) => rival.hidden).map((rival) => rival.id));
     // A solo rival is compared alone, whatever the stored selection says.
@@ -97,17 +99,13 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       // Unplayed charts count as np only once enough shown rivals have played them.
       .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
 
-    // Charts a rival beats you on only by the uncapped score, so the score cap turns the loss into a draw.
-    const isCapLoss = (chart: ChartRow) => chartTier(chart) !== 'rivals-win'
-      &&  chart.rivals.some((rival) => rival.realDelta !== null  &&  rival.realDelta < 0);
-
-    const capLosses = charts.filter(isCapLoss).map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
-    // The level bars count score-cap losses as hidden losses rather than wins.
-    const barCharts = charts.filter((chart) => ! isCapLoss(chart));
-    return { charts, capLosses, barCharts, levels: sortedLevels(charts) };
+    // Charts the score cap hides, weighted by the real diffs so the closest calls come first.
+    const capHidden = charts.filter((chart) => chartTier(chart) === 'hidden')
+      .map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
+    return { charts, capHidden, levels: sortedLevels(charts) };
   }, [allCharts, rivals, soloRival, npMinimalRivals]);
 
-  const { charts, capLosses, barCharts, levels } = view;
+  const { charts, capHidden, levels } = view;
   const selectedLevel = ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel) ? ui.selectedLevel : levels[0]  ??  null;
 
   useEffect(() => {
@@ -115,10 +113,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       changeUi({ selectedLevel });
   }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
 
-  const totals = countBy === 'charts' ? tierCounts(charts) : resultCounts(charts);
+  const totals = countCharts(charts, countBy);
   const atLevel = (chart: ChartRow) => chart.chart === selectedLevel;
-  // Counted by results, the tabs show the selected level's bar numbers; by charts they count their own lists.
-  const tabResults = countBy === 'results' ? levelStats(barCharts.filter(atLevel), capLosses.filter(atLevel)).results : null;
   const emptyMessage = ! rivals.length
     ? 'Add rivals on the Others tab on the left to compare your scores with theirs.'
     : ! data.ready
@@ -137,6 +133,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       <WindowHeader
         totals={totals}
         preferences={preferences}
+        solo={!! soloRival}
         status={status}
         onChange={settings.changePreferences}
       />
@@ -160,19 +157,20 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onAdd={settings.addRival}
         />
         <ChartsGroups
-          charts={barCharts}
-          hiddenCharts={capLosses}
+          charts={charts}
           selectedLevel={selectedLevel}
           countBy={countBy}
+          showTies={!! soloRival}
           onSelect={(level) => changeUi({ selectedLevel: level })}
         />
         <ChartResults
           levelCharts={charts.filter(atLevel)}
-          hiddenGroups={[{ label: 'Score cap', charts: capLosses.filter(atLevel).sort(byTargetWeight) }]}
+          hiddenGroups={[{ label: 'Score cap', charts: capHidden.filter(atLevel).sort(byTargetWeight) }]}
           selectedTab={ui.selectedTab}
           myName={me.name  ??  'You'}
           emptyMessage={emptyMessage}
-          results={tabResults}
+          countBy={countBy}
+          ties={!! soloRival}
           scoreCap={scoreCap}
           onSelectTab={selectTab}
         />

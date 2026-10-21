@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { formatNumber } from '../../util.ts';
 import type { Counts } from './stats.ts';
 import { STAT_WORDS } from './stats.ts';
@@ -11,20 +12,25 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 }
 
 
-// The colour follows `outcome` (the capped diff); a capped tie gets a muted colour from the real diff's sign
-// and a tooltip naming `cap`.
-export function Delta({ value, outcome = value, cap = null }: { value: number | null; outcome?: number | null; cap?: number | null }) {
+// The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
+// naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
+export function Delta({ value, outcome = value, cap = null, markTie = false }: {
+  value: number | null;
+  outcome?: number | null;
+  cap?: number | null;
+  markTie?: boolean;
+}) {
   if (value === null)
     return <span>—</span>;
 
   const tone = outcome  ||  value;
-  const capped = ! outcome  &&  value !== 0;
-  const className = (tone > 0 ? 'pos' : tone < 0 ? 'neg' : '') + (capped ? ' muted' : '');
+  const capped = ! outcome  &&  value < 0;
+  const className = (tone > 0 ? 'pos' : tone < 0 ? 'neg' : markTie ? 'tie' : '') + (capped ? ' muted' : '');
   const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
   const sign = value > 0 ? '+' : value < 0 ? '-' : '';
   const abs = Math.abs(value);
   return (
-    <span className={className} title={capped ? `Both scores ≥ ${capText}, so this counts as a tie` : undefined}>
+    <span className={className} title={capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined}>
       {sign}
       {/* Below a thousand every digit is dimmed, like the last three digits of bigger diffs. */}
       {abs < 1000 ? <span className="tail-dim">{abs}</span> : <Score value={abs} tailClass="tail-dim" />}
@@ -38,17 +44,21 @@ function Stat({ className, value }: { className: string; value: number }) {
 }
 
 
-// "3 lost, 5 non-matched, 9 won", in the words of `words`.
-export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results }: {
+const STAT_CLASSES: Record<keyof Counts, string> = { lose: 'neg', unplayed: 'blue', win: 'pos', tie: 'tie', hidden: '' };
+
+
+// "3 lost, 5 non-matched, 9 won", in the words of `words`; `ties` (the solo view) adds ", 2 tied".
+export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results, ties = false }: {
   counts: Counts;
   separator?: string;
   words?: Record<keyof Counts, string>;
+  ties?: boolean;
 }) {
-  return (
-    <>
-      <Stat className="neg" value={counts.lose} /> {words.lose}{separator}
-      <Stat className="blue" value={counts.unplayed} /> {words.unplayed}{separator}
-      <Stat className="pos" value={counts.win} /> {words.win}
-    </>
-  );
+  const stats: (keyof Counts)[] = ties ? ['lose', 'unplayed', 'win', 'tie'] : ['lose', 'unplayed', 'win'];
+  return stats.map((stat, i) => (
+    <Fragment key={stat}>
+      {i > 0  &&  separator}
+      <Stat className={STAT_CLASSES[stat]} value={counts[stat]} /> {words[stat]}
+    </Fragment>
+  ));
 }
