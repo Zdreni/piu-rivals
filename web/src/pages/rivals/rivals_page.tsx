@@ -67,7 +67,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [solo, setSolo] = useState<string | null>(null);
   // On phones, the panel in use is the wide one. A tap on the dimmed results only brings them into use, so they can't
   // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
-  // use; a double tap or a long press brings the levels into use.
+  // use; a tap on the level already picked, a double tap or a long press brings the levels into use.
   const [levelsActive, setLevelsActive] = useState(false);
   const lastLevelsTap = useRef(0);
   const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
@@ -105,7 +105,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       const now = event.timeStamp;
       const doubleTap = now - lastLevelsTap.current < DOUBLE_TAP_MS;
       lastLevelsTap.current = doubleTap ? 0 : now;
-      if (doubleTap)
+      if (doubleTap  ||  target.closest('.level-bar.on'))
         setLevelsActive(true);
       return;
     }
