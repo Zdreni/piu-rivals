@@ -245,6 +245,8 @@
 .rivals .result .score { color: #9AB3A3; }
 /* The arrow belongs to the diff, so it hugs the diffs rather than the scores. */
 .rivals .result .delta-arrow { margin-right: 2px; text-align: right; }
+/* As tall as the line's text, from just under the baseline to above the digits, so each triangle stays in its half. */
+.rivals .arrow { width: .5em; height: 1em; vertical-align: -.2em; fill: currentColor; }
 /* Centred under a typical diff like "5,574", not in the whole cell, since the diffs are right-aligned. */
 .rivals .result .delta-tie { display: inline-block; width: 5ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
