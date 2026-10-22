@@ -286,8 +286,9 @@
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
   /* The panel in use, levels or results, gets 70% of the width, and the other one is dimmed; a tap on the dimmed one
-     brings it into use (see RivalsView). The levels never get narrower than bars with three 3-digit counts need. */
-  .rivals .dlg-main { grid-template-columns: max(160px, 30%) minmax(0, 1fr); transition: grid-template-columns .3s ease; }
+     brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
+     dimmed, they have no counts (see below), so they take just their 30%. */
+  .rivals .dlg-main { grid-template-columns: 30% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
   .rivals .dlg-main.levels-active { grid-template-columns: max(160px, 70%) minmax(0, 1fr); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
@@ -303,6 +304,9 @@
      the results' level. */
   .rivals .dlg-main:not(.levels-active) .level-chart { grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr); }
   .rivals .dlg-main:not(.levels-active) .level-num { opacity: 0; }
+  /* The bars drop their counts too, and with them the room the counts need (see LevelBar); segments keep as much of
+     their bar as with their counts, about 4.5% a digit and 5% on either side, so the bars look the same, only smaller. */
+  .rivals .dlg-main:not(.levels-active) .level-segs > span { color: transparent; --digit: 4.5%; --label-pad: 5%; }
   .rivals .level-other .level-num { padding-right: 4px; }
   .rivals .level-segs > span { font-size: 9px; }
   /* The tabs share the width evenly, if their words fit. */
