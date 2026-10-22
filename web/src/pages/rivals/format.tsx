@@ -12,13 +12,12 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 }
 
 
-// A triangle in the text colour, drawn rather than typed, since the font's ▴ and ▾ differ by platform and blur
-// at small sizes. It points to where the rival stands and sits on that side of the line: up in the upper half, down
-// in the lower half.
+// An arrow, a shaft and a head, in the text colour, drawn rather than typed, since the font's arrows differ by
+// platform and blur at small sizes. It points to where the rival stands.
 export function Arrow({ up }: { up: boolean }) {
   return (
     <svg className="arrow" viewBox="0 0 6 12" aria-hidden="true">
-      <polygon points={up ? '0,5.5 3,1 6,5.5' : '0,6.5 3,11 6,6.5'} />
+      <path d={up ? 'M3 11V1.5M.75 3.75L3 1.5l2.25 2.25' : 'M3 1v9.5M.75 8.25L3 10.5l2.25-2.25'} />
     </svg>
   );
 }
