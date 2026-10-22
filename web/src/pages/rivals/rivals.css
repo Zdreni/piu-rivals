@@ -261,6 +261,9 @@
 .rivals .show-others .neg.muted { color: color-mix(in srgb, #B86A5C 50%, #EAF5EC); }
 .rivals .show-others .pos { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
 .rivals .show-others .blue { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
+/* From the baseline to the top of the digits (Roboto's and Arial's are .72em tall). */
+.rivals .fold-arrow { width: .5em; height: .72em; margin-right: .25em; overflow: visible;
+                      fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
 .rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
