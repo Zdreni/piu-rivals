@@ -46,6 +46,8 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   // By chart, how many of its folded rivals, and of its scores above the lowest ones, were shown.
   const [shownFolded, setShownFolded] = useState<Map<number, number>>(new Map());
   const [shownHigher, setShownHigher] = useState<Map<number, number>>(new Map());
+  // On phones, the one result row unrolled, as `${chart id} ${player id}`.
+  const [unrolled, setUnrolled] = useState<string | null>(null);
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
   const groups = hiddenGroups.filter(({ charts }) => charts.length);
@@ -88,6 +90,8 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       scoreCap={scoreCap}
       onExpandFolded={() => setShownFolded(showMore(shownFolded, chart.id))}
       onExpandHigher={() => setShownHigher(showMore(shownHigher, chart.id))}
+      unrolled={unrolled?.startsWith(`${chart.id} `) ? unrolled.slice(`${chart.id} `.length) : null}
+      onUnroll={(playerId) => setUnrolled(playerId === null ? null : `${chart.id} ${playerId}`)}
     />
   ));
 

@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { Delta, Score } from './format.tsx';
+import { PHONE } from './layout.ts';
 import { type ChartRow, type Dates, displayName, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
@@ -44,8 +45,11 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // button, which calls `onExpandHigher`; `higherShown` of them, highest first, are listed above the button anyway.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
 // diffs of true ties. `dimWon` dims the rivals you beat more than the others.
+// On phones, a tap on a rival's row doesn't open their sessions but calls `onUnroll`, and the `unrolled` rival's row
+// is followed by their score (when the row has no room for it), its dates and a link to their sessions.
 export function ChartResultsItem({
   chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, onExpandFolded, onExpandHigher,
+  unrolled, onUnroll,
 }: {
   chart: ChartRow;
   myName: string;
@@ -59,6 +63,8 @@ export function ChartResultsItem({
   scoreCap: number;
   onExpandFolded: () => void;
   onExpandHigher: () => void;
+  unrolled: string | null;
+  onUnroll: (playerId: string | null) => void;
 }) {
   const all: Entry[] = [...chart.rivals];
   if (chart.mine !== null)
@@ -83,7 +89,7 @@ export function ChartResultsItem({
   const hidden = new Set([...hiddenAbove, ...hiddenBelow]);
   const list = all.filter((entry) => ! hidden.has(entry));
 
-  const rows: ReactNode[] = list.map((entry) => {
+  const rows: ReactNode[] = list.flatMap((entry) => {
     if (entry.me) {
       return (
         <div key="me" className="result mine">
@@ -95,16 +101,35 @@ export function ChartResultsItem({
     }
 
     const won = dimWon  &&  isWon(entry) ? 'won' : 'ahead';
-    return (
-      <div key={entry.playerId} className={`result ${won}`}>
-        <a className="result-player player-link" title={entry.player}
-          href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(entry.playerId)}/Sessions`} target="_blank" rel="noreferrer">
+    const sessions = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(entry.playerId)}/Sessions`;
+    const isUnrolled = unrolled === entry.playerId;
+    const toggle = (event: MouseEvent) => {
+      if (! PHONE.matches)
+        return;
+      event.preventDefault();
+      onUnroll(isUnrolled ? null : entry.playerId);
+    };
+    const row = (
+      <div key={entry.playerId} className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggle}>
+        <a className="result-player player-link" title={entry.player} href={sessions} target="_blank" rel="noreferrer">
           {displayName(entry.player)}
         </a>
         <span className="num score" title={datesTitle(entry)}><Score value={entry.score} /></span>
         {chart.mine !== null  &&  <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />}
       </div>
     );
+    if (! isUnrolled)
+      return [row];
+
+    return [row, (
+      <div key={`${entry.playerId} details`} className="result-details">
+        <div className="result-dates">
+          <span className="result-details-score">Score: <Score value={entry.score} /></span>
+          {datesTitle(entry).split('\n').map((line) => <span key={line}>{line}</span>)}
+        </div>
+        <a className="result-sessions" href={sessions} target="_blank" rel="noreferrer">Sessions</a>
+      </div>
+    )];
   });
 
   if (above > 0) {

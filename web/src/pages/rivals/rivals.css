@@ -255,6 +255,9 @@
 .rivals .ahead { opacity: .8; }
 .rivals .player-link { color: inherit; text-decoration: none; }
 .rivals .player-link:hover { color: #4FE33F; }
+/* A rival's row unrolled on a phone (see ChartResultsItem): their score when the row hides it, its dates, and their
+   sessions. Off phones, rows don't unroll. */
+.rivals .result-details { display: none; }
 .rivals .show-others { display: block; width: 100%; padding: 2px 12px 6px; text-align: center; color: #9AB3A3; opacity: .6;
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .show-others .neg { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
@@ -291,10 +294,10 @@
   .rivals .dlg-head h2 { font-size: 20px; }
   /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
-     dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 140px, enough
+     dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
      for names and diffs, unless the levels need it for their counts. */
   .rivals .dlg-main { grid-template-columns: 35% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
-  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, min(65%, 100% - 140px)) minmax(0, 1fr); }
+  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, min(65%, 100% - 150px)) minmax(0, 1fr); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
       background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
@@ -337,16 +340,27 @@
   .rivals .dlg-body { padding: 8px 4px; }
   .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .rivals .chart-card-head { gap: 6px; padding: 5px 8px; }
-  .rivals .chart-card-head .track, .rivals .chart-label { font-size: 14px; }
+  .rivals .chart-card-head .track, .rivals .chart-label { font-size: 16px; }
   /* The score column fits the score, so the name gets the rest. */
   .rivals .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; }
   .rivals .result .delta { padding-left: 14px; }
-  .rivals .result { padding: 2px 6px; font-size: 14px; }
+  .rivals .result { padding: 2px 6px; font-size: 16px; }
   .rivals .result > :nth-child(2) { padding-left: 4px; }
   /* Names line up with the track name; rivals' are a bit dimmer (but still brighter than their scores). */
   .rivals .result-player { padding-left: 2px; }
   .rivals .result:not(.mine) .result-player:not(:hover) { color: #B4C3B9; }
   .rivals .result .delta-tie { width: 5.5ch; }
+  .rivals .result:not(.mine) { cursor: pointer; }
+  .rivals .result .player-link:hover { color: inherit; }
+  .rivals .result.unrolled, .rivals .result-details { background: rgba(255,255,255,.09); }
+  .rivals .result.unrolled { opacity: 1; }
+  .rivals .result-details { display: flex; align-items: center; gap: 8px; padding: 2px 6px 6px 8px;
+                            font-size: 12px; color: #9AB3A3; }
+  .rivals .result-dates { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .rivals .result-details-score { display: none; color: #C9D8CE; }
+  .rivals .result-sessions { flex-shrink: 0; padding: 4px 10px; border: 1px solid #3D5A49; border-radius: 4px;
+                             background: #1C2B22; color: #C9D8CE; text-decoration: none; font-size: 13px; }
+  .rivals .result-sessions:active { color: #4FE33F; border-color: #4FE33F; }
   .rivals .show-others { font-size: 12px; }
 }
 
@@ -362,4 +376,5 @@
   .rivals .chart-card-results:not(.no-diffs) .result:not(.mine) > .score,
   .rivals .chart-card-results:not(.no-diffs) .result.mine > :nth-child(n+3) { display: none; }
   .rivals .chart-card-results:not(.no-diffs) .result.mine > .num { grid-column: 2 / -1; }
+  .rivals .chart-card-results:not(.no-diffs) .result-details-score { display: inline; }
 }

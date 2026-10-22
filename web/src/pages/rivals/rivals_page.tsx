@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
+import { PHONE } from './layout.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
 import { chartTier, countCharts, sortedLevels, type TabId } from './stats.ts';
@@ -17,8 +18,6 @@ import './rivals.css';
 // comes back into view after a while.
 const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
-// The phone layout in rivals.css, where the levels and the results take turns being the wide panel.
-const PHONE = window.matchMedia('(max-width: 600px)');
 // While the levels are dimmed, a double tap or a long press on them brings them into use.
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 500;
