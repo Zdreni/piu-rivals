@@ -261,6 +261,8 @@
 .rivals .show-others .neg.muted { color: color-mix(in srgb, #B86A5C 50%, #EAF5EC); }
 .rivals .show-others .pos { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
 .rivals .show-others .blue { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
+/* Arrow glyphs are taller than digits and hang below the baseline; smaller and raised a little, they span the digits. */
+.rivals .fold-arrow { font-size: .8em; vertical-align: .1em; margin-right: .25em; }
 .rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 

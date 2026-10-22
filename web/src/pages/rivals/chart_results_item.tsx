@@ -21,8 +21,10 @@ const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
 
 // A fold button's count, e.g. "↑3", with the arrow and colour of the strongest result folded, e.g. red if any of
 // them beats you. Ties get the tie colour only with `markTies`.
-const FOLD_TONES: [Stat, string, string][] = [
-  ['lose', 'neg', '↑'], ['hidden', 'neg muted', '↑'], ['unplayed', 'blue', ''], ['win', 'pos', '↓'], ['tie', 'tie', '='],
+const up = <span className="fold-arrow">↑</span>;
+const down = <span className="fold-arrow">↓</span>;
+const FOLD_TONES: [Stat, string, ReactNode][] = [
+  ['lose', 'neg', up], ['hidden', 'neg muted', up], ['unplayed', 'blue', ''], ['win', 'pos', down], ['tie', 'tie', '='],
 ];
 
 function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: number; markTies: boolean }) {
