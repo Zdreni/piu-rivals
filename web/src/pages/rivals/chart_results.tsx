@@ -11,6 +11,8 @@ export interface HiddenGroup {
 
 
 const capitalized = (word: string) => word[0]!.toUpperCase() + word.slice(1);
+// Tab words on phones.
+const SHORT_WORDS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
 
 // Cards list this many rival scores, besides yours, until expanded: unplayed ones the lowest, lost and hidden ones
 // the biggest losses, won ones the closest below yours.
@@ -120,9 +122,9 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       <div className="tabs" role="tablist" aria-label="Score results">
         {tabs.map((id) => (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={() => onSelectTab(id)}>
-            {/* On phones, the words are shortened to their first letter, "Non-matched" and "Not played" to "NP". */}
+            {/* On phones, the longer words are shortened, e.g. "Non-matched" to "NP". */}
             <span className="tab-word">{capitalized(tabWord(id))}</span>
-            <span className="tab-word short">{id === 'not-played' ? 'NP' : tabWord(id)[0]!.toUpperCase()}</span>
+            <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalized(tabWord(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
           </button>
         ))}

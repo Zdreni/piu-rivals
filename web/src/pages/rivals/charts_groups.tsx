@@ -30,7 +30,9 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
   // The hidden segment has no number; its count is in the tooltip, which shows both countings. Charts are never tied.
   // A segment shows at least 5% of the bar and never less than its label with 5% of the bar, up to 6px, on either side,
   // so narrow bars keep room for their labels; digits are 1ch each. Unlabeled segments need only their 5%.
-  const labelWidth = (label: number | string) => (String(label).length ? `${String(label).length}ch + 2 * min(6px, 5%)` : '0px');
+  // CSS can size the labels in % of the bar with --digit and --label-pad, for bars that hide them.
+  const labelWidth = (label: number | string) =>
+    (String(label).length ? `${String(label).length} * var(--digit, 1ch) + 2 * min(var(--label-pad, 6px), 5%)` : '0px');
   const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}) =>
     (n ? <span className={className} style={{ flexGrow: n, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
       {label}
