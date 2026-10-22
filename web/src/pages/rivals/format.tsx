@@ -14,7 +14,7 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 // naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
-// Signed, + when you're ahead and − when the rival is.
+// Signed from the rival's side: + when the rival is ahead and − when you are.
 export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   value: number | null;
   outcome?: number | null;
@@ -32,7 +32,7 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
   const title = capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined;
   const abs = Math.abs(value);
-  const sign = <span className="delta-sign">{value > 0 ? '+' : '−'}</span>;
+  const sign = <span className="delta-sign">{value > 0 ? '−' : '+'}</span>;
   return (
     <span className={`num delta ${className}`} title={title}>
       {/* Below a thousand the whole diff is dimmed, like the last three digits of bigger diffs. */}
