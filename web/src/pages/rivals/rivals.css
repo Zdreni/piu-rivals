@@ -165,7 +165,7 @@
 .rivals .level-bar:hover { opacity: 1; }
 .rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
 .rivals .level-bar.placeholder { visibility: hidden; }
-/* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 6px on
+/* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 5% of the bar (up to 6px) on
    either side (see LevelBar), even if that bends the proportions. There's no padding, so it can't add to small segments. */
 .rivals .level-segs > span { flex: 0 0 0; box-sizing: border-box; --overlap: 0px; overflow: hidden; display: flex; align-items: center;
                             justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums;
@@ -255,31 +255,55 @@
 .rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
-/* Narrow screens (e.g. a tablet in portrait): rivals and levels side by side, the results below them,
-   and the page scrolls. */
+/* Narrow screens (e.g. a tablet in portrait) and phones: the rivals on top, then the levels always beside the results,
+   and the page scrolls. The levels get the width the results don't need, up to a limit; they are as tall as the screen
+   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
   .rivals { flex: none; }
-  .rivals .dlg-main { display: grid; grid-template-columns: 285px minmax(0, 1fr); grid-template-rows: 60vh auto; }
+  .rivals .dlg-main { display: grid; grid-template-columns: minmax(0, 340px) minmax(360px, 1fr); grid-template-rows: auto; }
   .rivals .head-settings { margin: 0; flex-wrap: wrap; }
-  .rivals .rival-list { width: auto; min-height: 0; border-bottom: 1px solid #2B4034; }
-  .rivals .filters { justify-content: center; border-right: none; border-bottom: 1px solid #2B4034; padding-left: 10px; }
-  /* The levels get the space the rival list doesn't need, so their bars widen. */
-  .rivals .level-chart { flex: 1; max-width: 560px; grid-template-columns: minmax(128px, 1fr) 38px minmax(128px, 1fr); }
-  .rivals .score-content { grid-column: 1 / -1; min-height: 60vh; }
+  .rivals .rival-list { grid-column: 1 / -1; width: auto; height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
+  .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; padding-left: 10px; }
+  .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
+  .rivals .score-content { min-height: 0; container-type: inline-size; }
   .rivals .dlg-body { overflow: visible; }
   .rivals .tabs { flex-wrap: wrap; }
 }
 
-/* Phones: no room for rivals and levels side by side, so the columns stack. */
+/* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
-  .rivals .dlg-main { display: flex; flex-direction: column; }
-  .rivals .rival-list { height: 45vh; border-right: none; }
-  .rivals .filters { max-height: 60vh; }
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
-  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
-  .rivals .result { grid-template-columns: minmax(0, 1fr) 84px 20px 6ch; font-size: 14px; }
-  .rivals .dlg-body { padding: 10px 6px; }
+  /* The levels never get narrower than bars with three 3-digit counts need; below that the results give way. */
+  .rivals .dlg-main { grid-template-columns: minmax(160px, 240px) minmax(min(190px, 100% - 160px), 1fr); }
+  .rivals .filters { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
+  .rivals .level-chart { grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); font-size: 12px; }
+  .rivals .level-head { font-size: 12px; padding-bottom: 6px; }
+  .rivals .level-num { font-size: 12px; }
+  .rivals .level-other .level-num { padding-right: 4px; }
+  .rivals .level-segs > span { font-size: 9px; }
+  .rivals .tabs { gap: 0; padding: 2px 4px 0; }
+  .rivals .tabs .tab { padding: 8px 6px; font-size: 13px; }
+  .rivals .tab-count { min-width: 0; margin-left: 4px; }
+  .rivals .dlg-body { padding: 8px 4px; }
+  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .rivals .chart-card-head { gap: 6px; padding: 5px 8px; }
+  .rivals .chart-card-head .track, .rivals .chart-label { font-size: 14px; }
+  /* The score column fits the score, so the name gets the rest. */
+  .rivals .result { grid-template-columns: minmax(0, 1fr) auto 14px 6.5ch; padding: 2px 6px; font-size: 12px; }
+  .rivals .result > :nth-child(2) { padding-left: 4px; }
+  .rivals .result-player { padding-left: 6px; }
+  .rivals .result .delta-tie { width: 4.5ch; }
+  .rivals .show-others { font-size: 12px; }
+}
+
+/* Results too narrow for both scores and diffs (about the same room for names either way): where there are diffs,
+   rivals show only their diffs, and your score is in the diff column under them. */
+@container (max-width: 259px) {
+  .rivals .chart-card-results:not(.no-diffs) .result { grid-template-columns: minmax(0, 1fr) 14px 6.5ch; }
+  .rivals .chart-card-results:not(.no-diffs) .result:not(.mine) > .score,
+  .rivals .chart-card-results:not(.no-diffs) .result.mine > :nth-child(n+3) { display: none; }
+  .rivals .chart-card-results:not(.no-diffs) .result.mine > .num { grid-column: 2 / -1; }
 }
