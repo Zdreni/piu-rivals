@@ -17,6 +17,8 @@
 .rivals .neg { color: #FF2A00; }
 .rivals .pos.muted { color: #7BA874; }
 .rivals .neg.muted { color: #B86A5C; }
+/* Rivals' leads in the cards are a lighter red, which reads better on the dark cards. */
+.rivals .result .neg:not(.muted) { color: color-mix(in srgb, #FF2A00 70%, #EAF5EC); }
 /* True ties, only told apart in the solo view. */
 .rivals .tie { color: #F2E8B6; }
 
@@ -201,14 +203,15 @@
 
 .rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
 /* Room for three digits, so tabs keep their size as the counts change. */
+/* Their colours, like those of the counts on fold buttons, are only a tint: half the colour, half the text white. */
 .rivals .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
                      font-variant-numeric: tabular-nums; }
-.rivals .tab-count.rivals-win { color: #FF2A00; }
-.rivals .tab-count.not-played { color: #3FA9F5; }
-.rivals .tab-count.you-win { color: #4FE33F; }
+.rivals .tab-count.rivals-win { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
+.rivals .tab-count.not-played { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
+.rivals .tab-count.you-win { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
 .rivals .tab-count.tie { color: #F2E8B6; }
 .rivals .tab[data-tab="hidden"] { margin-left: auto; }
-.rivals .tab-count.hidden { color: #8C2E1C; }
+.rivals .tab-count.hidden { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
 .rivals .tab-word.short { display: none; }
 .rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 12px 16px; flex: 1;
                     scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
@@ -252,7 +255,10 @@
 .rivals .player-link:hover { color: #4FE33F; }
 .rivals .show-others { display: block; width: 100%; padding: 2px 12px 6px; text-align: center; color: #9AB3A3; opacity: .6;
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
-.rivals .show-others .blue { color: #3FA9F5; }
+.rivals .show-others .neg { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
+.rivals .show-others .neg.muted { color: color-mix(in srgb, #B86A5C 50%, #EAF5EC); }
+.rivals .show-others .pos { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
+.rivals .show-others .blue { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
 .rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
