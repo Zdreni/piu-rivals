@@ -17,7 +17,7 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 export function Arrow({ up }: { up: boolean }) {
   return (
     <svg className="arrow" viewBox="0 0 6 12" aria-hidden="true">
-      <path d={up ? 'M3 11V1.5M.75 3.75L3 1.5l2.25 2.25' : 'M3 1v9.5M.75 8.25L3 10.5l2.25-2.25'} />
+      <path d={up ? 'M3 10V2.5M1.25 4.25L3 2.5l1.75 1.75' : 'M3 2v7.5M1.25 7.75L3 9.5l1.75-1.75'} />
     </svg>
   );
 }
