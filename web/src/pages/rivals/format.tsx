@@ -14,7 +14,7 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 // naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
-// Two grid cells: the sign, + when you're ahead and − when the rival is, then the number.
+// Signed, + when you're ahead and − when the rival is.
 export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   value: number | null;
   outcome?: number | null;
@@ -22,9 +22,9 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   markTie?: boolean;
 }) {
   if (value === null)
-    return <><span /><span /></>;
+    return <span />;
   if (value === 0)
-    return <><span /><span className="num"><span className={`delta-tie${markTie ? ' tie' : ''}`} title="Tie">=</span></span></>;
+    return <span className="num delta"><span className={`delta-tie${markTie ? ' tie' : ''}`} title="Tie">=</span></span>;
 
   const tone = outcome  ||  value;
   const capped = ! outcome  &&  value < 0;
@@ -32,14 +32,12 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
   const title = capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined;
   const abs = Math.abs(value);
+  const sign = value > 0 ? '+' : '−';
   return (
-    <>
-      <span className={`delta-arrow ${className}`} title={title}>{value > 0 ? '+' : '−'}</span>
-      <span className={`num ${className}`} title={title}>
-        {/* Below a thousand every digit is dimmed, like the last three digits of bigger diffs. */}
-        {abs < 1000 ? <span className="tail-dim">{abs}</span> : <Score value={abs} tailClass="tail-dim" />}
-      </span>
-    </>
+    <span className={`num delta ${className}`} title={title}>
+      {/* Below a thousand the whole diff is dimmed, like the last three digits of bigger diffs. */}
+      {abs < 1000 ? <span className="tail-dim">{sign}{abs}</span> : <>{sign}<Score value={abs} tailClass="tail-dim" /></>}
+    </span>
   );
 }
 

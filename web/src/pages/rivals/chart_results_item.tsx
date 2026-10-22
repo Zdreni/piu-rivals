@@ -86,7 +86,6 @@ export function ChartResultsItem({
           <span className="result-player" title={myName}>{displayName(myName)}</span>
           <span className="num" title={datesTitle(entry)}><Score value={entry.score} /></span>
           <span />
-          <span />
         </div>
       );
     }
