@@ -68,6 +68,9 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
   // use; a tap on the level already picked, a double tap or a long press brings the levels into use.
   const [levelsActive, setLevelsActive] = useState(false);
+  // On narrow screens, the rivals wait off the left edge until the levels' top bar slides them in.
+  const [rivalsOpen, setRivalsOpen] = useState(false);
+  const levelsActiveBeforeRivals = useRef(false);
   const lastLevelsTap = useRef(0);
   const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
   // Set once a long press has brought the levels into use, so the click that ends it does nothing more.
@@ -97,7 +100,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       event.stopPropagation();
       return;
     }
-    if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content')))
+    if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content'))
+        ||  target.closest('.rivals-toggle'))
       return;
 
     if (levels) {
@@ -123,7 +127,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const startLongPress = (event: PointerEvent) => {
     cancelLongPress();
     longPressed.current = false;
-    if (! PHONE.matches  ||  levelsActive  ||  ! (event.target as Element).closest('.filters'))
+    const target = event.target as Element;
+    if (! PHONE.matches  ||  levelsActive  ||  ! target.closest('.filters')  ||  target.closest('.rivals-toggle'))
       return;
 
     const timer = window.setTimeout(() => {
@@ -204,7 +209,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         onChange={settings.changePreferences}
       />
       <div
-        className={`dlg-main${levelsActive ? ' levels-active' : ''}`}
+        className={`dlg-main${levelsActive ? ' levels-active' : ''}${rivalsOpen ? ' rivals-open' : ''}`}
         onClickCapture={activatePanel}
         onPointerDownCapture={startLongPress}
         onPointerMoveCapture={moveLongPress}
@@ -238,7 +243,19 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           selectedLevel={selectedLevel}
           countBy={countBy}
           showTies={!! soloRival}
+          rivalsOpen={rivalsOpen}
           onSelect={(level) => changeUi({ selectedLevel: level })}
+          onToggleRivals={() => {
+            // The rivals come in beside the levels out of use; once they're gone, the levels are back in the state
+            // they were in.
+            if (rivalsOpen) {
+              setLevelsActive(levelsActiveBeforeRivals.current);
+            } else {
+              levelsActiveBeforeRivals.current = levelsActive;
+              setLevelsActive(false);
+            }
+            setRivalsOpen(! rivalsOpen);
+          }}
         />
         <ChartResults
           // Another level starts with every card folded again.
