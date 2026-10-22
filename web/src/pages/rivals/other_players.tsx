@@ -162,25 +162,30 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
                 <span className="rival-name">{name}</span>
                 <span className="rival-pum">{formatNumber(player.pumbility)}</span>
               </div>
-              {'plays' in player  &&  (
-                <div className="rival-scrap">
-                  <div className="rival-counts" title="scraped scores · best scores">
-                    <Count value={player.plays} label="scores" /> · <Count value={player.charts} label="best" />
-                  </div>
-                  {isOpen  &&  ! isMe  &&  (
-                    <div className="rival-stats" title={typeof openStats === 'string' ? undefined : statsTip}>
-                      {openStats === null  &&  'Comparing…'}
-                      {typeof openStats === 'string'  &&  <span className="error">{openStats}</span>}
-                      {openStats !== null  &&  typeof openStats === 'object'  &&  <StatWords counts={openStats} separator=" · " />}
+              {/* Unrolled while open, like a rival (see .rival-more). */}
+              <div className="rival-more">
+                <div>
+                  {'plays' in player  &&  (
+                    <div className="rival-scrap">
+                      <div className="rival-counts" title="scraped scores · best scores">
+                        <Count value={player.plays} label="scores" /> · <Count value={player.charts} label="best" />
+                      </div>
+                      {isOpen  &&  ! isMe  &&  (
+                        <div className="rival-stats" title={typeof openStats === 'string' ? undefined : statsTip}>
+                          {openStats === null  &&  'Comparing…'}
+                          {typeof openStats === 'string'  &&  <span className="error">{openStats}</span>}
+                          {openStats !== null  &&  typeof openStats === 'object'  &&  <StatWords counts={openStats} separator=" · " />}
+                        </div>
+                      )}
                     </div>
                   )}
+                  <div className="rival-links">
+                    <a className="rival-link" href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`}
+                      target="_blank" rel="noreferrer">
+                      Sessions
+                    </a>
+                  </div>
                 </div>
-              )}
-              <div className="rival-links">
-                <a className="rival-link" href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`}
-                  target="_blank" rel="noreferrer">
-                  Sessions
-                </a>
               </div>
             </div>
           );

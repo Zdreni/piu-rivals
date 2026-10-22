@@ -65,13 +65,16 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
 // What the score cap hides gets its own dark segment. `countBy` picks what sizes and labels the segments;
-// `showTies` gives ties their own segment (counted by results).
-export function ChartsGroups({ charts, selectedLevel, countBy, showTies, onSelect }: {
+// `showTies` gives ties their own segment (counted by results). On narrow screens, the top bar's button slides the
+// rivals in from the left (`rivalsOpen`) and out again.
+export function ChartsGroups({ charts, selectedLevel, countBy, showTies, rivalsOpen, onSelect, onToggleRivals }: {
   charts: ChartRow[];
   selectedLevel: string | null;
   countBy: CountBy;
   showTies: boolean;
+  rivalsOpen: boolean;
   onSelect: (level: string) => void;
+  onToggleRivals: () => void;
 }) {
   const levels = sortedLevels(charts);
   const stats: Stats = {};
@@ -94,25 +97,34 @@ export function ChartsGroups({ charts, selectedLevel, countBy, showTies, onSelec
 
   return (
     <div className="filters">
-      <div className="level-chart" role="radiogroup" aria-label="Levels">
-        <span className={`level-head single${headOn('S')}`}>Singles</span>
-        <span />
-        <span className={`level-head${headOn('D')}`}>Doubles</span>
-        {nums.map((num) => {
-          const single = find('S', num), double = find('D', num);
-          const on = selectedLevel !== null  &&  (selectedLevel === single  ||  selectedLevel === double);
-          return [
-            <LevelBar key={`S${num}`} level={single} side="single" selected={single === selectedLevel} {...bar} />,
-            <span key={num} className={`level-num${on ? ' on' : ''}`}>{num}</span>,
-            <LevelBar key={`D${num}`} level={double} side="double" selected={double === selectedLevel} {...bar} />,
-          ];
-        })}
-        {otherLevels.map((level) => (
-          <div key={level} className="level-other">
-            <span className={`level-num${level === selectedLevel ? ' on' : ''}`}>{level}</span>
-            <LevelBar level={level} side="double" selected={level === selectedLevel} {...bar} />
-          </div>
-        ))}
+      {/* A bar as tall as the results' tabs, which stays put while the levels below it scroll. */}
+      <div className="level-top">
+        <button className={`rivals-toggle${rivalsOpen ? ' on' : ''}`} type="button" aria-expanded={rivalsOpen} onClick={onToggleRivals}>
+          <svg viewBox="0 0 8 12" aria-hidden="true"><path d={rivalsOpen ? 'M6 1 1 6l5 5' : 'M2 1l5 5-5 5'} /></svg>
+          Rivals
+        </button>
+      </div>
+      <div className="level-scroll">
+        <div className="level-chart" role="radiogroup" aria-label="Levels">
+          <span className={`level-head single${headOn('S')}`}>Singles</span>
+          <span />
+          <span className={`level-head${headOn('D')}`}>Doubles</span>
+          {nums.map((num) => {
+            const single = find('S', num), double = find('D', num);
+            const on = selectedLevel !== null  &&  (selectedLevel === single  ||  selectedLevel === double);
+            return [
+              <LevelBar key={`S${num}`} level={single} side="single" selected={single === selectedLevel} {...bar} />,
+              <span key={num} className={`level-num${on ? ' on' : ''}`}>{num}</span>,
+              <LevelBar key={`D${num}`} level={double} side="double" selected={double === selectedLevel} {...bar} />,
+            ];
+          })}
+          {otherLevels.map((level) => (
+            <div key={level} className="level-other">
+              <span className={`level-num${level === selectedLevel ? ' on' : ''}`}>{level}</span>
+              <LevelBar level={level} side="double" selected={level === selectedLevel} {...bar} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

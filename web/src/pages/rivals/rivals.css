@@ -85,7 +85,12 @@
 .rivals .rival:nth-child(odd) { background: rgba(255,255,255,.05); }
 .rivals .rival:hover { background: rgba(79,227,63,.12); }
 .rivals .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
-.rivals .rival:not(.focused) .rival-links, .rivals .rival:not(.focused) .rival-scrap { display: none; }
+/* The focused rival unrolls its counts, results and links: their row grows from nothing to their height. Folded, they
+   can't be tabbed to, once they're out of sight. */
+.rivals .rival-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.rivals .rival-more > div { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s .25s; }
+.rivals .rival.focused .rival-more { grid-template-rows: 1fr; }
+.rivals .rival.focused .rival-more > div { visibility: visible; transition-delay: 0s; }
 .rivals .rival-toggle { display: flex; align-items: center; gap: 8px; font-size: 17px; }
 .rivals .rival.focused .rival-toggle { cursor: pointer; }
 .rivals .rival input { appearance: none; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer;
@@ -94,33 +99,29 @@
 .rivals .rival input:checked { background: #A9AFAC; border-color: #A9AFAC; }
 .rivals .rival input:checked::after { content: ''; width: 4px; height: 8px; margin-top: -2px;
                                       border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.rivals .rival input[data-player] { position: relative; display: block; width: 28px; height: 16px; border-radius: 8px;
-                                    transition: background .15s, border-color .15s; }
-.rivals .rival input[data-player]::after { content: ''; position: absolute; top: 1px; left: 1px; width: 12px; height: 12px;
-                                           margin: 0; border: 0; border-radius: 50%; background: #9AA59F; transform: none;
-                                           transition: left .15s, background .15s; }
-.rivals .rival input[data-player]:checked::after { left: 13px; background: #0F1A14; }
-.rivals .rival-spacer { width: 28px; flex-shrink: 0; }
 .rivals .rival.me .rival-name, .rivals .rival.me .rival-pum { color: #FFC433; }
-.rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                      font-size: 16px; color: #C9D8CE; }
 .rivals .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
 .rivals .rival-visit { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; color: #8A9590;
                        font-size: 13px; font-variant-numeric: tabular-nums; text-decoration: none; }
 .rivals .rival-visit:hover { color: #4FE33F; }
 .rivals .rival-visit svg { width: 13px; height: 13px; }
-.rivals .rival-links { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+.rivals .rival-links { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
+.rivals .rival-links + .rival-scrap { margin-top: 4px; }
 .rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
 .rivals .rival-stats .error { color: #FF5A5A; }
-.rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 1px 8px;
-                      font-size: 13px; text-decoration: none; }
+.rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 5px 12px;
+                      font-size: 14px; text-decoration: none; }
 .rivals .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
-.rivals .rival-solo { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+/* Enable and Solo: checkboxes in buttons. */
+.rivals .rival-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .rivals .rival-solo:hover { color: #3FA9F5; border-color: #3FA9F5; background: #14201A; }
-.rivals .rival .rival-solo input { width: 12px; height: 12px; }
+.rivals .rival .rival-check input { width: 14px; height: 14px; }
 .rivals .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
-.rivals .rival .rival-solo input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
-.rivals .rival-delete { margin-left: auto; font: inherit; font-size: 13px; cursor: pointer; }
+.rivals .rival .rival-check input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
+.rivals .rival-delete { margin-left: auto; font: inherit; font-size: 14px; cursor: pointer; }
 .rivals .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
 .rivals .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
 .rivals .rival-counts, .rivals .rival-stats { margin-top: 3px; }
@@ -145,10 +146,23 @@
 
 /* Levels column */
 
-.rivals .filters { display: flex; gap: 6px; padding: 10px 10px 10px 16px; border-right: 1px solid #2B4034;
-                   overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; flex-shrink: 0;
-                   scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
-.rivals .filters:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .filters { display: flex; flex-direction: column; border-right: 1px solid #2B4034; flex-shrink: 0; }
+/* An empty top bar, as tall as the results' tabs beside it, so the lines under them meet: their 6px top padding, their
+   18px line with 10px above it and 10px + 2px (their underline less its overlap) below, and the 1px line. */
+.rivals .level-top { flex-shrink: 0; box-sizing: border-box; height: calc(6px + 10px + 18px + 12px + 1px);
+                     display: flex; align-items: center; padding: 0 10px 0 16px; border-bottom: 1px solid #2B4034; }
+/* Its button slides the rivals in on narrow screens; beside them, on wide ones, it's left out. */
+.rivals .rivals-toggle { display: none; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px;
+                         background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                         font: 500 14px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .rivals-toggle:hover { color: #4FE33F; border-color: #4FE33F; }
+.rivals .rivals-toggle.on { background: #2B4034; color: #EAF5EC; }
+.rivals .rivals-toggle svg { width: 6px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6;
+                             stroke-linecap: round; stroke-linejoin: round; }
+.rivals .level-scroll { display: flex; flex: 1; min-height: 0; padding: 10px 10px 10px 16px;
+                        overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
+                        scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .filters:hover .level-scroll { scrollbar-color: #3D5A49 transparent; }
 /* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). There's no row gap:
    bars take 92% of their row instead, so the space between them stays in proportion to their height. */
 .rivals .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
@@ -270,18 +284,28 @@
 .rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
-/* Narrow screens (e.g. a tablet in portrait) and phones: the rivals on top, then the levels always beside the results,
-   and the page scrolls. The levels get the width the results don't need, up to a limit; they are as tall as the screen
-   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. The
-   results' tabs stick to the top too, so only the cards scroll. */
+/* Narrow screens (e.g. a tablet in portrait) and phones: the levels beside the results, and the page scrolls. The levels
+   get the width the results don't need, up to a limit; they are as tall as the screen and stick to its top while the
+   page scrolls through the results, and scroll on their own if they don't fit. The results' tabs stick to the top too,
+   so only the cards scroll.
+   The rivals wait off the left edge, as wide as the results. The button in the levels' top bar slides the whole row
+   right by that width: the rivals come in, the levels follow, and the results go off the right edge. The row is laid
+   out in widths of the view (cqw), since it is wider than the view; --levels is the levels' width. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
-  .rivals { flex: none; }
-  .rivals .dlg-main { display: grid; grid-template-columns: minmax(0, 340px) minmax(360px, 1fr); grid-template-rows: auto; }
+  .rivals { flex: none; container-type: inline-size; overflow-x: clip; }
+  .rivals .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); display: grid; width: calc(200cqw - var(--levels));
+                      grid-template-columns: calc(100cqw - var(--levels)) var(--levels) calc(100cqw - var(--levels));
+                      grid-template-rows: auto; transform: translateX(calc(var(--levels) - 100cqw));
+                      transition: transform .3s ease; }
+  .rivals .dlg-main.rivals-open { transform: none; }
   .rivals .head-settings { margin: 0; flex-wrap: wrap; }
-  .rivals .rival-list { grid-column: 1 / -1; width: auto; height: 45vh; border-right: none; border-bottom: 1px solid #2B4034; }
-  .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; padding-left: 10px; }
+  .rivals .rival-list { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
+  .rivals .rivals-toggle { display: inline-flex; }
+  .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; }
+  .rivals .level-top { padding-left: 10px; }
+  .rivals .level-scroll { padding-left: 10px; }
   .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
   .rivals .score-content { min-height: 0; container-type: inline-size; }
   .rivals .dlg-body { overflow: visible; }
@@ -296,8 +320,8 @@
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
      dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
      for names and diffs, unless the levels need it for their counts. */
-  .rivals .dlg-main { grid-template-columns: 35% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
-  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, min(65%, 100% - 150px)) minmax(0, 1fr); }
+  .rivals .dlg-main { --levels: 35cqw; transition: grid-template-columns .3s ease, width .3s ease, transform .3s ease; }
+  .rivals .dlg-main.levels-active { --levels: max(160px, min(65cqw, 100cqw - 150px)); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
       background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
@@ -307,7 +331,13 @@
      menu, and a double tap doesn't zoom. */
   .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
   .rivals .filters { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
-  .rivals .filters { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
+  .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
+  .rivals .level-top { padding-left: 6px; }
+  /* The button stays bright over the dimmed levels. */
+  .rivals .rivals-toggle { position: relative; z-index: 6; height: 24px; padding: 0 8px 0 6px; font-size: 13px; }
+  /* As tall as the tabs here: their 2px top padding, their 15.6px line with 8px above it and 8px + 2px below, and the
+     1px line. */
+  .rivals .level-top { height: calc(2px + 8px + 15.6px + 10px + 1px); }
   .rivals .level-chart { grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); font-size: 12px;
                         transition: grid-template-columns .3s ease; }
   .rivals .level-head { font-size: 12px; padding-bottom: 6px; }
@@ -366,7 +396,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rivals .dlg-main, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word.short,
-  .rivals .level-chart, .rivals .level-num { transition: none; }
+  .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div { transition: none; }
 }
 
 /* Results too narrow for both scores and diffs (about the same room for names either way): where there are diffs,

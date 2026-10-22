@@ -50,8 +50,8 @@ export function Count({ value, label }: { value: number; label: string }) {
 }
 
 
-// One rival row: the visibility toggle, name, scrape age and PUMBILITY, then (while focused) the score counts,
-// the results against them and their links. `me` marks your own row, `on` a rival checked for the stats,
+// One rival row: the name, scrape age and PUMBILITY, then (while focused) the visibility toggle and solo, the score
+// counts, the results against them, and their links. `me` marks your own row, `on` a rival checked for the stats,
 // `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader).
 export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, best, scores, onFocus, onUnfocus,
   onToggle, onSolo, onRemove }: {
@@ -89,37 +89,43 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
   return (
     <div className={classes.filter(Boolean).join(' ')} onClick={click}>
       <div className="rival-toggle" title={player.fullName}>
-        {me
-          ? <span className="rival-spacer" />
-          : <input type="checkbox" data-player aria-label={`Compare with ${player.name}`} checked={on} onChange={(event) => onToggle(event.target.checked)} />}
         <span className="rival-name">{player.name}</span>
         <ScrapeBadge lastScrapedAt={player.lastScrapedAt} href={`${base}/Sessions`} />
         <span className="rival-pum">{formatNumber(player.pumbility)}</span>
       </div>
-      <div className="rival-scrap">
-        <div className="rival-counts" title="scraped scores · best scores">
-          <Count value={scores} label="scores" /> · <Count value={best} label="best" />
-        </div>
-        {! me  &&  (
-          <div className="rival-stats" title={solo ? statsSoloTip : statsTip}>
-            <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
-          </div>
-        )}
-      </div>
-      <div className="rival-links">
-        {me
-          ? <a className="rival-link" href={base} target="_blank" rel="noreferrer">My page</a>
-          : (
-            <label className="rival-link rival-solo" title="Compare only you and this rival">
-              <input type="checkbox" checked={solo} onChange={(event) => onSolo(event.target.checked)} />Solo
-            </label>
+      {/* The counts, results and links, unrolled while focused (see .rival-more). */}
+      <div className="rival-more">
+        <div>
+          {! me  &&  (
+            <div className="rival-links">
+              <label className="rival-link rival-check" title="Compare your scores with this rival's">
+                <input type="checkbox" checked={on} onChange={(event) => onToggle(event.target.checked)} />Enable
+              </label>
+              <label className="rival-link rival-check rival-solo" title="Compare only you and this rival">
+                <input type="checkbox" checked={solo} onChange={(event) => onSolo(event.target.checked)} />Solo
+              </label>
+            </div>
           )}
-        <a className="rival-link" href={`${base}/Sessions`} target="_blank" rel="noreferrer">Sessions</a>
-        {! me  &&  (
-          <button className="rival-link rival-delete" type="button" title="Remove from your rivals; their scores stay on the server" onClick={onRemove}>
-            Remove
-          </button>
-        )}
+          <div className="rival-scrap">
+            <div className="rival-counts" title="scraped scores · best scores">
+              <Count value={scores} label="scores" /> · <Count value={best} label="best" />
+            </div>
+            {! me  &&  (
+              <div className="rival-stats" title={solo ? statsSoloTip : statsTip}>
+                <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
+              </div>
+            )}
+          </div>
+          <div className="rival-links">
+            {me  &&  <a className="rival-link" href={base} target="_blank" rel="noreferrer">My page</a>}
+            <a className="rival-link" href={`${base}/Sessions`} target="_blank" rel="noreferrer">Sessions</a>
+            {! me  &&  (
+              <button className="rival-link rival-delete" type="button" title="Remove from your rivals; their scores stay on the server" onClick={onRemove}>
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

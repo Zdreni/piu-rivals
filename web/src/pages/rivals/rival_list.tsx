@@ -52,9 +52,20 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
   const rivalIds = new Set(rivals.map((rival) => rival.id));
   const othersCount = allPlayers  &&  allPlayers.filter((player) => player.id !== me.id  &&  ! rivalIds.has(player.id)).length;
 
-  // A newly added rival is focused; it's brought into view once you're back on My rivals.
+  // A newly added rival is focused; it's brought into view once you're back on My rivals. A rival unrolls as it's
+  // focused, so it's brought into view again once it has.
   useEffect(() => {
-    container.current?.querySelector('.rival.focused')?.scrollIntoView({ block: 'nearest' });
+    const row = container.current?.querySelector('.rival.focused');
+    if (! row)
+      return;
+
+    row.scrollIntoView({ block: 'nearest' });
+    const unrolled = (event: Event) => {
+      if (event.target === row.querySelector('.rival-more'))
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+    row.addEventListener('transitionend', unrolled);
+    return () => row.removeEventListener('transitionend', unrolled);
   }, [focused, tab]);
 
   const add = (player: PlayerSummary) => {
