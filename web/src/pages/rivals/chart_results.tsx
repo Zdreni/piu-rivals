@@ -120,7 +120,10 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       <div className="tabs" role="tablist" aria-label="Score results">
         {tabs.map((id) => (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={() => onSelectTab(id)}>
-            {capitalized(tabWord(id))}<span className={`tab-count ${id}`}>{tabNumber(id)}</span>
+            {/* On phones, the words are shortened to their first letter, "Non-matched" and "Not played" to "NP". */}
+            <span className="tab-word">{capitalized(tabWord(id))}</span>
+            <span className="tab-word short">{id === 'not-played' ? 'NP' : tabWord(id)[0]!.toUpperCase()}</span>
+            <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
           </button>
         ))}
       </div>
