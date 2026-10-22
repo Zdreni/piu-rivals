@@ -288,11 +288,12 @@
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
-  /* The panel in use, levels or results, gets 70% of the width, and the other one is dimmed; a tap on the dimmed one
+  /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
-     dimmed, they have no counts (see below), so they take just their 30%. */
-  .rivals .dlg-main { grid-template-columns: 30% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
-  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, 70%) minmax(0, 1fr); }
+     dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 140px, enough
+     for names and diffs, unless the levels need it for their counts. */
+  .rivals .dlg-main { grid-template-columns: 35% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
+  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, min(65%, 100% - 140px)) minmax(0, 1fr); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
       background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
