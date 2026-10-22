@@ -2,5 +2,8 @@
 // unroll on a tap instead of opening their links.
 export const PHONE = window.matchMedia('(max-width: 600px)');
 
+// Narrow screens in rivals.css, where the rivals and the preferences slide in beside the levels.
+export const NARROW = window.matchMedia('(max-width: 1000px)');
+
 // On narrow screens, the panels that wait off the left edge until the levels' top bar slides one in.
 export type SidePanel = 'rivals' | 'preferences';
