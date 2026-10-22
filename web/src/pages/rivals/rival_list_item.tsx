@@ -14,7 +14,7 @@ export interface ListedPlayer {
 
 export const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap filter';
 
-const statsSoloTip = 'Solo: the same counts as in the header, with the score cap and NP min rivals applied';
+const statsSoloTip = 'Solo: the same counts as in the header, with the score cap and unplayed min rivals applied';
 
 
 const ClockIcon = () => (

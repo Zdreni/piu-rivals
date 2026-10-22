@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { PHONE } from './layout.ts';
+import { PHONE, type SidePanel } from './layout.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
 import { chartTier, countCharts, sortedLevels, type TabId } from './stats.ts';
 import { readUiState, saveUiState, type UiState } from './ui_state.ts';
 import { useBests } from './use_bests.ts';
 import { useRivalSettings } from './use_rival_settings.ts';
-import { WindowHeader } from './window_header.tsx';
+import { PreferenceControls, WindowHeader } from './window_header.tsx';
 import './rivals.css';
 
 // While the page is visible, scores and the rival list are loaded again every few minutes, and when the page
@@ -68,9 +68,11 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
   // use; a tap on the level already picked, a double tap or a long press brings the levels into use.
   const [levelsActive, setLevelsActive] = useState(false);
-  // On narrow screens, the rivals wait off the left edge until the levels' top bar slides them in.
-  const [rivalsOpen, setRivalsOpen] = useState(false);
-  const levelsActiveBeforeRivals = useRef(false);
+  // On narrow screens, the rivals and the preferences wait off the left edge until the levels' top bar slides one of
+  // them in. The last one in stays shown while it slides out.
+  const [sideOpen, setSideOpen] = useState(false);
+  const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
+  const levelsActiveBeforeSide = useRef(false);
   const lastLevelsTap = useRef(0);
   const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
   // Set once a long press has brought the levels into use, so the click that ends it does nothing more.
@@ -101,7 +103,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       return;
     }
     if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content'))
-        ||  target.closest('.rivals-toggle'))
+        ||  target.closest('.panel-toggle'))
       return;
 
     if (levels) {
@@ -128,7 +130,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     cancelLongPress();
     longPressed.current = false;
     const target = event.target as Element;
-    if (! PHONE.matches  ||  levelsActive  ||  ! target.closest('.filters')  ||  target.closest('.rivals-toggle'))
+    if (! PHONE.matches  ||  levelsActive  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
       return;
 
     const timer = window.setTimeout(() => {
@@ -144,6 +146,23 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     const press = longPress.current;
     if (press  &&  Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP_PX)
       cancelLongPress();
+  };
+
+  // The side panels come in beside the levels out of use; once they're gone, the levels are back in the state they
+  // were in. The other panel's button swaps the panels in place.
+  const toggleSide = (panel: SidePanel) => {
+    if (sideOpen  &&  panel !== sidePanel) {
+      setSidePanel(panel);
+      return;
+    }
+    if (sideOpen) {
+      setLevelsActive(levelsActiveBeforeSide.current);
+    } else {
+      levelsActiveBeforeSide.current = levelsActive;
+      setLevelsActive(false);
+    }
+    setSidePanel(panel);
+    setSideOpen(! sideOpen);
   };
 
   const focus = (playerId: string | null) => {
@@ -209,7 +228,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         onChange={settings.changePreferences}
       />
       <div
-        className={`dlg-main${levelsActive ? ' levels-active' : ''}${rivalsOpen ? ' rivals-open' : ''}`}
+        className={`dlg-main${levelsActive ? ' levels-active' : ''}${sideOpen ? ' side-open' : ''}${sidePanel === 'preferences' ? ' side-preferences' : ''}`}
         onClickCapture={activatePanel}
         onPointerDownCapture={startLongPress}
         onPointerMoveCapture={moveLongPress}
@@ -238,24 +257,20 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onRemove={settings.removeRival}
           onAdd={settings.addRival}
         />
+        <div className="prefs-panel" aria-label="Preferences">
+          <div className="prefs-top">Preferences</div>
+          <div className="prefs-controls">
+            <PreferenceControls preferences={preferences} solo={!! soloRival} onChange={settings.changePreferences} />
+          </div>
+        </div>
         <ChartsGroups
           charts={charts}
           selectedLevel={selectedLevel}
           countBy={countBy}
           showTies={!! soloRival}
-          rivalsOpen={rivalsOpen}
+          sidePanel={sideOpen ? sidePanel : null}
           onSelect={(level) => changeUi({ selectedLevel: level })}
-          onToggleRivals={() => {
-            // The rivals come in beside the levels out of use; once they're gone, the levels are back in the state
-            // they were in.
-            if (rivalsOpen) {
-              setLevelsActive(levelsActiveBeforeRivals.current);
-            } else {
-              levelsActiveBeforeRivals.current = levelsActive;
-              setLevelsActive(false);
-            }
-            setRivalsOpen(! rivalsOpen);
-          }}
+          onToggleSide={toggleSide}
         />
         <ChartResults
           // Another level starts with every card folded again.

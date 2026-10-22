@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import type { SidePanel } from './layout.ts';
 import type { ChartRow } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { type Counts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from './stats.ts';
@@ -65,16 +66,16 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
 // What the score cap hides gets its own dark segment. `countBy` picks what sizes and labels the segments;
-// `showTies` gives ties their own segment (counted by results). On narrow screens, the top bar's button slides the
-// rivals in from the left (`rivalsOpen`) and out again.
-export function ChartsGroups({ charts, selectedLevel, countBy, showTies, rivalsOpen, onSelect, onToggleRivals }: {
+// `showTies` gives ties their own segment (counted by results). On narrow screens, the top bar's buttons slide the
+// rivals or the preferences in from the left (`sidePanel`, the one that's in) and out again.
+export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePanel, onSelect, onToggleSide }: {
   charts: ChartRow[];
   selectedLevel: string | null;
   countBy: CountBy;
   showTies: boolean;
-  rivalsOpen: boolean;
+  sidePanel: SidePanel | null;
   onSelect: (level: string) => void;
-  onToggleRivals: () => void;
+  onToggleSide: (panel: SidePanel) => void;
 }) {
   const levels = sortedLevels(charts);
   const stats: Stats = {};
@@ -99,9 +100,17 @@ export function ChartsGroups({ charts, selectedLevel, countBy, showTies, rivalsO
     <div className="filters">
       {/* A bar as tall as the results' tabs, which stays put while the levels below it scroll. */}
       <div className="level-top">
-        <button className={`rivals-toggle${rivalsOpen ? ' on' : ''}`} type="button" aria-expanded={rivalsOpen} onClick={onToggleRivals}>
-          <svg viewBox="0 0 8 12" aria-hidden="true"><path d={rivalsOpen ? 'M6 1 1 6l5 5' : 'M2 1l5 5-5 5'} /></svg>
+        <button className={`panel-toggle${sidePanel === 'rivals' ? ' on' : ''}`} type="button"
+          aria-expanded={sidePanel === 'rivals'} onClick={() => onToggleSide('rivals')}>
+          <svg viewBox="0 0 8 12" aria-hidden="true"><path d={sidePanel === 'rivals' ? 'M6 1 1 6l5 5' : 'M2 1l5 5-5 5'} /></svg>
           Rivals
+        </button>
+        <button className={`panel-toggle prefs-toggle${sidePanel === 'preferences' ? ' on' : ''}`} type="button"
+          aria-label="Preferences" title="Preferences" aria-expanded={sidePanel === 'preferences'} onClick={() => onToggleSide('preferences')}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h12" />
+            <circle cx="16" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="18" cy="18" r="2" />
+          </svg>
         </button>
       </div>
       <div className="level-scroll">
