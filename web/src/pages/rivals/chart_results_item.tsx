@@ -1,7 +1,7 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { Fragment, type MouseEvent, type ReactNode } from 'react';
 import { Delta, Score } from './format.tsx';
 import { PHONE } from './layout.ts';
-import { type ChartRow, type Dates, displayName, type RivalResult } from './model.ts';
+import { type ChartRow, displayName, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
 // How many of the highest and of the lowest scores a card lists before folding the ones between.
@@ -10,14 +10,9 @@ export interface Keep {
   bottom: number;
 }
 
-type Entry = (RivalResult & { me?: false }) | (Dates & { me: true; score: number });
+type Entry = (RivalResult & { me?: false }) | { me: true; score: number };
 
 
-// Score tooltip. The best score line is dropped when it was set on the last try.
-const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
-  (bestScoreDate  &&  bestScoreDate === lastTryDate
-    ? `Last try: ${lastTryDate}`
-    : `Best score: ${bestScoreDate  ||  'unknown'}\nLast try: ${lastTryDate  ||  'unknown'}`);
 
 
 // A fold button's count, e.g. "↑3", with the arrow and colour of the strongest result folded, e.g. red if any of
@@ -46,7 +41,7 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
 // diffs of true ties. `dimWon` dims the rivals you beat more than the others.
 // On phones, a tap on a rival's row doesn't open their sessions but calls `onUnroll`, and the `unrolled` rival's row
-// is followed by their score (when the row has no room for it), its dates and a link to their sessions.
+// unrolls the day of their best score and their score (when the row has no room for it).
 export function ChartResultsItem({
   chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, onExpandFolded, onExpandHigher,
   unrolled, onUnroll,
@@ -68,7 +63,7 @@ export function ChartResultsItem({
 }) {
   const all: Entry[] = [...chart.rivals];
   if (chart.mine !== null)
-    all.push({ me: true, score: chart.mine, ...chart.myDates });
+    all.push({ me: true, score: chart.mine });
 
   all.sort((a, b) => b.score - a.score  ||  Number(!! b.me) - Number(!! a.me));
 
@@ -89,12 +84,13 @@ export function ChartResultsItem({
   const hidden = new Set([...hiddenAbove, ...hiddenBelow]);
   const list = all.filter((entry) => ! hidden.has(entry));
 
-  const rows: ReactNode[] = list.flatMap((entry) => {
+  // One node per score, so the "more" button for the higher ones goes in by its place in `list`.
+  const rows: ReactNode[] = list.map((entry) => {
     if (entry.me) {
       return (
         <div key="me" className="result mine">
           <span className="result-player" title={myName}>{displayName(myName)}</span>
-          <span className="num" title={datesTitle(entry)}><Score value={entry.score} /></span>
+          <span className="num"><Score value={entry.score} /></span>
           <span />
         </div>
       );
@@ -110,26 +106,26 @@ export function ChartResultsItem({
       onUnroll(isUnrolled ? null : entry.playerId);
     };
     const row = (
-      <div key={entry.playerId} className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggle}>
+      <div className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggle}>
         <a className="result-player player-link" title={entry.player} href={sessions} target="_blank" rel="noreferrer">
           {displayName(entry.player)}
         </a>
-        <span className="num score" title={datesTitle(entry)}><Score value={entry.score} /></span>
+        <span className="num score"><Score value={entry.score} /></span>
         {chart.mine !== null  &&  <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />}
       </div>
     );
-    if (! isUnrolled)
-      return [row];
-
-    return [row, (
-      <div key={`${entry.playerId} details`} className="result-details">
-        <div className="result-dates">
-          <span className="result-details-score">Score: <Score value={entry.score} /></span>
-          {datesTitle(entry).split('\n').map((line) => <span key={line}>{line}</span>)}
+    // Every rival has their details, folded but for the unrolled one's, so they roll and unroll (see .result-details).
+    return (
+      <Fragment key={entry.playerId}>
+        {row}
+        <div className={`result-details${isUnrolled ? ' unrolled' : ''}`}>
+          <div>
+            <span className="num result-details-score"><Score value={entry.score} /></span>
+            <span className="result-date">{entry.date}</span>
+          </div>
         </div>
-        <a className="result-sessions" href={sessions} target="_blank" rel="noreferrer">Sessions</a>
-      </div>
-    )];
+      </Fragment>
+    );
   });
 
   if (above > 0) {

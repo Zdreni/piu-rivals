@@ -4,17 +4,14 @@ import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_
 // The level range when the settings don't apply.
 export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
 
-export interface Dates {
-  bestScoreDate: string | null;
-  lastTryDate: string | null;
-}
-
 // A rival's best score on a chart, compared with yours.
-export interface RivalResult extends Dates {
+export interface RivalResult {
   // The full name, with its "#1234" tag.
   player: string;
   playerId: string;
   score: number;
+  // The day the best score was set, if known.
+  date: string | null;
   // Positive = you're ahead. Null when you have no score. `delta` is capped by the score cap, `realDelta` is not.
   delta: number | null;
   realDelta: number | null;
@@ -26,7 +23,6 @@ export interface ChartRow {
   // Chart type and level, e.g. "D24".
   chart: string;
   mine: number | null;
-  myDates: Dates;
   // Best score first.
   rivals: RivalResult[];
   unplayed: boolean;
@@ -62,8 +58,6 @@ export const leadWeight = (chart: ChartRow) =>
 export const byLeadWeight = (a: ChartRow, b: ChartRow) => leadWeight(b) - leadWeight(a)  ||  a.track.localeCompare(b.track);
 
 
-const dates = (best: BestResult | undefined): Dates =>
-  ({ bestScoreDate: best?.bestPlayedOn  ??  null, lastTryDate: best?.lastPlayedOn  ??  null });
 
 
 // Every chart in the `levels` range that at least one of `rivals` has a score on, with your score and theirs.
@@ -93,7 +87,7 @@ export function buildCharts(
     const results = rivals.flatMap((rival): RivalResult[] => {
       const best = bests.get(rival.id)?.get(chartId);
       return best
-        ? [{ player: rival.name, playerId: rival.id, score: best.score, ...dates(best),
+        ? [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn,
           delta: delta(mine, best.score, scoreCap), realDelta: delta(mine, best.score) }]
         : [];
     }).sort((a, b) => b.score - a.score);
@@ -103,7 +97,6 @@ export function buildCharts(
       track: chart.songTitle,
       chart: `${chart.chartType}${chart.level}`,
       mine,
-      myDates: dates(myBest),
       rivals: results,
       unplayed: mine === null,
       weight: targetWeight(results.map((rival) => rival.delta)),
