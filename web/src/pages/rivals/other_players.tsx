@@ -3,7 +3,7 @@ import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from '../../api.ts';
 import { formatNumber } from '../../util.ts';
 import { StatWords } from './format.tsx';
-import { buildCharts, displayName, type PlayerBests } from './model.ts';
+import { buildCharts, DEFAULT_LEVELS, displayName, type PlayerBests } from './model.ts';
 import { MAX_SCORE_CAP } from './preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, realCounts } from './stats.ts';
@@ -83,7 +83,7 @@ function useOtherStats(playerId: string | null, me: string, myBests: PlayerBests
       return loaded.data;
 
     const bests = new Map([[me, myBests  ??  new Map()], [playerId, loaded.data.bests]]);
-    const charts = buildCharts(loaded.data.charts, bests, me, [{ id: playerId, name: playerId }], MAX_SCORE_CAP);
+    const charts = buildCharts(loaded.data.charts, bests, me, [{ id: playerId, name: playerId }], MAX_SCORE_CAP, DEFAULT_LEVELS);
     return realCounts(charts).get(playerId)  ??  NO_COUNTS;
   }, [playerId, loaded, me, myBests]);
 }

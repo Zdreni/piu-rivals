@@ -1,7 +1,7 @@
 import { StatWords } from './format.tsx';
 import {
-  clampNpMinimalRivals, clampScoreCap, type CountBy, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_NP_RIVALS, MIN_SCORE_CAP,
-  type Preferences, SCORE_CAP_STEP,
+  clampLevel, clampNpMinimalRivals, clampScoreCap, type CountBy, type LevelRange, MAX_LEVEL, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_LEVEL,
+  MIN_NP_RIVALS, MIN_SCORE_CAP, type Preferences, SCORE_CAP_STEP,
 } from './preferences.ts';
 import { type Counts, STAT_WORDS } from './stats.ts';
 
@@ -37,14 +37,17 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 ];
 
 
-// The score cap, np minimal rivals and count by settings, in the header and in the preferences panel of narrow
-// screens. While a rival is `solo`, results are counted whatever the count by setting says, and the setting is locked.
-export function PreferenceControls({ preferences, solo, onChange }: {
+// The score cap, np minimal rivals, level range and count by settings, in the header and in the preferences panel of narrow
+// screens. `levels` is the level range in use, whether set or following your scores. While a rival is `solo`, results
+// are counted whatever the count by setting says, and the setting is locked.
+export function PreferenceControls({ preferences, levels, solo, onChange }: {
   preferences: Preferences;
+  levels: LevelRange;
   solo: boolean;
   onChange: (changes: Partial<Preferences>) => void;
 }) {
   const { scoreCap, npMinimalRivals } = preferences;
+  const { minLevel, maxLevel } = levels;
   const countBy = solo ? 'results' : preferences.countBy;
   const countByTitle = solo
     ? 'Solo: results are always counted'
@@ -74,6 +77,30 @@ export function PreferenceControls({ preferences, solo, onChange }: {
         lowerLabel="Lower minimal rivals for np"
         raiseLabel="Raise minimal rivals for np"
         onStep={(step) => onChange({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) })}
+      />
+      <Stepper
+        className="min-level"
+        label="Min level"
+        text={`${minLevel}`}
+        title={minLevel === MIN_LEVEL ? 'Show charts of every level' : `Show charts from level ${minLevel} up`}
+        off={minLevel === MIN_LEVEL}
+        canLower={minLevel > MIN_LEVEL}
+        canRaise={minLevel < maxLevel}
+        lowerLabel="Lower minimal level"
+        raiseLabel="Raise minimal level"
+        onStep={(step) => onChange({ minLevel: clampLevel(minLevel + step) })}
+      />
+      <Stepper
+        className="max-level"
+        label="Max level"
+        text={maxLevel >= MAX_LEVEL ? `${MAX_LEVEL}+` : `${maxLevel}`}
+        title={maxLevel >= MAX_LEVEL ? 'No highest level' : `Show charts up to level ${maxLevel}`}
+        off={maxLevel >= MAX_LEVEL}
+        canLower={maxLevel > minLevel}
+        canRaise={maxLevel < MAX_LEVEL}
+        lowerLabel="Lower maximal level"
+        raiseLabel="Raise maximal level"
+        onStep={(step) => onChange({ maxLevel: clampLevel(maxLevel + step) })}
       />
       <div
         className="switch count-by"
@@ -106,9 +133,10 @@ export function PreferenceControls({ preferences, solo, onChange }: {
 // The title, named by what is counted, with your totals, and the settings (left out on narrow screens, where the
 // preferences panel has them). `status` is a short note on loading scores, if any. While a rival is `solo`, results
 // are counted whatever the count by setting says.
-export function WindowHeader({ totals, preferences, solo, status, onChange }: {
+export function WindowHeader({ totals, preferences, levels, solo, status, onChange }: {
   totals: Counts;
   preferences: Preferences;
+  levels: LevelRange;
   solo: boolean;
   status: { text: string; error: boolean } | null;
   onChange: (changes: Partial<Preferences>) => void;
@@ -122,7 +150,7 @@ export function WindowHeader({ totals, preferences, solo, status, onChange }: {
       </h2>
       {status  &&  <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>}
       <div className="head-settings">
-        <PreferenceControls preferences={preferences} solo={solo} onChange={onChange} />
+        <PreferenceControls preferences={preferences} levels={levels} solo={solo} onChange={onChange} />
       </div>
     </div>
   );
