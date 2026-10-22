@@ -14,6 +14,7 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 // naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
+// Two grid cells: the arrow, pointing to where the rival stands, then the number.
 export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   value: number | null;
   outcome?: number | null;
@@ -21,20 +22,24 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   markTie?: boolean;
 }) {
   if (value === null)
-    return <span>—</span>;
+    return <><span /><span /></>;
+  if (value === 0)
+    return <><span /><span className="num"><span className={`delta-tie${markTie ? ' tie' : ''}`} title="Tie">=</span></span></>;
 
   const tone = outcome  ||  value;
   const capped = ! outcome  &&  value < 0;
   const className = (tone > 0 ? 'pos' : tone < 0 ? 'neg' : markTie ? 'tie' : '') + (capped ? ' muted' : '');
   const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
-  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const title = capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined;
   const abs = Math.abs(value);
   return (
-    <span className={className} title={capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined}>
-      {sign}
-      {/* Below a thousand every digit is dimmed, like the last three digits of bigger diffs. */}
-      {abs < 1000 ? <span className="tail-dim">{abs}</span> : <Score value={abs} tailClass="tail-dim" />}
-    </span>
+    <>
+      <span className={`delta-arrow ${className}`} title={title}>{value > 0 ? '▾' : '▴'}</span>
+      <span className={`num ${className}`} title={title}>
+        {/* Below a thousand every digit is dimmed, like the last three digits of bigger diffs. */}
+        {abs < 1000 ? <span className="tail-dim">{abs}</span> : <Score value={abs} tailClass="tail-dim" />}
+      </span>
+    </>
   );
 }
 

@@ -70,7 +70,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
   // Rivals whose result is one of `fold`, or between the scores kept by `keep`, are folded; each click on their
-  // button shows SHOW_STEP more.
+  // button shows SHOW_STEP more. The "Won" tab doesn't dim the rivals you beat, since they are its point.
   const cards = (charts: ChartRow[], fold: Stat[], colorByRealDiff = false, keep: Keep | null = null) => charts.map((chart) => (
     <ChartResultsItem
       key={chart.id}
@@ -81,6 +81,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       keep={keep}
       higherShown={shownHigher.get(chart.id)  ??  0}
       colorByRealDiff={colorByRealDiff}
+      dimWon={tab !== 'you-win'}
       markTies={ties}
       scoreCap={scoreCap}
       onExpandFolded={() => setShownFolded(showMore(shownFolded, chart.id))}

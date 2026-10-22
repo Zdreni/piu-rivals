@@ -19,13 +19,17 @@ const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
     : `Best score: ${bestScoreDate  ||  'unknown'}\nLast try: ${lastTryDate  ||  'unknown'}`);
 
 
-// The colour of a fold button's number: that of the strongest result folded, e.g. red if any of them beats you.
-const FOLD_TONES: [Stat, string][] = [['lose', 'neg'], ['hidden', 'neg muted'], ['unplayed', 'blue'], ['win', 'pos'], ['tie', 'tie']];
+// A fold button's count, e.g. "▴3", with the symbol and colour of the strongest result folded, e.g. red if any of
+// them beats you. Ties get the tie colour only with `markTies`.
+const FOLD_TONES: [Stat, string, string][] = [
+  ['lose', 'neg', '▴'], ['hidden', 'neg muted', '▴'], ['unplayed', 'blue', ''], ['win', 'pos', '▾'], ['tie', 'tie', '='],
+];
 
-function foldTone(entries: Entry[], markTies: boolean) {
+function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: number; markTies: boolean }) {
   const stats = new Set(entries.flatMap((entry) => (entry.me ? [] : [resultStat(entry)])));
-  const tone = FOLD_TONES.find(([stat]) => stats.has(stat)  &&  (stat !== 'tie'  ||  markTies));
-  return tone ? tone[1] : '';
+  const tone = FOLD_TONES.find(([stat]) => stats.has(stat));
+  const className = tone  &&  (tone[0] !== 'tie'  ||  markTies) ? tone[1] : undefined;
+  return <span className={className}>{tone?.[2]}{count}</span>;
 }
 
 
@@ -35,9 +39,9 @@ function foldTone(entries: Entry[], markTies: boolean) {
 // and `bottom` lowest of the other scores are listed, the ones between (when 2 or more) folded into a "N more..."
 // button, which calls `onExpandHigher`; `higherShown` of them, highest first, are listed above the button anyway.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
-// diffs of true ties.
+// diffs of true ties. `dimWon` dims the rivals you beat more than the others.
 export function ChartResultsItem({
-  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, markTies, scoreCap, onExpandFolded, onExpandHigher,
+  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, onExpandFolded, onExpandHigher,
 }: {
   chart: ChartRow;
   myName: string;
@@ -46,6 +50,7 @@ export function ChartResultsItem({
   keep: Keep | null;
   higherShown: number;
   colorByRealDiff: boolean;
+  dimWon: boolean;
   markTies: boolean;
   scoreCap: number;
   onExpandFolded: () => void;
@@ -81,11 +86,12 @@ export function ChartResultsItem({
           <span className="result-player" title={myName}>{displayName(myName)}</span>
           <span className="num" title={datesTitle(entry)}><Score value={entry.score} /></span>
           <span />
+          <span />
         </div>
       );
     }
 
-    const won = isWon(entry) ? 'won' : 'ahead';
+    const won = dimWon  &&  isWon(entry) ? 'won' : 'ahead';
     return (
       <div key={entry.playerId} className={`result ${won}`}>
         <a className="result-player player-link" title={entry.player}
@@ -93,9 +99,7 @@ export function ChartResultsItem({
           {displayName(entry.player)}
         </a>
         <span className="num score" title={datesTitle(entry)}><Score value={entry.score} /></span>
-        <span className="num">
-          <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />
-        </span>
+        <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />
       </div>
     );
   });
@@ -103,7 +107,7 @@ export function ChartResultsItem({
   if (above > 0) {
     rows.splice(firstHidden, 0, (
       <button key="higher" className="show-others top" type="button" onClick={onExpandHigher}>
-        ...<span className={foldTone(hiddenAbove, markTies)}>{above}</span> more...
+        ...<FoldCount entries={hiddenAbove} count={above} markTies={markTies} /> more...
       </button>
     ));
   }
@@ -116,7 +120,7 @@ export function ChartResultsItem({
       </header>
       <div className="chart-card-results">{rows}</div>
       {folded > 0  &&  (
-        <button className="show-others" type="button" onClick={onExpandFolded}>...<span className={foldTone(hiddenBelow, markTies)}>{folded}</span> more...</button>
+        <button className="show-others" type="button" onClick={onExpandFolded}>...<FoldCount entries={hiddenBelow} count={folded} markTies={markTies} /> more...</button>
       )}
     </section>
   );
