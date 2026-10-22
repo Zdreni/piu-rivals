@@ -5,6 +5,7 @@ import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
 import { PHONE, type SidePanel } from './layout.ts';
+import { autoLevels, type Preferences, resolveLevels } from './preferences.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
 import { chartTier, countCharts, sortedLevels, type TabId } from './stats.ts';
@@ -60,6 +61,30 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const { scoreCap, npMinimalRivals } = preferences;
   const playerIds = useMemo(() => [me.id, ...rivals.map((rival) => rival.id)], [me.id, rivals]);
   const data = useBests(playerIds);
+  // Until the level range is set, it follows your scores; see below.
+  const autoRange = useMemo(() => {
+    const charts = [...data.bests.get(me.id)?.keys()  ??  []].map((chartId) => data.charts.get(chartId));
+    return autoLevels(charts.flatMap((chart) => (chart ? [chart.level] : [])));
+  }, [data.version, data.charts, data.bests, me.id]);
+  const levelRange = resolveLevels(preferences, autoRange);
+  const { minLevel, maxLevel } = levelRange;
+  // The first time your scores are in, the level range they give is saved, so it doesn't move later without you changing
+  // it. Once a page: if saving fails, it isn't tried again until the page is opened again. With no scores yet, the range
+  // isn't saved and stays at its default.
+  const levelsSaved = useRef(false);
+  useEffect(() => {
+    if (levelsSaved.current  ||  ! data.ready  ||  ! data.bests.get(me.id)?.size)
+      return;
+
+    levelsSaved.current = true;
+    const changes: Partial<Preferences> = {};
+    if (preferences.minLevel === null)
+      changes.minLevel = minLevel;
+    if (preferences.maxLevel === null)
+      changes.maxLevel = maxLevel;
+    if (Object.keys(changes).length)
+      settings.changePreferences(changes);
+  }, [data.ready, data.version, me.id, preferences.minLevel, preferences.maxLevel, minLevel, maxLevel]);
   const [ui, setUi] = useState<UiState>(readUiState);
   const [focused, setFocused] = useState<string | null>(null);
   // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
@@ -172,8 +197,9 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   };
 
   const allCharts = useMemo(
-    () => buildCharts(data.charts, data.bests, me.id, rivals.map((rival) => ({ id: rival.id, name: rival.name  ??  rival.id })), scoreCap),
-    [data.version, data.charts, data.bests, me.id, rivals, scoreCap],
+    () => buildCharts(data.charts, data.bests, me.id, rivals.map((rival) => ({ id: rival.id, name: rival.name  ??  rival.id })), scoreCap,
+      { minLevel, maxLevel }),
+    [data.version, data.charts, data.bests, me.id, rivals, scoreCap, minLevel, maxLevel],
   );
 
   const soloRival = rivals.some((rival) => rival.id === solo) ? solo : null;
@@ -223,6 +249,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       <WindowHeader
         totals={totals}
         preferences={preferences}
+        levels={levelRange}
         solo={!! soloRival}
         status={status}
         onChange={settings.changePreferences}
@@ -260,7 +287,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         <div className="prefs-panel" aria-label="Preferences">
           <div className="prefs-top">Preferences</div>
           <div className="prefs-controls">
-            <PreferenceControls preferences={preferences} solo={!! soloRival} onChange={settings.changePreferences} />
+            <PreferenceControls preferences={preferences} levels={levelRange} solo={!! soloRival} onChange={settings.changePreferences} />
           </div>
         </div>
         <ChartsGroups

@@ -1,8 +1,8 @@
 import type { BestResult, Chart } from '@piu-rivals/shared';
-import { MAX_SCORE_CAP } from './preferences.ts';
+import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_CAP } from './preferences.ts';
 
-// Lower levels are left out of the comparison, as in the old extension.
-export const MIN_LEVEL = 10;
+// The level range when the settings don't apply.
+export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
 
 export interface Dates {
   bestScoreDate: string | null;
@@ -66,13 +66,14 @@ const dates = (best: BestResult | undefined): Dates =>
   ({ bestScoreDate: best?.bestPlayedOn  ??  null, lastTryDate: best?.lastPlayedOn  ??  null });
 
 
-// Every chart (from MIN_LEVEL up) that at least one of `rivals` has a score on, with your score and theirs.
+// Every chart in the `levels` range that at least one of `rivals` has a score on, with your score and theirs.
 export function buildCharts(
   charts: Map<number, Chart>,
   bests: Map<string, PlayerBests>,
   ownPlayerId: string,
   rivals: { id: string; name: string }[],
   scoreCap: number,
+  levels: LevelRange,
 ): ChartRow[] {
   const chartIds = new Set<number>();
   for (const rival of rivals) {
@@ -84,7 +85,7 @@ export function buildCharts(
   const rows: ChartRow[] = [];
   for (const chartId of chartIds) {
     const chart = charts.get(chartId);
-    if (! chart  ||  chart.level < MIN_LEVEL)
+    if (! chart  ||  ! levelInRange(chart.level, levels))
       continue;
 
     const myBest = own?.get(chartId);
