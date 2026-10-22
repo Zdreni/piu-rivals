@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { PHONE, type SidePanel } from './layout.ts';
+import { NARROW, PHONE, type SidePanel } from './layout.ts';
 import { autoLevels, type Preferences, resolveLevels } from './preferences.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
@@ -94,7 +94,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // use; a tap on the level already picked, a double tap or a long press brings the levels into use.
   const [levelsActive, setLevelsActive] = useState(false);
   // On narrow screens, the rivals and the preferences wait off the left edge until the levels' top bar slides one of
-  // them in. The last one in stays shown while it slides out.
+  // them in. The last one in stays shown while it slides out. While one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
   const levelsActiveBeforeSide = useRef(false);
@@ -127,6 +127,12 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       event.stopPropagation();
       return;
     }
+    if (sideOpen  &&  NARROW.matches  &&  levels  &&  ! target.closest('.panel-toggle')) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleSide(sidePanel);
+      return;
+    }
     if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content'))
         ||  target.closest('.panel-toggle'))
       return;
@@ -155,7 +161,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     cancelLongPress();
     longPressed.current = false;
     const target = event.target as Element;
-    if (! PHONE.matches  ||  levelsActive  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
+    if (! PHONE.matches  ||  levelsActive  ||  sideOpen  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
       return;
 
     const timer = window.setTimeout(() => {
