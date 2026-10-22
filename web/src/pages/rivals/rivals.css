@@ -216,7 +216,11 @@
 .rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Chart cards: the track and chart on top, then the results, in as many columns as fit. */
-.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+/* The narrowest card leaves 110px for a name: 321px less borders, row padding, name indent, score, arrow (20px)
+   and diff (6ch at 16px). */
+.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(321px, 1fr)); gap: 12px; align-items: start; }
+/* Cards without diffs: the names get as much room as above, less the arrow and diff columns. */
+.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); }
 .rivals .group-title { grid-column: 1 / -1; margin: 6px 0 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
@@ -226,11 +230,17 @@
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
 .rivals .chart-card-results { padding: 4px 0; }
-.rivals .result { display: grid; grid-template-columns: minmax(0, 1fr) 96px 76px; gap: 8px; padding: 3px 12px; font-size: 16px; }
+/* No gaps: the score column is wider than any score, and the arrow column spaces the arrow off the score. */
+.rivals .result { display: grid; grid-template-columns: minmax(0, 1fr) 96px 20px 6ch; padding: 3px 12px; font-size: 16px; }
+.rivals .no-diffs .result { grid-template-columns: minmax(0, 1fr) auto; }
 .rivals .result:nth-child(even of .result) { background: rgba(255,255,255,.04); }
 /* Names are indented under the track name. */
 .rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rivals .result .score { color: #9AB3A3; }
+/* The arrow belongs to the diff, so it hugs the diff rather than the score. */
+.rivals .result .delta-arrow { margin-right: -2px; text-align: right; }
+/* Centred under a typical diff like "5,574", not in the whole cell, since the diffs are right-aligned. */
+.rivals .result .delta-tie { display: inline-block; width: 5ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
 .rivals .result.mine .num { color: #C9A44A; }
 .rivals .tail { font-size: .75em; opacity: .6; }
@@ -269,7 +279,7 @@
   .rivals .filters { max-height: 60vh; }
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
-  .rivals .chart-grid { grid-template-columns: minmax(0, 1fr); }
-  .rivals .result { grid-template-columns: minmax(0, 1fr) 84px 64px; font-size: 14px; }
+  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+  .rivals .result { grid-template-columns: minmax(0, 1fr) 84px 20px 6ch; font-size: 14px; }
   .rivals .dlg-body { padding: 10px 6px; }
 }
