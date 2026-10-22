@@ -1,5 +1,5 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
@@ -17,6 +17,8 @@ import './rivals.css';
 // comes back into view after a while.
 const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
+// The phone layout in rivals.css, where the levels and the results take turns being the wide panel.
+const PHONE = window.matchMedia('(max-width: 600px)');
 
 
 function useAutoRefresh(refresh: () => void) {
@@ -59,6 +61,9 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [focused, setFocused] = useState<string | null>(null);
   // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
   const [solo, setSolo] = useState<string | null>(null);
+  // On phones, the panel in use is the wide one. A tap on the other, dimmed one only brings it into use, so it can't
+  // pick a level or open a link while it's still moving.
+  const [levelsActive, setLevelsActive] = useState(false);
 
   useAutoRefresh(() => {
     void settings.refresh();
@@ -74,6 +79,17 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, []);
 
   const selectTab = useCallback((tab: TabId) => changeUi({ selectedTab: tab }), [changeUi]);
+
+  const activatePanel = (event: MouseEvent) => {
+    const target = event.target as Element;
+    const levels = !! target.closest('.filters');
+    if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content')))
+      return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setLevelsActive(levels);
+  };
 
   const focus = (playerId: string | null) => {
     setFocused(playerId);
@@ -137,7 +153,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         status={status}
         onChange={settings.changePreferences}
       />
-      <div className="dlg-main">
+      <div className={`dlg-main${levelsActive ? ' levels-active' : ''}`} onClickCapture={activatePanel}>
         <RivalList
           tab={ui.rivalTab}
           charts={allCharts}
@@ -164,6 +180,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onSelect={(level) => changeUi({ selectedLevel: level })}
         />
         <ChartResults
+          // Another level starts with every card folded again.
+          key={selectedLevel}
           levelCharts={charts.filter(atLevel)}
           hiddenGroups={[{ label: 'Score cap', charts: capHidden.filter(atLevel).sort(byTargetWeight) }]}
           selectedTab={ui.selectedTab}
