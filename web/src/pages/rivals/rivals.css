@@ -177,7 +177,7 @@
 .rivals .level-bar .unplayed { background: linear-gradient(to right, #0F2B3C, #061219); color: #7F9DB0; }
 .rivals .level-bar.single .unplayed { background: linear-gradient(to left, #0F2B3C, #061219); }
 .rivals .level-bar .lose { --hot: color-mix(in srgb, #FF8A00 calc(var(--heat) * 100%), #D01E00);
-                           background: linear-gradient(to left, var(--hot), #B01C00); }
+                           background: linear-gradient(to left, var(--hot), #B01C00); color: #000; }
 .rivals .level-bar.single .lose { background: linear-gradient(to right, var(--hot), #B01C00); }
 .rivals .level-bar .tie { background: linear-gradient(to right, #F2E8B6, #B8AC72); }
 .rivals .level-bar.single .tie { background: linear-gradient(to left, #F2E8B6, #B8AC72); }
