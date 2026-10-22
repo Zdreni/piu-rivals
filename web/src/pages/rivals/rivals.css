@@ -244,11 +244,7 @@
 .rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rivals .result .score { color: #9AB3A3; }
 /* The arrow belongs to the diff, so it hugs the diffs rather than the scores. */
-.rivals .result .delta-arrow { margin-right: 2px; text-align: right; }
-/* About as tall as the digits, thin and a little faded, so it hints at the side rather than shouting it. */
-.rivals .arrow { width: .5em; height: 1em; vertical-align: -.2em; opacity: .7;
-                 fill: none; stroke: currentColor; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
-/* Centred under a typical diff like "5,574", not in the whole cell, since the diffs are right-aligned. */
+.rivals .result .delta-arrow { margin-right: 2px; text-align: right; }/* Centred under a typical diff like "5,574", not in the whole cell, since the diffs are right-aligned. */
 .rivals .result .delta-tie { display: inline-block; width: 5ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
 .rivals .result.mine .num { color: #C9A44A; }

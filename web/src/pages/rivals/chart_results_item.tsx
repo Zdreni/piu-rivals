@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Arrow, Delta, Score } from './format.tsx';
+import { Delta, Score } from './format.tsx';
 import { type ChartRow, type Dates, displayName, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
@@ -19,11 +19,10 @@ const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
     : `Best score: ${bestScoreDate  ||  'unknown'}\nLast try: ${lastTryDate  ||  'unknown'}`);
 
 
-// A fold button's count, e.g. "▴3", with the symbol and colour of the strongest result folded, e.g. red if any of
+// A fold button's count, e.g. "−3", with the sign and colour of the strongest result folded, e.g. red if any of
 // them beats you. Ties get the tie colour only with `markTies`.
-const FOLD_TONES: [Stat, string, ReactNode][] = [
-  ['lose', 'neg', <Arrow up />], ['hidden', 'neg muted', <Arrow up />], ['unplayed', 'blue', ''],
-  ['win', 'pos', <Arrow up={false} />], ['tie', 'tie', '='],
+const FOLD_TONES: [Stat, string, string][] = [
+  ['lose', 'neg', '−'], ['hidden', 'neg muted', '−'], ['unplayed', 'blue', ''], ['win', 'pos', '+'], ['tie', 'tie', '='],
 ];
 
 function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: number; markTies: boolean }) {

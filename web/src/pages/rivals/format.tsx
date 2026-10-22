@@ -12,20 +12,9 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 }
 
 
-// An arrow, a shaft and a head, in the text colour, drawn rather than typed, since the font's arrows differ by
-// platform and blur at small sizes. It points to where the rival stands.
-export function Arrow({ up }: { up: boolean }) {
-  return (
-    <svg className="arrow" viewBox="0 0 6 12" aria-hidden="true">
-      <path d={up ? 'M3 10V2.5M1.25 4.25L3 2.5l1.75 1.75' : 'M3 2v7.5M1.25 7.75L3 9.5l1.75-1.75'} />
-    </svg>
-  );
-}
-
-
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 // naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
-// Two grid cells: the arrow, pointing to where the rival stands, then the number.
+// Two grid cells: the sign, + when you're ahead and − when the rival is, then the number.
 export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   value: number | null;
   outcome?: number | null;
@@ -45,7 +34,7 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   const abs = Math.abs(value);
   return (
     <>
-      <span className={`delta-arrow ${className}`} title={title}><Arrow up={value < 0} /></span>
+      <span className={`delta-arrow ${className}`} title={title}>{value > 0 ? '+' : '−'}</span>
       <span className={`num ${className}`} title={title}>
         {/* Below a thousand every digit is dimmed, like the last three digits of bigger diffs. */}
         {abs < 1000 ? <span className="tail-dim">{abs}</span> : <Score value={abs} tailClass="tail-dim" />}
