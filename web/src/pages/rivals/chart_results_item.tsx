@@ -21,8 +21,10 @@ const datesTitle = ({ bestScoreDate, lastTryDate }: Dates) =>
 
 // A fold button's count, e.g. "↑3", with the arrow and colour of the strongest result folded, e.g. red if any of
 // them beats you. Ties get the tie colour only with `markTies`.
-const up = <span className="fold-arrow">↑</span>;
-const down = <span className="fold-arrow">↓</span>;
+// Drawn rather than typed: font arrows sit at different heights in every font, while these span the digits exactly.
+const arrow = (d: string) => <svg className="fold-arrow" viewBox="0 0 6 9" aria-hidden="true"><path d={d} /></svg>;
+const up = arrow('M3 8.5V.5M.5 3L3 .5 5.5 3');
+const down = arrow('M3 .5v8M.5 6L3 8.5 5.5 6');
 const FOLD_TONES: [Stat, string, ReactNode][] = [
   ['lose', 'neg', up], ['hidden', 'neg muted', up], ['unplayed', 'blue', ''], ['win', 'pos', down], ['tie', 'tie', '='],
 ];
