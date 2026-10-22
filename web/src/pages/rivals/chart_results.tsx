@@ -111,7 +111,8 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
         { 'not-played': KEEP_UNPLAYED, 'rivals-win': KEEP_LOST, 'you-win': KEEP_WON, tie: null }[tab]);
     }
 
-    body = <div className="chart-grid">{content}</div>;
+    // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
+    body = <div className={`chart-grid${tab === 'not-played' ? ' narrow' : ''}`}>{content}</div>;
   }
 
   return (
