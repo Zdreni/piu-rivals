@@ -269,7 +269,8 @@
 
 /* Narrow screens (e.g. a tablet in portrait) and phones: the rivals on top, then the levels always beside the results,
    and the page scrolls. The levels get the width the results don't need, up to a limit; they are as tall as the screen
-   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. */
+   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. The
+   results' tabs stick to the top too, so only the cards scroll. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
@@ -281,7 +282,7 @@
   .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
   .rivals .score-content { min-height: 0; container-type: inline-size; }
   .rivals .dlg-body { overflow: visible; }
-  .rivals .tabs { flex-wrap: wrap; }
+  .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
 }
 
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
