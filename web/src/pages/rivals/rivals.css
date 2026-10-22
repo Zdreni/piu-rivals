@@ -269,7 +269,8 @@
 
 /* Narrow screens (e.g. a tablet in portrait) and phones: the rivals on top, then the levels always beside the results,
    and the page scrolls. The levels get the width the results don't need, up to a limit; they are as tall as the screen
-   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. */
+   and stick to its top while the page scrolls through the results, and scroll on their own if they don't fit. The
+   results' tabs stick to the top too, so only the cards scroll. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
@@ -281,23 +282,28 @@
   .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
   .rivals .score-content { min-height: 0; container-type: inline-size; }
   .rivals .dlg-body { overflow: visible; }
-  .rivals .tabs { flex-wrap: wrap; }
+  .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
 }
 
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
   .rivals .dlg-head h2 { font-size: 20px; }
-  /* The panel in use, levels or results, gets 70% of the width, and the other one is dimmed; a tap on the dimmed one
+  /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
-     dimmed, they have no counts (see below), so they take just their 30%. */
-  .rivals .dlg-main { grid-template-columns: 30% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
-  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, 70%) minmax(0, 1fr); }
+     dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 140px, enough
+     for names and diffs, unless the levels need it for their counts. */
+  .rivals .dlg-main { grid-template-columns: 35% minmax(0, 1fr); transition: grid-template-columns .3s ease; }
+  .rivals .dlg-main.levels-active { grid-template-columns: max(160px, min(65%, 100% - 140px)) minmax(0, 1fr); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
       background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
   .rivals .dlg-main:not(.levels-active) .filters::after, .rivals .dlg-main.levels-active .score-content::after {
       opacity: 1; pointer-events: auto; }
+  /* Taps go through the dimmed levels to their bars (see RivalsView); a long press there isn't a text selection or a
+     menu, and a double tap doesn't zoom. */
+  .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
+  .rivals .filters { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
   .rivals .filters { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
   .rivals .level-chart { grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); font-size: 12px;
                         transition: grid-template-columns .3s ease; }

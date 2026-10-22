@@ -1,5 +1,5 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
@@ -19,6 +19,10 @@ const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
 // The phone layout in rivals.css, where the levels and the results take turns being the wide panel.
 const PHONE = window.matchMedia('(max-width: 600px)');
+// While the levels are dimmed, a double tap or a long press on them brings them into use.
+const DOUBLE_TAP_MS = 350;
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP_PX = 10;
 
 
 function useAutoRefresh(refresh: () => void) {
@@ -61,9 +65,14 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [focused, setFocused] = useState<string | null>(null);
   // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
   const [solo, setSolo] = useState<string | null>(null);
-  // On phones, the panel in use is the wide one. A tap on the other, dimmed one only brings it into use, so it can't
-  // pick a level or open a link while it's still moving.
+  // On phones, the panel in use is the wide one. A tap on the dimmed results only brings them into use, so they can't
+  // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
+  // use; a tap on the level already picked, a double tap or a long press brings the levels into use.
   const [levelsActive, setLevelsActive] = useState(false);
+  const lastLevelsTap = useRef(0);
+  const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
+  // Set once a long press has brought the levels into use, so the click that ends it does nothing more.
+  const longPressed = useRef(false);
 
   useAutoRefresh(() => {
     void settings.refresh();
@@ -83,12 +92,54 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const activatePanel = (event: MouseEvent) => {
     const target = event.target as Element;
     const levels = !! target.closest('.filters');
+    if (longPressed.current) {
+      longPressed.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (! PHONE.matches  ||  levels === levelsActive  ||  (! levels  &&  ! target.closest('.score-content')))
       return;
 
+    if (levels) {
+      const now = event.timeStamp;
+      const doubleTap = now - lastLevelsTap.current < DOUBLE_TAP_MS;
+      lastLevelsTap.current = doubleTap ? 0 : now;
+      if (doubleTap  ||  target.closest('.level-bar.on'))
+        setLevelsActive(true);
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
-    setLevelsActive(levels);
+    setLevelsActive(false);
+  };
+
+  const cancelLongPress = () => {
+    if (longPress.current)
+      clearTimeout(longPress.current.timer);
+    longPress.current = null;
+  };
+
+  const startLongPress = (event: PointerEvent) => {
+    cancelLongPress();
+    longPressed.current = false;
+    if (! PHONE.matches  ||  levelsActive  ||  ! (event.target as Element).closest('.filters'))
+      return;
+
+    const timer = window.setTimeout(() => {
+      longPress.current = null;
+      longPressed.current = true;
+      setLevelsActive(true);
+    }, LONG_PRESS_MS);
+    longPress.current = { timer, x: event.clientX, y: event.clientY };
+  };
+
+  // A press that moves, e.g. to scroll the levels, isn't a long press.
+  const moveLongPress = (event: PointerEvent) => {
+    const press = longPress.current;
+    if (press  &&  Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP_PX)
+      cancelLongPress();
   };
 
   const focus = (playerId: string | null) => {
@@ -153,7 +204,18 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         status={status}
         onChange={settings.changePreferences}
       />
-      <div className={`dlg-main${levelsActive ? ' levels-active' : ''}`} onClickCapture={activatePanel}>
+      <div
+        className={`dlg-main${levelsActive ? ' levels-active' : ''}`}
+        onClickCapture={activatePanel}
+        onPointerDownCapture={startLongPress}
+        onPointerMoveCapture={moveLongPress}
+        onPointerUpCapture={cancelLongPress}
+        onPointerCancelCapture={cancelLongPress}
+        onContextMenu={(event) => {
+          if (PHONE.matches  &&  (event.target as Element).closest('.filters'))
+            event.preventDefault();
+        }}
+      >
         <RivalList
           tab={ui.rivalTab}
           charts={allCharts}
