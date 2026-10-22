@@ -32,7 +32,7 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   const capText = cap === null ? 'score cap' : `${cap / 1000}k score cap`;
   const title = capped ? `Both scores ≥ ${capText}, so this loss is hidden` : undefined;
   const abs = Math.abs(value);
-  const sign = value > 0 ? '+' : '−';
+  const sign = <span className="delta-sign">{value > 0 ? '+' : '−'}</span>;
   return (
     <span className={`num delta ${className}`} title={title}>
       {/* Below a thousand the whole diff is dimmed, like the last three digits of bigger diffs. */}

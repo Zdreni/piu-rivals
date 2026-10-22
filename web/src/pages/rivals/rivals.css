@@ -244,6 +244,7 @@
 .rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rivals .result .score { color: #9AB3A3; }
 .rivals .result .delta { padding-left: 20px; }
+.rivals .delta-sign { font-size: .8em; margin-right: .15em; }
 /* Centred under a typical diff like "+5,574", not in the whole cell, since the diffs are right-aligned. */
 .rivals .result .delta-tie { display: inline-block; width: 6ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
