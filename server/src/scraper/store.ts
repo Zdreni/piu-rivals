@@ -69,18 +69,31 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
   if (! plays.length)
     return ids;
 
-  const unique = [...new Map(plays.map((p) => [chartKey(p.songKey, p.chartType, p.level), p])).values()];
-  await trx.insertInto('charts')
-    .values(unique.map((p) => ({ song_key: p.songKey, song_title: p.songTitle, chart_type: p.chartType, level: p.level })))
+  // A new track's short title starts as its title.
+  const songs = [...new Map(plays.map((p) => [p.songKey, p.songTitle])).entries()];
+  await trx.insertInto('tracks')
+    .values(songs.map(([songKey, title]) => ({ song_key: songKey, title, short_title: title })))
     .ignore()
     .execute();
 
-  const rows = await trx.selectFrom('charts')
-    .select(['id', 'song_key', 'chart_type', 'level'])
+  const trackIds = new Map((await trx.selectFrom('tracks')
+    .select(['id', 'song_key'])
+    .where('song_key', 'in', songs.map(([songKey]) => songKey))
+    .execute()).map((row) => [row.song_key, row.id]));
+
+  const unique = [...new Map(plays.map((p) => [chartKey(p.songKey, p.chartType, p.level), p])).values()];
+  await trx.insertInto('charts')
+    .values(unique.map((p) => ({ track_id: trackIds.get(p.songKey)!, chart_type: p.chartType, level: p.level })))
+    .ignore()
+    .execute();
+
+  const rows = await trx.selectFrom('charts as c')
+    .innerJoin('tracks as t', 't.id', 'c.track_id')
+    .select(['c.id', 't.song_key', 'c.chart_type', 'c.level'])
     .where((eb) => eb.or(unique.map((p) => eb.and([
-      eb('song_key', '=', p.songKey),
-      eb('chart_type', '=', p.chartType),
-      eb('level', '=', p.level),
+      eb('c.track_id', '=', trackIds.get(p.songKey)!),
+      eb('c.chart_type', '=', p.chartType),
+      eb('c.level', '=', p.level),
     ]))))
     .execute();
 

@@ -48,7 +48,7 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 
 **Data**
 - `GET /players` lists players with scraped results and a name or PUMBILITY (id, name, PUMBILITY) for the Rivals view's Others tab.
-- `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. It also returns each player's total number of best results (`counts`), changed or not. The site keeps the rows in IndexedDB and filters locally (see [the Rivals view](#rivals-view)).
+- `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. It also returns each player's total number of best results (`counts`), changed or not. Each chart comes with its track's title and short title; with `since`, the charts of tracks whose short title changed since then come too, so cached charts pick up new short names. Chart cards show the short title, with the full one on hover. The site keeps the rows in IndexedDB and filters locally (see [the Rivals view](#rivals-view)).
 
 **Admin** (requires `is_admin`)
 - `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.

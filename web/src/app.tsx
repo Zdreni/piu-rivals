@@ -4,6 +4,7 @@ import { HomePage } from './pages/home_page.tsx';
 import { PlayersPage } from './pages/admin/players_page.tsx';
 import { RunPage } from './pages/admin/run_page.tsx';
 import { RunsPage } from './pages/admin/runs_page.tsx';
+import { TracksPage } from './pages/admin/tracks_page.tsx';
 import { UsersPage } from './pages/admin/users_page.tsx';
 import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
@@ -24,6 +25,7 @@ function Header() {
           {me.user.isAdmin  &&  (
             <nav className="nav nav-admin" aria-label="Admin">
               <NavLink to="/admin/players">Players</NavLink>
+              <NavLink to="/admin/tracks">Tracks</NavLink>
               <NavLink to="/admin/runs">Scraping</NavLink>
               <NavLink to="/admin/users">Users</NavLink>
             </nav>
@@ -80,6 +82,7 @@ export function App() {
             <Route path="/admin/players" element={<AdminOnly><PlayersPage /></AdminOnly>} />
             <Route path="/admin/runs" element={<AdminOnly><RunsPage /></AdminOnly>} />
             <Route path="/admin/runs/:id" element={<AdminOnly><RunPage /></AdminOnly>} />
+            <Route path="/admin/tracks" element={<AdminOnly><TracksPage /></AdminOnly>} />
             <Route path="/admin/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
             <Route path="*" element={<p>Page not found.</p>} />
           </Routes>

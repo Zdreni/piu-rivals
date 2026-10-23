@@ -19,7 +19,9 @@ export interface RivalResult {
 
 export interface ChartRow {
   id: number;
+  // The track's short name; `trackTitle` is its full one.
   track: string;
+  trackTitle: string;
   // Chart type and level, e.g. "D24".
   chart: string;
   mine: number | null;
@@ -94,7 +96,8 @@ export function buildCharts(
 
     rows.push({
       id: chartId,
-      track: chart.songTitle,
+      track: chart.songShortTitle,
+      trackTitle: chart.songTitle,
       chart: `${chart.chartType}${chart.level}`,
       mine,
       rivals: results,

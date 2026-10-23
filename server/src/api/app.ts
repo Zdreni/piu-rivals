@@ -8,6 +8,7 @@ import { loadSessionUser, type VerifyGoogleToken } from './auth.ts';
 import { HttpError } from './errors.ts';
 import { adminPlayerRoutes } from './routes/admin_players.ts';
 import { adminRunRoutes } from './routes/admin_runs.ts';
+import { adminTrackRoutes } from './routes/admin_tracks.ts';
 import { adminUserRoutes } from './routes/admin_users.ts';
 import { authRoutes } from './routes/auth.ts';
 import { dataRoutes } from './routes/data.ts';
@@ -49,5 +50,6 @@ export async function buildApp(deps: AppDeps, options: { logger?: boolean } = {}
   await app.register(adminUserRoutes, deps);
   await app.register(adminPlayerRoutes, deps);
   await app.register(adminRunRoutes, deps);
+  await app.register(adminTrackRoutes, deps);
   return app;
 }
