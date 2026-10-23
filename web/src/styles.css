@@ -51,12 +51,14 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 .nav a { color: var(--muted); text-decoration: none; }
 .nav a.active { color: var(--text); font-weight: 600; }
 .account { grid-column: 3; justify-self: end; display: flex; gap: 0.75rem; align-items: center; min-width: 0; }
-.account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; }
+.account a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; text-decoration: none; }
+.account a.active { color: var(--text); }
 
-/* Too narrow for three columns: the parts wrap, the account still to the right. */
+/* Too narrow for three columns: the brand and the account on the first line, the admin menu on the next. */
 @media (max-width: 720px) {
   .header { display: flex; flex-wrap: wrap; }
   .account { margin-left: auto; }
+  .nav-admin { order: 1; flex-basis: 100%; }
 }
 
 .main { max-width: 72rem; margin: 0 auto; padding: 1rem; }
@@ -73,6 +75,9 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 
 .intro { max-width: 36rem; margin: 3rem auto; text-align: center; }
 .sign-in { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 1.5rem; }
+.signed-in-as { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 2.5rem; }
+.signed-in-as span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signed-in-as button { flex-shrink: 0; }
 
 .title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 1rem 0 0.5rem; }
 .scrape-all { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }

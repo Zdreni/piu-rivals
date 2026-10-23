@@ -9,19 +9,15 @@ import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
 
-// The brand and main menu on the left, the admin menu in the middle, the account on the right.
+// The brand on the left, opening the Rivals view once signed in; the admin menu in the middle; the account on the
+// right, opening the home page.
 function Header() {
-  const { status, me, signOut } = useSession();
+  const { status, me } = useSession();
   const signedIn = status === 'signed-in'  &&  me;
   return (
     <header className="header">
       <div className="header-left">
-        <NavLink to="/" className="brand">piu-rivals</NavLink>
-        {signedIn  &&  (
-          <nav className="nav" aria-label="Main">
-            <NavLink to="/rivals">Rivals</NavLink>
-          </nav>
-        )}
+        <NavLink to={signedIn ? '/rivals' : '/'} className="brand">PIU rivals</NavLink>
       </div>
       {signedIn  &&  (
         <>
@@ -33,8 +29,7 @@ function Header() {
             </nav>
           )}
           <div className="account">
-            <span className="muted" title={me.user.email}>{me.user.displayName  ||  me.user.email}</span>
-            <button type="button" className="secondary small-button" onClick={() => void signOut()}>Sign out</button>
+            <NavLink to="/" end className="muted" title={me.user.email}>{me.user.displayName  ||  me.user.email}</NavLink>
           </div>
         </>
       )}
