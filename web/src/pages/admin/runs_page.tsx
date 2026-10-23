@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
-import { formatAgo, formatNumber, formatTime, useLoad } from '../../util.ts';
+import { formatAgo, formatDuration, formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
 // Finished runs per page; "Show older runs" asks the server for this many more.
@@ -17,7 +17,14 @@ export type RunsTab = 'current' | 'previous';
 export const runsTabPath = (tab: RunsTab) => (tab === 'previous' ? '/admin/runs?tab=previous' : '/admin/runs');
 
 
-function RunsTable({ runs }: { runs: ScrapeRun[] }) {
+// A run's count; zeros are dimmed, and `alert` colours the rest as errors.
+function StatCell({ value, alert = false }: { value: number; alert?: boolean }) {
+  return <td className={`number${value ? (alert ? ' error' : '') : ' muted'}`}>{formatNumber(value)}</td>;
+}
+
+
+// Finished runs also show how long they ran.
+function RunsTable({ runs, finished }: { runs: ScrapeRun[]; finished: boolean }) {
   return (
     <div className="table-wrap">
       <table>
@@ -31,6 +38,7 @@ function RunsTable({ runs }: { runs: ScrapeRun[] }) {
             <th className="number">Bests</th>
             <th className="number">Failures</th>
             <th>Started</th>
+            {finished  &&  <th className="number">Duration</th>}
           </tr>
         </thead>
         <tbody>
@@ -42,11 +50,12 @@ function RunsTable({ runs }: { runs: ScrapeRun[] }) {
               </td>
               <td><RunStatus run={run} /></td>
               <td><RunProgress run={run} /></td>
-              <td className="number">{formatNumber(run.sessionsAdded)}</td>
-              <td className="number">{formatNumber(run.playsAdded)}</td>
-              <td className="number">{formatNumber(run.bestsImproved)}</td>
-              <td className={`number${run.failures ? ' error' : ''}`}>{formatNumber(run.failures)}</td>
-              <td className="muted">{formatTime(run.startedAt  ??  run.createdAt)}</td>
+              <StatCell value={run.sessionsAdded} />
+              <StatCell value={run.playsAdded} />
+              <StatCell value={run.bestsImproved} />
+              <StatCell value={run.failures} alert />
+              <td className="muted">{formatTime(run.startedAt  ??  run.createdAt, { withoutYear: true })}</td>
+              {finished  &&  <td className="number muted">{formatDuration(run.startedAt, run.finishedAt)}</td>}
             </tr>
           ))}
         </tbody>
@@ -116,7 +125,7 @@ export function RunsPage() {
       </div>
 
       <div role="tabpanel">
-        {shown.data  &&  shown.data.runs.length > 0  &&  <RunsTable runs={shown.data.runs} />}
+        {shown.data  &&  shown.data.runs.length > 0  &&  <RunsTable runs={shown.data.runs} finished={tab === 'previous'} />}
         {! shown.data  &&  ! shown.error  &&  <p className="muted">Loading…</p>}
         {shown.data  &&  ! shown.data.runs.length  &&  (
           <p className="muted">{tab === 'current' ? 'Nothing is queued or running.' : 'No finished runs yet.'}</p>
