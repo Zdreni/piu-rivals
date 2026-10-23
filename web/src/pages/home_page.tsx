@@ -6,7 +6,7 @@ import { formatNumber, playerLabel } from '../util.ts';
 
 
 export function HomePage() {
-  const { status, me } = useSession();
+  const { status, me, signOut } = useSession();
   const navigate = useNavigate();
   const wasSignedOut = useRef(status === 'signed-out');
 
@@ -51,6 +51,11 @@ export function HomePage() {
           {' '}and <Link to="/admin/users">users</Link>.
         </p>
       )}
+      {/* One line: the text on the left, cut short if need be, and the button at the right edge. */}
+      <div className="signed-in-as">
+        <span className="muted" title={user.email}>Signed in as {user.email}</span>
+        <button type="button" className="secondary small-button" onClick={() => void signOut()}>Sign out</button>
+      </div>
     </section>
   );
 }
