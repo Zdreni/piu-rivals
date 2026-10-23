@@ -155,6 +155,12 @@ td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
 .sort-button:hover { color: var(--text); }
 .sort-mark { display: inline-block; width: 1em; margin-left: 0.25rem; font-size: 0.7em; }
 
+/* Tracks: the name and the short name field get the same width. */
+.tracks-table { table-layout: fixed; }
+.tracks-table .tracks-length { width: 6rem; }
+.tracks-table td { overflow-wrap: anywhere; }
+.tracks-table input[type="text"] { width: 100%; box-sizing: border-box; }
+
 /* Scrape runs */
 
 .status {

@@ -134,7 +134,8 @@ export function TracksPage() {
       {(error  ??  tracks.error)  &&  <p className="error" role="alert">{error  ??  tracks.error}</p>}
 
       <div className="table-wrap">
-        <table>
+        <table className="tracks-table">
+          <colgroup><col /><col /><col className="tracks-length" /></colgroup>
           <thead>
             <tr>
               <SortHeader column="title" label="Name" {...sortProps} />
