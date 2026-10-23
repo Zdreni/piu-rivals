@@ -1,9 +1,7 @@
-import { StatWords } from './format.tsx';
 import {
   clampLevel, clampNpMinimalRivals, clampScoreCap, type CountBy, type LevelRange, MAX_LEVEL, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_LEVEL,
   MIN_NP_RIVALS, MIN_SCORE_CAP, type Preferences, SCORE_CAP_STEP,
 } from './preferences.ts';
-import { type Counts, STAT_WORDS } from './stats.ts';
 
 
 // A label above a − value + row, and (in the preferences panel) the title spelled out under them.
@@ -37,8 +35,7 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 ];
 
 
-// The score cap, np minimal rivals, level range and count by settings, in the header and in the preferences panel of narrow
-// screens. `levels` is the level range in use, whether set or following your scores. While a rival is `solo`, results
+// The score cap, np minimal rivals, level range and count by settings, in the preferences panel. `levels` is the level range in use, whether set or following your scores. While a rival is `solo`, results
 // are counted whatever the count by setting says, and the setting is locked.
 export function PreferenceControls({ preferences, levels, solo, onChange }: {
   preferences: Preferences;
@@ -130,28 +127,15 @@ export function PreferenceControls({ preferences, levels, solo, onChange }: {
 }
 
 
-// The title, named by what is counted, with your totals, and the settings (left out on narrow screens, where the
-// preferences panel has them). `status` is a short note on loading scores, if any. While a rival is `solo`, results
-// are counted whatever the count by setting says.
-export function WindowHeader({ totals, preferences, levels, solo, status, onChange }: {
-  totals: Counts;
-  preferences: Preferences;
-  levels: LevelRange;
-  solo: boolean;
-  status: { text: string; error: boolean } | null;
-  onChange: (changes: Partial<Preferences>) => void;
-}) {
-  const countBy = solo ? 'results' : preferences.countBy;
+// A short note on loading scores, or an error, above the view; nothing without one. Your totals are on your row in
+// the rivals, and the settings in the preferences panel.
+export function WindowHeader({ status }: { status: { text: string; error: boolean } | null }) {
+  if (! status)
+    return null;
+
   return (
     <div className="dlg-head">
-      <h2>
-        {countBy === 'charts' ? 'Rival charts' : 'Rival results'}
-        <span className="head-stats"> — <StatWords counts={totals} words={STAT_WORDS[countBy]} ties={solo} /></span>
-      </h2>
-      {status  &&  <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>}
-      <div className="head-settings">
-        <PreferenceControls preferences={preferences} levels={levels} solo={solo} onChange={onChange} />
-      </div>
+      <span className={`head-status${status.error ? ' error' : ''}`} role={status.error ? 'alert' : undefined}>{status.text}</span>
     </div>
   );
 }

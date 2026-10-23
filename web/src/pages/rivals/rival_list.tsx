@@ -21,9 +21,9 @@ const listed = (player: PlayerSummary): ListedPlayer => ({
 // details; its Others tab adds rivals.
 // Each rival shows how many of their charts you lose / haven't played / win, judged on the real scores, with none
 // of the settings applied. `soloStats`, given in solo mode, replace the solo rival's stats; they are named by
-// `countBy`, like in the header.
-export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloStats, countBy, onTab, onFocus, onSolo, onToggle, onRemove,
-  onAdd }: {
+// `countBy`. Your own row shows `myStats`, your totals against the compared rivals, counted both ways.
+export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
+  onRemove, onAdd }: {
   tab: RivalTab;
   charts: ChartRow[];
   me: PlayerSummary;
@@ -32,6 +32,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
   focused: string | null;
   solo: string | null;
   soloStats: Counts | null;
+  myStats: Record<CountBy, Counts>;
   countBy: CountBy;
   onTab: (tab: RivalTab) => void;
   onFocus: (playerId: string | null) => void;
@@ -104,6 +105,8 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
                   focused={player.playerId === focused}
                   stats={(isSolo  &&  soloStats)  ||  rivalStats.get(player.playerId)  ||  NO_COUNTS}
                   statsWords={STAT_WORDS[isSolo  &&  soloStats ? countBy : 'results']}
+                  totals={isMe ? myStats : null}
+                  ties={!! solo}
                   best={playerBests.length}
                   scores={playerBests.reduce((acc, best) => acc + best.tries, 0)}
                   onFocus={() => onFocus(player.playerId)}

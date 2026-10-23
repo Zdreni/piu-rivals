@@ -8,7 +8,7 @@ import { NARROW, PHONE, type SidePanel } from './layout.ts';
 import { autoLevels, type Preferences, resolveLevels } from './preferences.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
-import { chartTier, countCharts, sortedLevels, type TabId } from './stats.ts';
+import { chartTier, countCharts, levelStats, sortedLevels, type TabId } from './stats.ts';
 import { readUiState, saveUiState, type UiState } from './ui_state.ts';
 import { useBests } from './use_bests.ts';
 import { useRivalSettings } from './use_rival_settings.ts';
@@ -94,8 +94,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // use; a tap on the level already picked, a double tap or a long press brings the levels into use. In use, a tap on
   // the level already picked or a double tap gives the room back to the results.
   const [levelsActive, setLevelsActive] = useState(false);
-  // On narrow screens, the rivals and the preferences wait off the left edge until the levels' top bar slides one of
-  // them in. The last one in stays shown while it slides out. While one is in, a tap on the levels only slides it out.
+  // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
+  // in stays shown while it slides out. On narrow screens, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
   const levelsActiveBeforeSide = useRef(false);
@@ -240,6 +240,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
 
   const totals = countCharts(charts, countBy);
+  const myStats = levelStats(charts);
   const atLevel = (chart: ChartRow) => chart.chart === selectedLevel;
   const emptyMessage = ! rivals.length
     ? 'Add rivals on the Others tab on the left to compare your scores with theirs.'
@@ -256,14 +257,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   return (
     <div className="rivals">
-      <WindowHeader
-        totals={totals}
-        preferences={preferences}
-        levels={levelRange}
-        solo={!! soloRival}
-        status={status}
-        onChange={settings.changePreferences}
-      />
+      <WindowHeader status={status} />
       <div
         className={`dlg-main${levelsActive ? ' levels-active' : ''}${sideOpen ? ' side-open' : ''}${sidePanel === 'preferences' ? ' side-preferences' : ''}`}
         onClickCapture={activatePanel}
@@ -286,6 +280,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           solo={soloRival}
           // In solo mode the solo rival's stats are the header's, with all the settings applied.
           soloStats={soloRival ? totals : null}
+          myStats={myStats}
           countBy={countBy}
           onTab={(rivalTab) => changeUi({ rivalTab })}
           onFocus={focus}

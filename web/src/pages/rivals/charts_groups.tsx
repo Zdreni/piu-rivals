@@ -66,7 +66,7 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
 // What the score cap hides gets its own dark segment. `countBy` picks what sizes and labels the segments;
-// `showTies` gives ties their own segment (counted by results). On narrow screens, the top bar's buttons slide the
+// `showTies` gives ties their own segment (counted by results). The top bar's buttons slide the
 // rivals or the preferences in from the left (`sidePanel`, the one that's in) and out again.
 export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePanel, onSelect, onToggleSide }: {
   charts: ChartRow[];
