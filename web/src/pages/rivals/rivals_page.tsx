@@ -192,12 +192,20 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     }
     if (sideOpen) {
       setLevelsActive(levelsActiveBeforeSide.current);
-    } else {
-      levelsActiveBeforeSide.current = levelsActive;
-      setLevelsActive(false);
+      setSideOpen(false);
+      return;
     }
+
+    levelsActiveBeforeSide.current = levelsActive;
+    setLevelsActive(false);
+    if (panel === sidePanel) {
+      setSideOpen(true);
+      return;
+    }
+
+    // The other panel takes the last one's place off the edge first, and slides in from there once it's laid out.
     setSidePanel(panel);
-    setSideOpen(! sideOpen);
+    requestAnimationFrame(() => requestAnimationFrame(() => setSideOpen(true)));
   };
 
   const focus = (playerId: string | null) => {
