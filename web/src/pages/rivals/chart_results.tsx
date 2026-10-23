@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, useSyncExternalStore } from 'react';
 import { ChartResultsItem, type Keep } from './chart_results_item.tsx';
+import { PHONE } from './layout.ts';
 import { byLeadWeight, byTargetWeight, type ChartRow } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { chartTier, resultCounts, type Stat, STAT_WORDS, TABS, type TabId, TIER_STAT } from './stats.ts';
@@ -15,11 +16,18 @@ const capitalized = (word: string) => word[0]!.toUpperCase() + word.slice(1);
 const SHORT_WORDS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
 
 // Cards list this many rival scores, besides yours, until expanded: unplayed ones the lowest, lost and hidden ones
-// the biggest losses, won ones the closest below yours.
-const KEEP_RIVALS = 6;
-const KEEP_UNPLAYED: Keep = { top: 0, bottom: KEEP_RIVALS };
-const KEEP_LOST: Keep = { top: KEEP_RIVALS, bottom: 1 };
-const KEEP_WON: Keep = { top: 1 + KEEP_RIVALS, bottom: 0 };
+// the biggest losses, won ones the closest below yours. Phones keep fewer.
+const keeps = (rivals: number) => ({
+  unplayed: { top: 0, bottom: rivals } as Keep,
+  lost: { top: rivals, bottom: 1 } as Keep,
+  won: { top: 1 + rivals, bottom: 0 } as Keep,
+});
+const KEEP_DESKTOP = keeps(7);
+const KEEP_PHONE = keeps(4);
+const onPhoneChange = (listener: () => void) => {
+  PHONE.addEventListener('change', listener);
+  return () => PHONE.removeEventListener('change', listener);
+};
 // Each click on a fold button lists this many more of its scores.
 const SHOW_STEP = 10;
 
@@ -48,6 +56,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   const [shownHigher, setShownHigher] = useState<Map<number, number>>(new Map());
   // On phones, the one result row unrolled, as `${chart id} ${player id}`.
   const [unrolled, setUnrolled] = useState<string | null>(null);
+  const keep = useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP;
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
   const groups = hiddenGroups.filter(({ charts }) => charts.length);
@@ -105,7 +114,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       content = groups.map(({ label, charts }) => (
         <Fragment key={label}>
           <h3 className="group-title">{label} · {charts.length}</h3>
-          {cards(charts, ['win', 'tie'], true, KEEP_LOST)}
+          {cards(charts, ['win', 'tie'], true, keep.lost)}
         </Fragment>
       ));
     } else {
@@ -114,7 +123,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       // Lost charts fold the rivals you beat or truly tie with; tied ones only those you beat. Lost, unplayed and won ones
       // also fold the scores between the kept ones.
       content = cards(visible, tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : [], false,
-        { 'not-played': KEEP_UNPLAYED, 'rivals-win': KEEP_LOST, 'you-win': KEEP_WON, tie: null }[tab]);
+        { 'not-played': keep.unplayed, 'rivals-win': keep.lost, 'you-win': keep.won, tie: null }[tab]);
     }
 
     // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
