@@ -54,21 +54,27 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 .account a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; text-decoration: none; }
 .account a.active { color: var(--text); }
 
-/* Too narrow for three columns: the brand and the account on the first line, the admin menu on the next. */
+/* Too narrow for three columns: the brand and the account on the first line, the admin menu on the next, except
+   in the Rivals view, which needs the room; the user name leads to the home page, which shows the menu. */
 @media (max-width: 720px) {
   .header { display: flex; flex-wrap: wrap; }
   .account { margin-left: auto; }
   .nav-admin { order: 1; flex-basis: 100%; }
+  .app.full .nav-admin { display: none; }
 }
 
-.main { max-width: 72rem; margin: 0 auto; padding: 1rem; }
+/* The footer keeps to the bottom of the window, below short pages too. */
+.app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.main { flex: 1; width: 100%; max-width: 72rem; margin: 0 auto; padding: 1rem; }
 
 .footer {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
+  width: 100%;
   max-width: 72rem;
-  margin: 2rem auto;
+  margin: 2rem auto 1rem;
   padding: 0 1rem;
   font-size: 0.85rem;
 }
