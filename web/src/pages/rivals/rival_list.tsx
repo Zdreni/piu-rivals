@@ -1,5 +1,6 @@
 import type { PlayerSummary, Rival } from '@piu-rivals/shared';
 import { useEffect, useMemo, useRef } from 'react';
+import { tabsClass, useTabsFit } from './layout.ts';
 import { type ChartRow, displayName, type PlayerBests } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { OtherPlayers, usePlayers } from './other_players.tsx';
@@ -13,7 +14,6 @@ const listed = (player: PlayerSummary): ListedPlayer => ({
   fullName: player.name  ??  player.id,
   name: displayName(player.name  ??  player.id),
   pumbility: player.pumbility,
-  lastScrapedAt: player.lastScrapedAt,
 });
 
 
@@ -74,6 +74,9 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
     onFocus(player.id);
   };
 
+  const tabBar = useRef<HTMLDivElement>(null);
+  const tabsFit = useTabsFit(tabBar, [rivals.length, othersCount]);
+
   const tabButton = (id: RivalTab, label: string, count: number | null) => (
     <button type="button" role="tab" aria-selected={tab === id} className="rival-tab" onClick={() => onTab(id)}>
       {label}{count !== null  &&  <span className="tab-count">{count}</span>}
@@ -82,7 +85,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
 
   return (
     <div className="rival-list" aria-label="Rivals">
-      <div className="rival-tabs" role="tablist">
+      <div className={`rival-tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist">
         {tabButton('mine', 'My rivals', rivals.length)}
         {tabButton('others', 'Others', othersCount)}
       </div>

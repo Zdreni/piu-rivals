@@ -63,11 +63,30 @@
 .rivals .tabs .tab[aria-selected="true"], .rivals .rival-tabs .rival-tab[aria-selected="true"] {
     color: #4FE33F; border-bottom-color: #4FE33F; cursor: default; }
 
+/* Tabs that don't fit on one line (see useTabsFit) are laid out as on phones (see below): their word, or its short
+   form if even then they don't fit, with its count a gap under it, in a row as tall as the one-line tabs. While
+   they're measured, they're kept on one line, and a tab whose words don't fit in its room overflows it. */
+.rivals .measuring { flex-wrap: nowrap !important; }
+.rivals .measuring > * { min-width: 0 !important; overflow: hidden !important; white-space: nowrap !important; }
+@media (min-width: 601px) {
+  .rivals .tabs.stacked, .rivals .rival-tabs.stacked { flex-wrap: nowrap; box-sizing: border-box;
+      min-height: calc(6px + 10px + 18px + 12px + 1px); padding-top: 2px; }
+  .rivals .stacked .tab, .rivals .stacked .rival-tab { padding: 2px 4px; font-size: 14px; line-height: 16px; white-space: nowrap; }
+  .rivals .tabs.stacked { gap: 0; padding-left: 4px; padding-right: 4px; }
+  .rivals .tabs.stacked .tab { flex: 1 1 0; margin-left: 0; padding-left: 2px; padding-right: 2px; }
+  .rivals .stacked .tab-count { display: block; min-width: 0; margin: 3px 0 0; text-align: center; }
+  .rivals .stacked .tab-word { display: block; }
+  .rivals .stacked .tab-word.short { display: none; }
+  .rivals .short-words .tab-word:not(.short) { display: none; }
+  .rivals .short-words .tab-word.short { display: block; }
+}
+
 /* Rivals column */
 
 /* The rivals and the preferences take turns in this column, which slides in from the left edge (see the side panels
    below). */
-.rivals .rival-list, .rivals .prefs-panel { width: 285px; }
+.rivals { --side-width: 250px; }
+.rivals .rival-list, .rivals .prefs-panel { width: var(--side-width); }
 .rivals .dlg-main.side-preferences .rival-list { display: none; }
 .rivals .dlg-main.side-preferences .prefs-panel { display: flex; }
 .rivals .rival-list { flex-shrink: 0; font-weight: 400; display: flex; flex-direction: column;
@@ -105,10 +124,6 @@
 .rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                       font-size: 16px; color: #C9D8CE; }
 .rivals .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
-.rivals .rival-visit { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; color: #8A9590;
-                       font-size: 13px; font-variant-numeric: tabular-nums; text-decoration: none; }
-.rivals .rival-visit:hover { color: #4FE33F; }
-.rivals .rival-visit svg { width: 13px; height: 13px; }
 .rivals .rival-links { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
 .rivals .rival-links + .rival-scrap { margin-top: 4px; }
 .rivals .rival-stats { color: #9AB3A3; }
@@ -131,8 +146,7 @@
 .rivals .rival-counts { white-space: nowrap; }
 .rivals .rival-counts > span { color: #9AB3A3; }
 .rivals .rival-counts .zero, .rivals .rival-stats .zero { opacity: .4; }
-.rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-visit,
-.rivals .rival.off .rival-scrap { opacity: .45; }
+.rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-scrap { opacity: .45; }
 
 /* Others: players to add as rivals */
 
@@ -168,7 +182,7 @@
    one in; the levels follow it, and the results give it their room. Out of sight, they can't be tabbed to. */
 
 @media (min-width: 1001px) {
-  .rivals .rival-list, .rivals .prefs-panel { margin-left: -285px; visibility: hidden;
+  .rivals .rival-list, .rivals .prefs-panel { margin-left: calc(-1 * var(--side-width)); visibility: hidden;
                                               transition: margin-left .3s ease, visibility 0s .3s; }
   .rivals .dlg-main.side-open .rival-list, .rivals .dlg-main.side-open .prefs-panel { margin-left: 0; visibility: visible;
                                                                                       transition-delay: 0s; }
@@ -268,11 +282,13 @@
 .rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Chart cards: the track and chart on top, then the results, in as many columns as fit. */
-/* The narrowest card leaves 110px for a name: 321px less borders, row padding, name indent, score, arrow (20px)
-   and diff (6ch at 16px). */
-.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(321px, 1fr)); gap: 12px; align-items: start; }
+/* The narrowest card leaves 126px for a name: 321px less borders, row padding, score, arrow (20px)
+   and diff (6ch at 16px). Results narrower than that (on a tablet, with the rivals in) get one card as wide as they
+   are, and the names make do with less. */
+.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px, 100%), 1fr)); gap: 12px;
+                      align-items: start; }
 /* Cards without diffs: the names get as much room as above, less the arrow and diff columns. */
-.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); }
+.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr)); }
 .rivals .group-title { grid-column: 1 / -1; margin: 6px 0 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
@@ -290,8 +306,8 @@
 .rivals .result { display: grid; grid-template-columns: subgrid; padding: 3px 12px; font-size: 16px; }
 .rivals .result:nth-child(even of .result), .rivals .result:nth-child(even of .result) + .result-details {
     background: rgba(255,255,255,.04); }
-/* Names are indented under the track name; rivals' are in the colour of their names in the rivals. */
-.rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Names line up with the track name; rivals' are in the colour of their names in the rivals. */
+.rivals .result-player { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rivals .result:not(.mine) .result-player { color: #C9D8CE; }
 .rivals .result .score { color: #9AB3A3; }
 .rivals .result .delta { padding-left: 20px; }
@@ -320,7 +336,7 @@
 .rivals .result-details.unrolled > div { visibility: visible; transition-delay: 0s; }
 .rivals .result-details > div > * { margin: 2px 0 6px; }
 .rivals .result-info { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: space-between;
-                       gap: 2px 12px; padding-left: 16px; }
+                       gap: 2px 12px; }
 .rivals .result-judgments, .rivals .result-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rivals .result-date { margin-left: auto; }
 /* Judgment counts in the colours of their names in the game, softened with the line's grey; their letters are
@@ -352,18 +368,21 @@
    get the width the results don't need, up to a limit; they are as tall as the screen and stick to its top while the
    page scrolls through the results, and scroll on their own if they don't fit. The results' tabs stick to the top too,
    so only the cards scroll.
-   The rivals wait off the left edge, as wide as the results. The Rivals button in the levels' top bar slides the whole
-   row right by that width: the rivals come in, the levels follow, and the results go off the right edge. The row is
-   laid out in widths of the view (cqw), since it is wider than the view; --levels is the levels' width. The
-   preferences' button slides the preferences in the same way, in the rivals' place. */
+   The rivals wait off the left edge, --side wide. The Rivals button in the levels' top bar slides the whole row right
+   by that width: the rivals come in and the levels follow. On phones the rivals are as wide as the results, which go
+   off the right edge; on tablets they are as wide as on wide screens, and the results shrink to make room for them,
+   the levels too (down to what bars with three 3-digit counts need) if the results would get narrower than 300px. The row is laid out in widths of the view (cqw), since
+   it is wider than the view; --levels is the levels' width. The preferences' button slides the preferences in the
+   same way, in the rivals' place. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
   .rivals { flex: none; container-type: inline-size; overflow-x: clip; }
-  .rivals .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); display: grid; width: calc(200cqw - var(--levels));
-                      grid-template-columns: calc(100cqw - var(--levels)) var(--levels) calc(100cqw - var(--levels));
-                      grid-template-rows: auto; transform: translateX(calc(var(--levels) - 100cqw));
-                      transition: transform .3s ease; }
+  .rivals .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); --side: calc(100cqw - var(--levels));
+                      display: grid; width: calc(100cqw + var(--side));
+                      grid-template-columns: var(--side) var(--levels) calc(100cqw - var(--levels));
+                      grid-template-rows: auto; transform: translateX(calc(-1 * var(--side)));
+                      transition: grid-template-columns .3s ease, width .3s ease, transform .3s ease; }
   .rivals .dlg-main.side-open { transform: none; }
   .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
   .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; }
@@ -375,6 +394,29 @@
   .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
 }
 
+@media (min-width: 601px) and (max-width: 1000px) {
+  .rivals .dlg-main { --side: var(--side-width); }
+  .rivals .dlg-main.side-open { --levels: min(340px, max(176px, 100cqw - var(--side) - 300px)); width: 100cqw;
+      grid-template-columns: var(--side) var(--levels) calc(100cqw - var(--side) - var(--levels)); }
+  /* While the rivals are in, every panel keeps tighter margins, about as on phones. */
+  .rivals .side-open .rival-scroll { padding: 0 6px 8px 4px; }
+  .rivals .side-open .prefs-controls { padding: 12px; gap: 20px; }
+  .rivals .side-open .level-top { padding: 0 6px; }
+  .rivals .side-open .level-scroll { padding: 8px 6px; scrollbar-gutter: auto; }
+  .rivals .side-open .dlg-body { padding: 8px 6px; }
+  /* While the rivals are in, the cards are laid out as on phones (see below): the score column fits the scores, and the
+     names line up with the track name, so the names get the room. */
+  .rivals .side-open .chart-card-head { gap: 6px; padding: 5px 8px; }
+  .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .rivals .side-open .result { padding: 2px 6px; }
+  .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
+  .rivals .side-open .result .delta { padding-left: 14px; }
+  .rivals .side-open .result-player { padding-left: 2px; }
+  .rivals .side-open .result .delta-tie { width: 5.5ch; }
+  .rivals .side-open .result-details { padding: 0 6px; }
+  .rivals .side-open .result-info { padding-left: 2px; }
+}
+
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
@@ -382,7 +424,7 @@
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
      dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
      for names and diffs, unless the levels need it for their counts. */
-  .rivals .dlg-main { --levels: 35cqw; transition: grid-template-columns .3s ease, width .3s ease, transform .3s ease; }
+  .rivals .dlg-main { --levels: 35cqw; }
   .rivals .dlg-main.levels-active { --levels: max(160px, min(65cqw, 100cqw - 150px)); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;

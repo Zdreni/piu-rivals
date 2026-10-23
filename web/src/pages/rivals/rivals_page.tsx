@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { NARROW, PHONE, type SidePanel } from './layout.ts';
+import { PHONE, type SidePanel } from './layout.ts';
 import { autoLevels, type Preferences, resolveLevels } from './preferences.ts';
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
 import { RivalList } from './rival_list.tsx';
@@ -95,7 +95,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // the level already picked or a double tap gives the room back to the results.
   const [levelsActive, setLevelsActive] = useState(false);
   // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
-  // in stays shown while it slides out. On narrow screens, while one is in, a tap on the levels only slides it out.
+  // in stays shown while it slides out. On phones, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
   const levelsActiveBeforeSide = useRef(false);
@@ -128,7 +128,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       event.stopPropagation();
       return;
     }
-    if (sideOpen  &&  NARROW.matches  &&  levels  &&  ! target.closest('.panel-toggle')) {
+    if (sideOpen  &&  PHONE.matches  &&  levels  &&  ! target.closest('.panel-toggle')) {
       event.preventDefault();
       event.stopPropagation();
       toggleSide(sidePanel);

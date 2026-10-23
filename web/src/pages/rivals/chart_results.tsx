@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChartResultsItem, type Keep } from './chart_results_item.tsx';
-import { PHONE } from './layout.ts';
+import { PHONE, tabsClass, useTabsFit } from './layout.ts';
 import { byLeadWeight, byTargetWeight, type ChartRow } from './model.ts';
 import type { CountBy } from './preferences.ts';
 import { chartTier, resultCounts, type Stat, STAT_WORDS, TABS, type TabId, TIER_STAT } from './stats.ts';
@@ -79,6 +79,8 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
 
   const results = countBy === 'results' ? resultCounts(levelCharts) : null;
   const tabNumber = (id: TabId) => (results ? results[TIER_STAT[id]] : tabCounts[id]);
+  const tabBar = useRef<HTMLDivElement>(null);
+  const tabsFit = useTabsFit(tabBar, [tabs.map((id) => `${id} ${tabNumber(id)}`).join()]);
   // Tabs are named after what their numbers count.
   const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
@@ -132,10 +134,10 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
 
   return (
     <div className="score-content">
-      <div className="tabs" role="tablist" aria-label="Score results">
+      <div className={`tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist" aria-label="Score results">
         {tabs.map((id) => (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={() => onSelectTab(id)}>
-            {/* On phones, the longer words are shortened, e.g. "Non-matched" to "NP". */}
+            {/* On phones, and wherever stacked tabs don't fit their words, the longer words are shortened, e.g. "Non-matched" to "NP". */}
             <span className="tab-word">{capitalized(tabWord(id))}</span>
             <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalized(tabWord(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
