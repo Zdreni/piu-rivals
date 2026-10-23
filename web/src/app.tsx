@@ -62,7 +62,6 @@ function Layout({ children }: { children: ReactNode }) {
       {! full  &&  (
         <footer className="footer muted">
           <a href="privacy.html">Privacy policy</a>
-          <span>Scores from <a href="https://piuscores.arroweclip.se">PIU Scores</a></span>
         </footer>
       )}
     </div>
