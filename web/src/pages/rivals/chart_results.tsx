@@ -54,7 +54,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   // By chart, how many of its folded rivals, and of its scores above the lowest ones, were shown.
   const [shownFolded, setShownFolded] = useState<Map<number, number>>(new Map());
   const [shownHigher, setShownHigher] = useState<Map<number, number>>(new Map());
-  // On phones, the one result row unrolled, as `${chart id} ${player id}`.
+  // The one result row unrolled, as `${chart id} ${player id}` (or "me" for yours).
   const [unrolled, setUnrolled] = useState<string | null>(null);
   const keep = useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP;
   const showMore = (shown: Map<number, number>, chartId: number) =>

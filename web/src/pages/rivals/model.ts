@@ -4,6 +4,22 @@ import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_
 // The level range when the settings don't apply.
 export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
 
+// The judgment counts of a best score, and its max combo if known; null when its play has no counts (some older
+// imports).
+export interface Judgments {
+  perfect: number;
+  great: number;
+  good: number;
+  bad: number;
+  miss: number;
+  maxCombo: number | null;
+}
+
+export const judgments = (best: BestResult): Judgments | null =>
+  (best.perfect === null  ||  best.great === null  ||  best.good === null  ||  best.bad === null  ||  best.miss === null
+    ? null
+    : { perfect: best.perfect, great: best.great, good: best.good, bad: best.bad, miss: best.miss, maxCombo: best.maxCombo });
+
 // A rival's best score on a chart, compared with yours.
 export interface RivalResult {
   // The full name, with its "#1234" tag.
@@ -12,6 +28,7 @@ export interface RivalResult {
   score: number;
   // The day the best score was set, if known.
   date: string | null;
+  judgments: Judgments | null;
   // Positive = you're ahead. Null when you have no score. `delta` is capped by the score cap, `realDelta` is not.
   delta: number | null;
   realDelta: number | null;
@@ -25,6 +42,9 @@ export interface ChartRow {
   // Chart type and level, e.g. "D24".
   chart: string;
   mine: number | null;
+  // The day you set your best score, if known, and its judgments.
+  myDate: string | null;
+  myJudgments: Judgments | null;
   // Best score first.
   rivals: RivalResult[];
   unplayed: boolean;
@@ -89,7 +109,7 @@ export function buildCharts(
     const results = rivals.flatMap((rival): RivalResult[] => {
       const best = bests.get(rival.id)?.get(chartId);
       return best
-        ? [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn,
+        ? [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn, judgments: judgments(best),
           delta: delta(mine, best.score, scoreCap), realDelta: delta(mine, best.score) }]
         : [];
     }).sort((a, b) => b.score - a.score);
@@ -100,6 +120,8 @@ export function buildCharts(
       trackTitle: chart.songTitle,
       chart: `${chart.chartType}${chart.level}`,
       mine,
+      myDate: myBest?.bestPlayedOn  ??  null,
+      myJudgments: myBest ? judgments(myBest) : null,
       rivals: results,
       unplayed: mine === null,
       weight: targetWeight(results.map((rival) => rival.delta)),

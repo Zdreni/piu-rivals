@@ -1,7 +1,6 @@
-import { Fragment, type MouseEvent, type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Delta, Score } from './format.tsx';
-import { PHONE } from './layout.ts';
-import { type ChartRow, displayName, type RivalResult } from './model.ts';
+import { type ChartRow, displayName, type Judgments, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
 // How many of the highest and of the lowest scores a card lists before folding the ones between.
@@ -11,6 +10,48 @@ export interface Keep {
 }
 
 type Entry = (RivalResult & { me?: false }) | { me: true; score: number };
+
+// The row unrolled for your own score.
+const ME = 'me';
+
+// Worst first, each count with its letters after it, e.g. "2m 0b 3gd 21gr 1850pf".
+const JUDGMENTS: [Exclude<keyof Judgments, 'maxCombo'>, string, string][] = [
+  ['miss', 'm', 'Misses'], ['bad', 'b', 'Bads'], ['good', 'gd', 'Goods'], ['great', 'gr', 'Greats'], ['perfect', 'pf', 'Perfects'],
+];
+
+
+// A row's details, folded but for the unrolled row's, so they roll and unroll (see .result-details): the best score's
+// judgments and max combo, e.g. "2m 0b 3gd 21gr 1850pf x800", and the day it was set, and the score itself, for rows
+// that leave it out for lack of room (`score`).
+function ResultDetails({ unrolled, judgments, date, score }: {
+  unrolled: boolean;
+  judgments: Judgments | null;
+  date: string | null;
+  score: number | null;
+}) {
+  return (
+    <div className={`result-details${unrolled ? ' unrolled' : ''}`}>
+      <div>
+        <span className="result-info">
+          {judgments  &&  (
+            <span className="result-judgments">
+              {JUDGMENTS.map(([key, letters, label]) => (
+                <span key={key} className={`judgment${judgments[key] === 0 ? ' zero' : ''}`} title={label}>
+                  <span className={key}>{judgments[key]}</span><span className="judgment-unit">{letters}</span>
+                </span>
+              ))}
+              {judgments.maxCombo !== null  &&  (
+                <span className="judgment" title="Max combo"><span className="judgment-unit">x</span>{judgments.maxCombo}</span>
+              )}
+            </span>
+          )}
+          <span className="result-date">{date}</span>
+        </span>
+        {score !== null  &&  <span className="num result-details-score"><Score value={score} /></span>}
+      </div>
+    </div>
+  );
+}
 
 
 
@@ -40,8 +81,8 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // button, which calls `onExpandHigher`; `higherShown` of them, highest first, are listed above the button anyway.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
 // diffs of true ties. `dimWon` dims the rivals you beat more than the others.
-// On phones, a tap on a rival's row doesn't open their sessions but calls `onUnroll`, and the `unrolled` rival's row
-// unrolls the day of their best score and their score (when the row has no room for it).
+// A click on a row calls `onUnroll`, and the `unrolled` row (a rival's id, or "me" for yours) unrolls the judgments and
+// the day of its best score, and the rival's score when the row has no room for it.
 export function ChartResultsItem({
   chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, onExpandFolded, onExpandHigher,
   unrolled, onUnroll,
@@ -84,46 +125,34 @@ export function ChartResultsItem({
   const hidden = new Set([...hiddenAbove, ...hiddenBelow]);
   const list = all.filter((entry) => ! hidden.has(entry));
 
+  const toggler = (id: string) => () => onUnroll(unrolled === id ? null : id);
+
   // One node per score, so the "more" button for the higher ones goes in by its place in `list`.
   const rows: ReactNode[] = list.map((entry) => {
     if (entry.me) {
+      const isUnrolled = unrolled === ME;
       return (
-        <div key="me" className="result mine">
-          <span className="result-player" title={myName}>{displayName(myName)}</span>
-          <span className="num"><Score value={entry.score} /></span>
-          <span />
-        </div>
+        <Fragment key={ME}>
+          <div className={`result mine${isUnrolled ? ' unrolled' : ''}`} onClick={toggler(ME)}>
+            <span className="result-player" title={myName}>{displayName(myName)}</span>
+            <span className="num"><Score value={entry.score} /></span>
+            <span />
+          </div>
+          <ResultDetails unrolled={isUnrolled} judgments={chart.myJudgments} date={chart.myDate} score={null} />
+        </Fragment>
       );
     }
 
     const won = dimWon  &&  isWon(entry) ? 'won' : 'ahead';
-    const sessions = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(entry.playerId)}/Sessions`;
     const isUnrolled = unrolled === entry.playerId;
-    const toggle = (event: MouseEvent) => {
-      if (! PHONE.matches)
-        return;
-      event.preventDefault();
-      onUnroll(isUnrolled ? null : entry.playerId);
-    };
-    const row = (
-      <div className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggle}>
-        <a className="result-player player-link" title={entry.player} href={sessions} target="_blank" rel="noreferrer">
-          {displayName(entry.player)}
-        </a>
-        <span className="num score"><Score value={entry.score} /></span>
-        {chart.mine !== null  &&  <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />}
-      </div>
-    );
-    // Every rival has their details, folded but for the unrolled one's, so they roll and unroll (see .result-details).
     return (
       <Fragment key={entry.playerId}>
-        {row}
-        <div className={`result-details${isUnrolled ? ' unrolled' : ''}`}>
-          <div>
-            <span className="num result-details-score"><Score value={entry.score} /></span>
-            <span className="result-date">{entry.date}</span>
-          </div>
+        <div className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggler(entry.playerId)}>
+          <span className="result-player" title={entry.player}>{displayName(entry.player)}</span>
+          <span className="num score"><Score value={entry.score} /></span>
+          {chart.mine !== null  &&  <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />}
         </div>
+        <ResultDetails unrolled={isUnrolled} judgments={entry.judgments} date={entry.date} score={entry.score} />
       </Fragment>
     );
   });

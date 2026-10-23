@@ -302,11 +302,39 @@
 .rivals .tail-dim { opacity: .7; }
 .rivals .won { opacity: .4; }
 .rivals .ahead { opacity: .8; }
-.rivals .player-link { color: inherit; text-decoration: none; }
-.rivals .player-link:hover { color: #4FE33F; }
-/* A rival's row unrolled on a phone (see ChartResultsItem): the day of their best score, and their score when the row
-   hides it. Off phones, rows don't unroll. */
-.rivals .result-details { display: none; }
+/* A click on a row unrolls it (see ChartResultsItem); an unrolled rival isn't dimmed. */
+.rivals .result { cursor: pointer; }
+.rivals .result.unrolled { opacity: 1; }
+/* Its details: the best score's judgments, then the day it was set at the far right, lined up under the name; they
+   wrap under each other when there's no room. The details share the results' columns, and pad like their rows, so the
+   rival's score, when their row leaves it out (see the narrow results below), is in the diff column, under the diff
+   and lined up with your score. They share their row's stripe (see the rows above).
+   The unrolled row's details roll out like a rival's (see .rival-more): their row grows from nothing to their
+   height. Their space above and below is the items' margins, which fold with them. */
+.rivals .result-details { display: grid; grid-template-columns: subgrid; grid-template-rows: 0fr; padding: 0 12px;
+                          font-size: 13px; color: #9AB3A3; transition: grid-template-rows .25s ease; }
+.rivals .result-details.unrolled { grid-template-rows: 1fr; }
+.rivals .result-details > div { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+                                min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s .25s; }
+.rivals .result-details.unrolled > div { visibility: visible; transition-delay: 0s; }
+.rivals .result-details > div > * { margin: 2px 0 6px; }
+.rivals .result-info { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: space-between;
+                       gap: 2px 12px; padding-left: 16px; }
+.rivals .result-judgments, .rivals .result-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rivals .result-date { margin-left: auto; }
+/* Judgment counts in the colours of their names in the game, softened with the line's grey; their letters are
+   smaller, in the line's grey. */
+.rivals .judgment .perfect { color: color-mix(in srgb, #6FD3F2 75%, #9AB3A3); }
+.rivals .judgment .great { color: color-mix(in srgb, #7EDB6C 75%, #9AB3A3); }
+.rivals .judgment .good { color: color-mix(in srgb, #E6D36A 75%, #9AB3A3); }
+.rivals .judgment .bad { color: color-mix(in srgb, #D9AEFF 75%, #9AB3A3); }
+.rivals .judgment .miss { color: color-mix(in srgb, #FF6A55 75%, #9AB3A3); }
+.rivals .judgment-unit { font-size: .8em; }
+/* The counts sit on a dark rounded patch, like a button without a border. */
+.rivals .result-judgments { padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.28); }
+.rivals .judgment.zero { opacity: .4; }
+.rivals .judgment + .judgment { margin-left: .4em; }
+.rivals .result-details-score { display: none; color: #C9D8CE; font-size: 16px; }
 .rivals .show-others { display: block; width: 100%; padding: 2px 12px 6px; text-align: center; color: #9AB3A3; opacity: .6;
                        font: 500 13px/1.4 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .show-others .neg { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
@@ -419,27 +447,10 @@
   .rivals .result > :nth-child(2) { padding-left: 4px; }
   /* Names line up with the track name; rivals' are a bit dimmer (but still brighter than their scores). */
   .rivals .result-player { padding-left: 2px; }
-  .rivals .result:not(.mine) .result-player:not(:hover) { color: #B4C3B9; }
+  .rivals .result:not(.mine) .result-player { color: #B4C3B9; }
   .rivals .result .delta-tie { width: 5.5ch; }
-  .rivals .result:not(.mine) { cursor: pointer; }
-  .rivals .result .player-link:hover { color: inherit; }
-  /* An unrolled rival isn't dimmed; their details share their row's stripe (see the rows above). */
-  .rivals .result.unrolled { opacity: 1; }
-  /* The day at the right of the names' column, a gap away from the score. The details share the results' columns, and pad like their rows, so the
-     rival's score, when their row leaves it out (see the narrow results below), is in the diff column, under the diff
-     and lined up with your score.
-     The unrolled rival's details roll out like a rival's (see .rival-more): their row grows from nothing to their
-     height. Their space above and below is the items' margins, which fold with them. */
-  .rivals .result-details { display: grid; grid-template-columns: subgrid; grid-template-rows: 0fr; padding: 0 6px;
-                            font-size: 12px; color: #9AB3A3; transition: grid-template-rows .25s ease; }
-  .rivals .result-details.unrolled { grid-template-rows: 1fr; }
-  .rivals .result-details > div { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
-                                  min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s .25s; }
-  .rivals .result-details.unrolled > div { visibility: visible; transition-delay: 0s; }
-  .rivals .result-details > div > * { margin: 2px 0 6px; }
-  .rivals .result-details-score { display: none; color: #C9D8CE; font-size: 16px; }
-  .rivals .result-date { grid-column: 1; grid-row: 1; justify-self: end; padding: 0 12px 0 8px; font-size: 13px;
-                         font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rivals .result-details { padding: 0 6px; font-size: 12px; }
+  .rivals .result-info { gap: 2px 8px; padding-left: 2px; }
   .rivals .show-others { font-size: 12px; }
 }
 
@@ -456,4 +467,12 @@
   .rivals .chart-card-results:not(.no-diffs) .result.mine > :nth-child(n+3) { display: none; }
   .rivals .chart-card-results:not(.no-diffs) .result.mine > .num { grid-column: 2 / -1; }
   .rivals .chart-card-results:not(.no-diffs) .result-details-score { display: block; grid-column: -2 / -1; grid-row: 1; }
+  /* With the score in the details, the judgments get a line of their own across the row, and the day goes on the
+     score's line, at the right of the names' column. */
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) { display: contents; }
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-judgments {
+      grid-column: 1 / -1; grid-row: 1; justify-self: start; margin: 2px 0 0 2px; }
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-date {
+      grid-column: 1; grid-row: 2; justify-self: end; margin: 2px 0 6px; padding-right: 12px; }
+  .rivals .chart-card-results:not(.no-diffs) .result-info + .result-details-score { grid-row: 2; }
 }
