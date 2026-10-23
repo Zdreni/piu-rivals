@@ -7,7 +7,7 @@ import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireUser, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { loadUser, playerSummary, playerSummaryColumns } from '../mappers.ts';
+import { loadUser, playerName, playerSummary, playerSummaryColumns } from '../mappers.ts';
 import { GUID, PlayerIdParams } from './params.ts';
 
 const MAX_RIVALS = 100;
@@ -19,7 +19,7 @@ async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]
     .innerJoin('players', 'players.id', 'user_rivals.player_id')
     .select([...playerSummaryColumns, 'user_rivals.hidden'])
     .where('user_rivals.user_id', '=', userId)
-    .orderBy('players.name')
+    .orderBy(playerName())
     .execute();
 
   return rows.map((row) => ({ ...playerSummary(row), hidden: !! row.hidden }));

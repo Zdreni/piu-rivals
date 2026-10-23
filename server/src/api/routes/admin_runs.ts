@@ -9,7 +9,7 @@ import { joinOrQueueRun, queueRun } from '../../scraper/runs.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { playerSummary, toIso, toIsoOrNull } from '../mappers.ts';
+import { playerName, playerSummary, toIso, toIsoOrNull } from '../mappers.ts';
 import { IdParams } from './params.ts';
 
 // Finished runs per page of the run list; the site asks for more pages by raising the limit.
@@ -30,7 +30,7 @@ function runQuery(db: Kysely<Database>) {
     .leftJoin(failures, 'failures.scrape_run_id', 'r.id')
     .selectAll('r')
     .select([
-      'u.email as started_by', 'p.piuscores_guid as player_guid', 'p.name as player_name', 'p.pumbility as player_pumbility',
+      'u.email as started_by', 'p.piuscores_guid as player_guid', playerName('p').as('player_name'), 'p.pumbility as player_pumbility',
       'p.last_scraped_at as player_last_scraped_at', 'failures.count as failure_count',
     ]);
 }
@@ -106,7 +106,7 @@ async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<numb
   if (! ids.length)
     return [];
 
-  const stored = await db.selectFrom('players').select(['id', 'piuscores_guid', 'name']).where('id', 'in', ids).execute();
+  const stored = await db.selectFrom('players').select(['id', 'piuscores_guid', playerName().as('name')]).where('id', 'in', ids).execute();
   const players = new Map(stored.map((p) => [p.id, p]));
   const active = (ACTIVE_STATUSES as readonly string[]).includes(row.status);
   const stateOf = (id: number, index: number): ScrapeRunPlayerState => {

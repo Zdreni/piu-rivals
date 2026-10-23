@@ -9,7 +9,10 @@ export interface PlayersTable {
   id: Generated<number>;
   // How piuscores (and the API) knows the player.
   piuscores_guid: string;
+  // As scraped from PIU Scores.
   name: string | null;
+  // Shown on the site instead of `name` when set by an admin.
+  display_name: string | null;
   pumbility: number | null;
   created_at: CreatedAt;
   created_by_user_id: number | null;

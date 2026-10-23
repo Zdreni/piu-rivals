@@ -1,5 +1,5 @@
 import type { PlayerSummary, User } from '@piu-rivals/shared';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import type { Database } from '../db/schema.ts';
 
 // Converts database rows to API responses.
@@ -18,7 +18,14 @@ export function playerSummary(row: {
 }
 
 
-export const playerSummaryColumns = ['players.piuscores_guid', 'players.name', 'players.pumbility', 'players.last_scraped_at'] as const;
+// The name the site shows: the one an admin set, or else the scraped one.
+export const playerName = (table: 'players' | 'p' = 'players') =>
+  sql<string | null>`COALESCE(${sql.ref(`${table}.display_name`)}, ${sql.ref(`${table}.name`)})`;
+
+
+export const playerSummaryColumns = [
+  'players.piuscores_guid', playerName().as('name'), 'players.pumbility', 'players.last_scraped_at',
+] as const;
 
 
 export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {

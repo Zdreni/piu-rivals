@@ -1,8 +1,61 @@
 import type { AdminPlayer, AdminPlayersResponse, ScrapeRunKind, ScrapeRunResponse } from '@piu-rivals/shared';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
+import { type Sort, SortHeader, textLength } from '../../components/sort_header.tsx';
 import { formatAgo, formatNumber, playerLabel, useLoad } from '../../util.ts';
+
+type SortColumn = 'dbId' | 'name' | 'length' | 'scrapedName' | 'pumbility' | 'charts' | 'plays' | 'lastScrapedAt';
+
+// Missing values (no name, never scraped) go last when sorting up.
+const byText = (a: string | null, b: string | null) => Number(a === null) - Number(b === null)  ||  (a  ??  '').localeCompare(b  ??  '');
+const byNumber = (a: number | null, b: number | null) => Number(a === null) - Number(b === null)  ||  (a  ??  0) - (b  ??  0);
+
+const compare: Record<SortColumn, (a: AdminPlayer, b: AdminPlayer) => number> = {
+  dbId: (a, b) => a.dbId - b.dbId,
+  name: (a, b) => byText(a.name, b.name),
+  length: (a, b) => textLength(a.name) - textLength(b.name),
+  scrapedName: (a, b) => byText(a.scrapedName, b.scrapedName),
+  pumbility: (a, b) => byNumber(a.pumbility, b.pumbility),
+  charts: (a, b) => a.charts - b.charts,
+  plays: (a, b) => a.plays - b.plays,
+  lastScrapedAt: (a, b) => byText(a.lastScrapedAt, b.lastScrapedAt),
+};
+
+
+// The name shown on the site, saved when the field loses focus or on Enter; Escape puts the saved one back. An empty
+// name is the one on PIU Scores again.
+function NameInput({ player, onSave }: { player: AdminPlayer; onSave: (displayName: string | null) => void }) {
+  const [name, setName] = useState(player.name  ??  '');
+  useEffect(() => setName(player.name  ??  ''), [player.name]);
+
+  const save = () => {
+    const trimmed = name.trim();
+    if (trimmed !== (player.name  ??  ''))
+      onSave(trimmed  ||  null);
+    else
+      setName(trimmed);
+  };
+
+  return (
+    <input
+      type="text"
+      maxLength={100}
+      value={name}
+      placeholder={player.scrapedName  ??  'Not scraped yet'}
+      aria-label={`Name of ${playerLabel(player)}`}
+      onChange={(event) => setName(event.target.value)}
+      onBlur={save}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter')
+          event.currentTarget.blur();
+        else if (event.key === 'Escape')
+          setName(player.name  ??  '');
+      }}
+    />
+  );
+}
+
 
 function RegisterForm({ onError }: { onError: (error: string | null) => void }) {
   const navigate = useNavigate();
@@ -39,6 +92,7 @@ export function PlayersPage() {
   const players = useLoad(() => api<AdminPlayersResponse>('GET', '/admin/players'), []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [sort, setSort] = useState<Sort<SortColumn>>({ column: 'name', descending: false });
 
   const startRun = async (kind: ScrapeRunKind, playerIds?: string[]) => {
     if (kind === 'rescan'  &&  ! confirm(`Rescan ${playerIds?.length} player(s)? Their stored plays are deleted and their whole history is scraped again.`))
@@ -67,6 +121,17 @@ export function PlayersPage() {
     }
   };
 
+  const rename = async (player: AdminPlayer, displayName: string | null) => {
+    try {
+      await api('PATCH', `/admin/players/${player.id}`, { displayName });
+      setError(null);
+    } catch (e) {
+      setError(`${playerLabel(player)}: ${errorText(e)}`);
+    }
+
+    await players.reload();
+  };
+
   const toggle = (playerId: string) => {
     const next = new Set(selected);
     if (next.has(playerId))
@@ -77,8 +142,14 @@ export function PlayersPage() {
     setSelected(next);
   };
 
-  const list = players.data?.players  ??  [];
+  const list = useMemo(() => {
+    const sign = sort.descending ? -1 : 1;
+    // Ties go by name.
+    return [...players.data?.players  ??  []].sort((a, b) => sign * compare[sort.column](a, b)  ||  compare.name(a, b));
+  }, [players.data, sort]);
+
   const chosen = [...selected];
+  const sortProps = { sort, onSort: setSort };
   return (
     <section>
       <div className="title-row">
@@ -86,7 +157,8 @@ export function PlayersPage() {
       </div>
       <p className="muted">
         PIU Scores players whose sessions are scraped. "Scrape" opens only sessions newer than the last scraped one;
-        "Rescan" deletes a player's plays and scrapes their whole history again.
+        "Rescan" deletes a player's plays and scrapes their whole history again. The site shows a player by their name
+        here; leave it empty to use their name on PIU Scores.
       </p>
 
       <RegisterForm onError={setError} />
@@ -115,11 +187,14 @@ export function PlayersPage() {
                   onChange={(event) => setSelected(new Set(event.target.checked ? list.map((p) => p.id) : []))}
                 />
               </th>
-              <th>Player</th>
-              <th className="number">PUMBILITY</th>
-              <th className="number">Charts</th>
-              <th className="number">Plays</th>
-              <th>Last scraped</th>
+              <SortHeader column="dbId" label="ID" className="number" {...sortProps} />
+              <SortHeader column="name" label="Name" {...sortProps} />
+              <SortHeader column="length" label="Length" className="number" {...sortProps} />
+              <SortHeader column="scrapedName" label="On PIU Scores" {...sortProps} />
+              <SortHeader column="pumbility" label="PUMBILITY" className="number" {...sortProps} />
+              <SortHeader column="charts" label="Charts" className="number" {...sortProps} />
+              <SortHeader column="plays" label="Plays" className="number" {...sortProps} />
+              <SortHeader column="lastScrapedAt" label="Last scraped" {...sortProps} />
               <th>Latest session</th>
               <th />
             </tr>
@@ -135,9 +210,12 @@ export function PlayersPage() {
                     aria-label={`Select ${playerLabel(player)}`}
                   />
                 </td>
+                <td className="number muted">{player.dbId}</td>
+                <td><NameInput player={player} onSave={(displayName) => void rename(player, displayName)} /></td>
+                <td className="number">{textLength(player.name)}</td>
                 <td>
                   <a href={`https://piuscores.arroweclip.se/Player/${player.id}/Sessions`} target="_blank" rel="noreferrer">
-                    {playerLabel(player)}
+                    {player.scrapedName  ||  player.id}
                   </a>
                 </td>
                 <td className="number">{formatNumber(player.pumbility)}</td>

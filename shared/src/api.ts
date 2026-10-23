@@ -7,6 +7,7 @@ export interface ApiError {
 
 export interface PlayerSummary {
   id: string;
+  // The name an admin set, or else the one scraped from PIU Scores; null before the player is scraped.
   name: string | null;
   pumbility: number | null;
   lastScrapedAt: string | null;
@@ -113,6 +114,10 @@ export interface AdminUsersResponse {
 }
 
 export interface AdminPlayer extends ListedPlayer {
+  // Our own id, in the order players were added; `id` is the PIU Scores GUID.
+  dbId: number;
+  // The name on PIU Scores; `name` is the same unless an admin set another one.
+  scrapedName: string | null;
   createdAt: string;
   lastSessionTimestamp: string | null;
 }

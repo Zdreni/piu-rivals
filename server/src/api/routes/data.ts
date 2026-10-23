@@ -5,7 +5,7 @@ import { sql } from 'kysely';
 import type { AppDeps } from '../app.ts';
 import { requireUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { playerSummary, playerSummaryColumns, toIso } from '../mappers.ts';
+import { playerName, playerSummary, playerSummaryColumns, toIso } from '../mappers.ts';
 import { GUID } from './params.ts';
 
 const MAX_BEST_PLAYERS = 100;
@@ -36,8 +36,8 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     const rows = await db.selectFrom('players')
       .innerJoin(counts, 'counts.player_id', 'players.id')
       .select([...playerSummaryColumns, 'counts.charts', 'counts.plays'])
-      .where((eb) => eb.or([eb('players.name', 'is not', null), eb('players.pumbility', 'is not', null)]))
-      .orderBy('players.name')
+      .where((eb) => eb.or([eb(playerName(), 'is not', null), eb('players.pumbility', 'is not', null)]))
+      .orderBy(playerName())
       .execute();
 
     return {
