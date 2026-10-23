@@ -122,7 +122,7 @@
                                       border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .rivals .rival.me .rival-name, .rivals .rival.me .rival-pum { color: #FFC433; }
 .rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-                      font-size: 16px; color: #C9D8CE; }
+                      font-size: 16px; color: #B4C4BA; }
 .rivals .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
 .rivals .rival-links { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
 .rivals .rival-links + .rival-scrap { margin-top: 4px; }
@@ -293,7 +293,7 @@
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
 .rivals .chart-card { background: #1A2820; border: 1px solid #2B4034; border-radius: 6px; overflow: hidden; }
-.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; background: #20312A;
+.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; background: #20312A;
                            border-bottom: 1px solid #2B4034; }
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
@@ -308,7 +308,7 @@
     background: rgba(255,255,255,.04); }
 /* Names line up with the track name; rivals' are in the colour of their names in the rivals. */
 .rivals .result-player { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rivals .result:not(.mine) .result-player { color: #C9D8CE; }
+.rivals .result:not(.mine) .result-player { color: #B4C4BA; }
 .rivals .result .score { color: #9AB3A3; }
 .rivals .result .delta { padding-left: 20px; }
 .rivals .delta-sign { font-size: .8em; margin-right: .15em; }
@@ -406,7 +406,7 @@
   .rivals .side-open .dlg-body { padding: 8px 6px; }
   /* While the rivals are in, the cards are laid out as on phones (see below): the score column fits the scores, and the
      names line up with the track name, so the names get the room. */
-  .rivals .side-open .chart-card-head { gap: 6px; padding: 5px 8px; }
+  .rivals .side-open .chart-card-head { gap: 6px; padding: 7px 8px; }
   .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
   .rivals .side-open .result { padding: 2px 6px; }
   .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
@@ -486,7 +486,7 @@
   .rivals .levels-active .chart-label { display: none; }
   .rivals .dlg-body { padding: 8px 4px; }
   .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .rivals .chart-card-head { gap: 6px; padding: 5px 8px; }
+  .rivals .chart-card-head { gap: 6px; padding: 7px 8px; }
   .rivals .chart-card-head .track, .rivals .chart-label { font-size: 16px; }
   /* The score column fits the score, so the name gets the rest. */
   .rivals .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; }
