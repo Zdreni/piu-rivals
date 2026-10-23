@@ -112,7 +112,7 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 
 input, select, textarea, button { font: inherit; color: inherit; }
 
-input[type="email"], select, textarea {
+input[type="email"], input[type="text"], input[type="search"], select, textarea {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -149,6 +149,17 @@ th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var
 th { font-size: 0.8rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
 tbody tr:last-child td { border-bottom: none; }
 td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Sortable columns: the header is a button, with an arrow on the sorted one. */
+.sort-button { background: none; border: none; padding: 0; color: inherit; font-weight: inherit; }
+.sort-button:hover { color: var(--text); }
+.sort-mark { display: inline-block; width: 1em; margin-left: 0.25rem; font-size: 0.7em; }
+
+/* Tracks: the name and the short name field get the same width. */
+.tracks-table { table-layout: fixed; }
+.tracks-table .tracks-length { width: 6rem; }
+.tracks-table td { overflow-wrap: anywhere; }
+.tracks-table input[type="text"] { width: 100%; box-sizing: border-box; }
 
 /* Scrape runs */
 

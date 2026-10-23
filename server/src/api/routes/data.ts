@@ -64,10 +64,11 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
       .innerJoin('players as pl', 'pl.id', 'b.player_id')
       .innerJoin('plays as p', 'p.id', 'b.play_id')
       .innerJoin('charts as c', 'c.id', 'b.chart_id')
+      .innerJoin('tracks as t', 't.id', 'c.track_id')
       .select([
         'pl.piuscores_guid', 'b.chart_id', 'b.last_played_on', 'b.tries', 'b.updated_at',
         'p.score', 'p.passed', 'p.played_on', 'p.grade', 'p.plate', 'p.perfect', 'p.great', 'p.good', 'p.bad', 'p.miss', 'p.max_combo',
-        'c.song_key', 'c.song_title', 'c.chart_type', 'c.level',
+        't.song_key', 't.title', 't.short_title', 'c.chart_type', 'c.level',
       ])
       .where('pl.piuscores_guid', 'in', guids);
 
@@ -86,10 +87,20 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     for (const row of countRows)
       counts[row.piuscores_guid] = Number(row.count);
 
+    // A renamed track's charts come again, as their best results may not have changed.
+    const renamed = since
+      ? await db.selectFrom('charts as c')
+        .innerJoin('tracks as t', 't.id', 'c.track_id')
+        .select(['c.id as chart_id', 't.song_key', 't.title', 't.short_title', 'c.chart_type', 'c.level'])
+        .where('t.updated_at', '>=', since)
+        .execute()
+      : [];
+
     const charts = new Map<number, Chart>();
-    for (const row of rows) {
+    for (const row of [...rows, ...renamed]) {
       charts.set(row.chart_id, {
-        id: row.chart_id, songKey: row.song_key, songTitle: row.song_title, chartType: row.chart_type, level: row.level,
+        id: row.chart_id, songKey: row.song_key, songTitle: row.title, songShortTitle: row.short_title,
+        chartType: row.chart_type, level: row.level,
       });
     }
 

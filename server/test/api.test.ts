@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  AdminTracksResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -92,7 +92,7 @@ before(async () => {
 
   await sql`SET FOREIGN_KEY_CHECKS = 0`.execute(db);
   for (const table of ['auth_sessions', 'user_preferences', 'user_rivals', 'best_results', 'plays', 'scrape_failures',
-    'scrape_runs', 'charts', 'users', 'players'])
+    'scrape_runs', 'charts', 'tracks', 'users', 'players'])
     await sql`TRUNCATE TABLE ${sql.table(table)}`.execute(db);
 
   await sql`SET FOREIGN_KEY_CHECKS = 1`.execute(db);
@@ -216,6 +216,34 @@ test('best results come with their chart and try details, and since returns only
   assert.equal(changed.body.bests.length, 1);
   assert.equal(changed.body.bests[0]!.score, 905000);
   assert.equal(changed.body.bests[0]!.lastPlayedOn, '2026-10-02');
+});
+
+
+test('admins give tracks short names that no other track uses as a name', { skip }, async () => {
+  const as = 'admin@example.com';
+  const list = await call<AdminTracksResponse>('GET', '/admin/tracks', { as });
+  assert.deepEqual(list.body.tracks.map((t) => [t.title, t.shortTitle]), [['Alpha', 'Alpha'], ['Beta', 'Beta']]);
+  const [alpha, beta] = list.body.tracks;
+  const patch = (id: number, shortTitle: string) => call('PATCH', `/admin/tracks/${id}`, { as, body: { shortTitle } });
+
+  const bests = (since?: string) =>
+    call<BestsResponse>('GET', `/bests?players=${ME}${since ? `&since=${since}` : ''}`, { as: 'player@example.com' });
+
+  const { serverTime } = (await bests()).body;
+  assert.equal((await patch(alpha!.id, ' A ')).body.track.shortTitle, 'A');
+  // The renamed track's charts come again, though no best result changed.
+  const renamed = (await bests(serverTime)).body;
+  assert.deepEqual(renamed.charts.map((c) => [c.songTitle, c.songShortTitle]), [['Alpha', 'A']]);
+  assert.equal(renamed.bests.length, 0);
+
+  assert.equal((await patch(beta!.id, 'alpha')).status, 409);
+  assert.equal((await patch(beta!.id, 'a')).status, 409);
+  assert.equal((await patch(beta!.id, 'B')).status, 200);
+  // Empty puts the name back; a track's own name is fine.
+  assert.equal((await patch(alpha!.id, '')).body.track.shortTitle, 'Alpha');
+  assert.equal((await patch(beta!.id, 'Beta')).status, 200);
+  assert.equal((await call('PATCH', '/admin/tracks/999999', { as, body: { shortTitle: 'X' } })).status, 404);
+  assert.equal((await call('GET', '/admin/tracks', { as: 'player@example.com' })).status, 403);
 });
 
 

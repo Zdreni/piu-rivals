@@ -139,7 +139,7 @@ export function ChartResultsItem({
   return (
     <section className="chart-card">
       <header className="chart-card-head">
-        <span className="track" title={chart.track}>{chart.track}</span>
+        <span className="track" title={chart.trackTitle}>{chart.track}</span>
         <span className="chart-label">{chart.chart}</span>
       </header>
       {/* Without your score there are no diffs, so their columns are dropped. */}

@@ -64,6 +64,8 @@ export interface Chart {
   id: number;
   songKey: string;
   songTitle: string;
+  // Shown where the title doesn't fit; the title unless an admin changed it.
+  songShortTitle: string;
   // "S", "D", ...
   chartType: string;
   level: number;
@@ -93,6 +95,7 @@ export interface BestResult {
 export interface BestsResponse {
   // Pass as `since` next time to get only the best results changed after this response.
   serverTime: string;
+  // The charts of the best results; with `since`, also every chart whose track's short title changed since then.
   charts: Chart[];
   bests: BestResult[];
   // How many best results each requested player has in all, changed or not. A cache holding a different
@@ -116,6 +119,19 @@ export interface AdminPlayer extends ListedPlayer {
 
 export interface AdminPlayersResponse {
   players: AdminPlayer[];
+}
+
+export interface AdminTrack {
+  id: number;
+  // The song's image name on PIU Scores, e.g. "BLAZOR-p2".
+  songKey: string;
+  title: string;
+  // Shown where the title doesn't fit; the title unless an admin changed it.
+  shortTitle: string;
+}
+
+export interface AdminTracksResponse {
+  tracks: AdminTrack[];
 }
 
 export type ScrapeRunKind = 'all' | 'selected' | 'register' | 'rescan';

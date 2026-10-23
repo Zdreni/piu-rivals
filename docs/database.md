@@ -22,13 +22,20 @@ players
   anchor_session_title      VARCHAR NULL           -- the session before the latest one
   anchor_session_timestamp  VARCHAR NULL
 
+tracks                                             -- songs
+  id                        INT PK AUTO_INCREMENT
+  song_key                  VARCHAR UNIQUE         -- song image name, e.g. "BLAZOR-p2"
+  title                     VARCHAR
+  short_title               VARCHAR                -- the title unless an admin changed it; no other track's title or short title
+  updated_at                DATETIME(3)            -- when the short title last changed (UTC); /bests then sends the track's charts again
+  INDEX(updated_at)
+
 charts
   id                        INT PK AUTO_INCREMENT
-  song_key                  VARCHAR                -- song image name, e.g. "BLAZOR-p2"
-  song_title                VARCHAR
+  track_id                  INT FK tracks
   chart_type                VARCHAR                -- "S", "D", ...
   level                     INT
-  UNIQUE(song_key, chart_type, level)
+  UNIQUE(track_id, chart_type, level)
 
 plays
   id                        BIGINT PK AUTO_INCREMENT

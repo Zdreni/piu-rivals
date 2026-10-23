@@ -24,10 +24,20 @@ export interface PlayersTable {
   anchor_session_timestamp: string | null;
 }
 
+export interface TracksTable {
+  id: Generated<number>;
+  // The song's image name, e.g. "BLAZOR-p2": two songs may share a title, but not an image.
+  song_key: string;
+  title: string;
+  // Shown where the title doesn't fit; the title unless an admin changed it.
+  short_title: string;
+  // When the short title last changed, "YYYY-MM-DD HH:MM:SS.mmm" UTC.
+  updated_at: ColumnType<string, string | undefined, string>;
+}
+
 export interface ChartsTable {
   id: Generated<number>;
-  song_key: string;
-  song_title: string;
+  track_id: number;
   chart_type: string;
   level: number;
 }
@@ -121,6 +131,7 @@ export interface AuthSessionsTable {
 
 export interface Database {
   players: PlayersTable;
+  tracks: TracksTable;
   charts: ChartsTable;
   plays: PlaysTable;
   best_results: BestResultsTable;

@@ -4,7 +4,8 @@ import type { BestResult, Chart } from '@piu-rivals/shared';
 // It's a cache of public scores, shared by everyone signed in on this browser; anything can be loaded again.
 // A new DB_VERSION drops everything stored, e.g. after the stored shapes change.
 const DB_NAME = 'piu-rivals-cache';
-const DB_VERSION = 1;
+// 2: charts have songShortTitle.
+const DB_VERSION = 2;
 
 // When the player's best results were last downloaded: a serverTime to pass as `since` next time.
 export interface SyncMark {
@@ -42,8 +43,22 @@ const transactionDone = (tx: IDBTransaction) => new Promise<void>((resolve, reje
 });
 
 
+// A new version waits for every tab to close the old one. A blocked open gets an event, but an open queued behind
+// it gets none and would wait forever, so after OPEN_TIMEOUT_MS the scores are loaded without the cache.
+const OPEN_TIMEOUT_MS = 3000;
+
+
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (! settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    const timer = setTimeout(() => fail(new Error('IndexedDB took too long to open')), OPEN_TIMEOUT_MS);
     const open = indexedDB.open(DB_NAME, DB_VERSION);
     open.onupgradeneeded = () => {
       const db = open.result;
@@ -55,9 +70,27 @@ function openDatabase(): Promise<IDBDatabase> {
       db.createObjectStore('syncs', { keyPath: 'playerId' });
     };
 
-    open.onsuccess = () => resolve(open.result);
-    open.onerror = () => reject(open.error);
-    open.onblocked = () => reject(new Error('IndexedDB is blocked by another tab'));
+    open.onsuccess = () => {
+      clearTimeout(timer);
+      const db = open.result;
+      // Opened after the page gave up on it: closed, so it doesn't hold up other tabs.
+      if (settled) {
+        db.close();
+        return;
+      }
+
+      // A tab opening a newer version shouldn't wait for this one.
+      db.onversionchange = () => db.close();
+      settled = true;
+      resolve(db);
+    };
+
+    open.onerror = () => {
+      clearTimeout(timer);
+      fail(open.error);
+    };
+
+    open.onblocked = () => fail(new Error('IndexedDB is blocked by another tab'));
   });
 }
 
