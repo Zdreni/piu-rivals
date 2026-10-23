@@ -171,11 +171,15 @@ export function ChartResultsItem({
         <span className="track" title={chart.trackTitle}>{chart.track}</span>
         <span className="chart-label">{chart.chart}</span>
       </header>
-      {/* Without your score there are no diffs, so their columns are dropped. */}
-      <div className={`chart-card-results${chart.mine === null ? ' no-diffs' : ''}`}>{rows}</div>
-      {folded > 0  &&  (
-        <button className="show-others" type="button" onClick={onExpandFolded}>...<FoldCount entries={hiddenBelow} count={folded} markTies={markTies} /> more...</button>
-      )}
+      <div className="chart-card-body">
+        <div className="chart-card-box">
+          {/* Without your score there are no diffs, so their columns are dropped. */}
+          <div className={`chart-card-results${chart.mine === null ? ' no-diffs' : ''}`}>{rows}</div>
+          {folded > 0  &&  (
+            <button className="show-others" type="button" onClick={onExpandFolded}>...<FoldCount entries={hiddenBelow} count={folded} markTies={markTies} /> more...</button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
