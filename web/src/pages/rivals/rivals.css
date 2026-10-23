@@ -275,26 +275,35 @@
 .rivals .tab[data-tab="hidden"] { margin-left: auto; }
 .rivals .tab-count.hidden { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
 .rivals .tab-word.short { display: none; }
-.rivals .dlg-body { overflow-y: auto; overflow-x: hidden; padding: 12px 16px; flex: 1;
+/* --results-pad is the room on the sides of the cards' results, and --card-gap the room under them (see the chart
+   cards); their backgrounds span both. */
+.rivals .dlg-body { --results-pad: 16px; --card-gap: 20px; overflow-y: auto; overflow-x: hidden; padding: 12px 0 0; flex: 1;
                     scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
 .rivals .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
 .rivals .empty { padding: 24px; text-align: center; color: #9AB3A3; }
 .rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Chart cards: the track and chart on top, then the results, in as many columns as fit. */
-/* The narrowest card leaves 126px for a name: 321px less borders, row padding, score, arrow (20px)
-   and diff (6ch at 16px). Results narrower than that (on a tablet, with the rivals in) get one card as wide as they
-   are, and the names make do with less. */
-.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px, 100%), 1fr)); gap: 12px;
-                      align-items: start; }
+/* The narrowest card leaves 126px for a name: 321px (plus the room on its sides) less borders, row padding, score,
+   arrow (20px) and diff (6ch at 16px). Results narrower than that (on a tablet, with the rivals in) get one card as
+   wide as they are, and the names make do with less. The cards meet, so there are no gaps; a row's cards are as tall
+   as its tallest one. */
+.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px + 2 * var(--results-pad), 100%), 1fr));
+                      align-items: stretch; }
 /* Cards without diffs: the names get as much room as above, less the arrow and diff columns. */
-.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr)); }
-.rivals .group-title { grid-column: 1 / -1; margin: 6px 0 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
+.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(min(248px + 2 * var(--results-pad), 100%), 1fr)); }
+.rivals .group-title { grid-column: 1 / -1; margin: 6px var(--results-pad) 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
-.rivals .chart-card { background: #1A2820; border: 1px solid #2B4034; border-radius: 6px; overflow: hidden; }
-.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; background: #121D17;
-                           border-bottom: 1px solid #2B4034; }
+/* No frame: the track bar is in the page's colour, and from under it to the next card's, around the results and in
+   the room under them, the background darkens down to the results' bottom edge and lightens back. The results have a
+   line on top and rounded corners at the bottom. */
+.rivals .chart-card { display: flex; flex-direction: column; }
+.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 10px calc(var(--results-pad) + 12px);
+                           background: #14201A; }
+.rivals .chart-card-body { flex: 1; padding: 0 var(--results-pad) var(--card-gap);
+                           background: linear-gradient(#14201A, #0E1612 calc(100% - var(--card-gap)), #14201A); }
+.rivals .chart-card-box { overflow: hidden; background: #1A2820; border-top: 1px solid #2B4034; border-radius: 0 0 6px 6px; }
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
@@ -390,7 +399,7 @@
   .rivals .level-scroll { padding-left: 10px; }
   .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
   .rivals .score-content { min-height: 0; container-type: inline-size; }
-  .rivals .dlg-body { overflow: visible; }
+  .rivals .dlg-body { --results-pad: 6px; overflow: visible; padding-top: 8px; }
   .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
 }
 
@@ -403,10 +412,9 @@
   .rivals .side-open .prefs-controls { padding: 12px; gap: 20px; }
   .rivals .side-open .level-top { padding: 0 6px; }
   .rivals .side-open .level-scroll { padding: 8px 6px; scrollbar-gutter: auto; }
-  .rivals .side-open .dlg-body { padding: 8px 6px; }
   /* While the rivals are in, the cards are laid out as on phones (see below): the score column fits the scores, and the
      names line up with the track name, so the names get the room. */
-  .rivals .side-open .chart-card-head { gap: 6px; padding: 7px 8px; }
+  .rivals .side-open .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
   .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
   .rivals .side-open .result { padding: 2px 6px; }
   .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
@@ -484,9 +492,9 @@
                                                      color: #6B8174; }
   /* The cards' level is the selected bar's, so it's left out, and the track names get its room. */
   .rivals .levels-active .chart-label { display: none; }
-  .rivals .dlg-body { padding: 8px 4px; }
-  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .rivals .chart-card-head { gap: 6px; padding: 7px 8px; }
+  .rivals .dlg-body { --results-pad: 4px; --card-gap: 14px; padding-top: 8px; }
+  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+  .rivals .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
   .rivals .chart-card-head .track, .rivals .chart-label { font-size: 16px; }
   /* The score column fits the score, so the name gets the rest. */
   .rivals .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; }
