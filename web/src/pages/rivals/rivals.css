@@ -344,7 +344,9 @@
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
-  .rivals .dlg-head h2 { font-size: 20px; }
+  /* No title or totals; the head only shows up for a status. */
+  .rivals .dlg-head h2 { display: none; }
+  .rivals .dlg-head:not(:has(.head-status)) { display: none; }
   /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
      dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
