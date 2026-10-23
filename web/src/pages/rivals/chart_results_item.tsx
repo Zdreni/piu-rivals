@@ -143,11 +143,11 @@ export function ChartResultsItem({
       );
     }
 
-    const won = dimWon  &&  isWon(entry) ? 'won' : 'ahead';
+    const won = dimWon  &&  isWon(entry) ? ' won' : '';
     const isUnrolled = unrolled === entry.playerId;
     return (
       <Fragment key={entry.playerId}>
-        <div className={`result ${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggler(entry.playerId)}>
+        <div className={`result${won}${isUnrolled ? ' unrolled' : ''}`} onClick={toggler(entry.playerId)}>
           <span className="result-player" title={entry.player}>{displayName(entry.player)}</span>
           <span className="num score"><Score value={entry.score} /></span>
           {chart.mine !== null  &&  <Delta value={entry.realDelta} outcome={colorByRealDiff ? entry.realDelta : entry.delta} cap={scoreCap} markTie={markTies} />}

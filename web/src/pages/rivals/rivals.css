@@ -279,7 +279,8 @@
 .rivals .chart-card { background: #1A2820; border: 1px solid #2B4034; border-radius: 6px; overflow: hidden; }
 .rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; background: #20312A;
                            border-bottom: 1px solid #2B4034; }
-.rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
+.rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
+                                  font-weight: 700; }
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
 /* The rows share the card's columns, so the diffs line up on the right. No gaps: the score column is wider than any
    score, and the diffs' padding spaces them off the scores. */
@@ -289,8 +290,9 @@
 .rivals .result { display: grid; grid-template-columns: subgrid; padding: 3px 12px; font-size: 16px; }
 .rivals .result:nth-child(even of .result), .rivals .result:nth-child(even of .result) + .result-details {
     background: rgba(255,255,255,.04); }
-/* Names are indented under the track name. */
+/* Names are indented under the track name; rivals' are in the colour of their names in the rivals. */
 .rivals .result-player { padding-left: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rivals .result:not(.mine) .result-player { color: #C9D8CE; }
 .rivals .result .score { color: #9AB3A3; }
 .rivals .result .delta { padding-left: 20px; }
 .rivals .delta-sign { font-size: .8em; margin-right: .15em; }
@@ -301,7 +303,6 @@
 .rivals .tail { font-size: .75em; opacity: .6; }
 .rivals .tail-dim { opacity: .7; }
 .rivals .won { opacity: .4; }
-.rivals .ahead { opacity: .8; }
 /* A click on a row unrolls it (see ChartResultsItem); an unrolled rival isn't dimmed. */
 .rivals .result { cursor: pointer; }
 .rivals .result.unrolled { opacity: 1; }
@@ -445,9 +446,8 @@
   .rivals .result .delta { padding-left: 14px; }
   .rivals .result { padding: 2px 6px; font-size: 16px; }
   .rivals .result > :nth-child(2) { padding-left: 4px; }
-  /* Names line up with the track name; rivals' are a bit dimmer (but still brighter than their scores). */
+  /* Names line up with the track name. */
   .rivals .result-player { padding-left: 2px; }
-  .rivals .result:not(.mine) .result-player { color: #B4C3B9; }
   .rivals .result .delta-tie { width: 5.5ch; }
   .rivals .result-details { padding: 0 6px; font-size: 12px; }
   .rivals .result-info { gap: 2px 8px; padding-left: 2px; }
