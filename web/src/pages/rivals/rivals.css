@@ -363,11 +363,10 @@
   .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
   .rivals .level-top { padding-left: 6px; }
   /* The buttons stay bright over the dimmed levels. */
-  .rivals .panel-toggle { position: relative; z-index: 6; height: 24px; padding: 0 8px 0 6px; font-size: 13px; }
-  .rivals .prefs-toggle { width: 24px; padding: 0; }
-  /* As tall as the tabs here: their 2px top padding, their 15.6px line with 8px above it and 8px + 2px below, and the
-     1px line. */
-  .rivals .level-top, .rivals .prefs-top { height: calc(2px + 8px + 15.6px + 10px + 1px); }
+  .rivals .panel-toggle { position: relative; z-index: 6; height: 36px; padding: 0 8px 0 6px; font-size: 13px; }
+  .rivals .prefs-toggle { width: 36px; padding: 0; }
+  /* As tall as the tabs here (see below). */
+  .rivals .level-top, .rivals .prefs-top { height: 48px; }
   .rivals .prefs-top { padding: 0 12px; font-size: 14px; }
   .rivals .prefs-controls { padding: 12px; gap: 20px; }
   .rivals .level-chart { grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); font-size: 12px;
@@ -383,20 +382,23 @@
   .rivals .dlg-main:not(.levels-active) .level-segs > span { color: transparent; --digit: 4.5%; --label-pad: 5%; }
   .rivals .level-other .level-num { padding-right: 4px; }
   .rivals .level-segs > span { font-size: 9px; }
-  /* The tabs share the width evenly, if their words fit. */
-  .rivals .tabs { gap: 0; padding: 2px 4px 0; }
-  .rivals .tabs .tab { flex: 1 1 0; margin-left: 0; padding: 8px 2px; font-size: 13px; white-space: nowrap; }
-  .rivals .tab-count { min-width: 0; margin-left: 4px; }
+  /* The results' and the rivals' tabs are alike here: their word, with its count a gap under it, in a row as tall as
+     the levels' and the preferences' top bars. The tabs stretch to the row's height and centre their lines. The
+     results' share the width evenly. */
+  .rivals .tabs, .rivals .rival-tabs { box-sizing: border-box; min-height: 48px; padding-top: 2px; }
+  .rivals .tabs .tab, .rivals .rival-tabs .rival-tab { padding: 2px 4px; font-size: 14px; line-height: 16px; white-space: nowrap; }
+  .rivals .tabs { gap: 0; padding-left: 4px; padding-right: 4px; }
+  .rivals .tabs .tab { flex: 1 1 0; margin-left: 0; padding-left: 2px; padding-right: 2px; }
+  .rivals .tab-count { display: block; min-width: 0; margin: 3px 0 0; text-align: center; }
   .rivals .tab-word:not(.short) { display: none; }
   /* While the levels are in use, the tabs show only their counts, with dots between them. The letters come back only
-     once the results have widened, so the tabs don't wrap to a second line meanwhile. */
-  .rivals .tab-word.short { display: inline-block; max-width: 6em; overflow: hidden; vertical-align: top;
-                            transition: max-width 0s .3s; }
+     once the results have widened, so they don't wrap meanwhile; their line stays, so the tabs keep their height. */
+  .rivals .tab-word.short { display: block; max-width: 6em; margin: 0 auto; overflow: hidden; transition: max-width 0s .3s; }
   .rivals .levels-active .tabs .tab-word.short { max-width: 0; transition-delay: 0s; }
   .rivals .levels-active .tabs .tab { position: relative; margin-left: 0; }
-  .rivals .levels-active .tabs .tab + .tab::before { content: '•'; position: absolute; left: 0; transform: translateX(-50%);
+  /* The dots are on the counts' line: the tab's 16px + 3px + 16px of lines are centred in it. */
+  .rivals .levels-active .tabs .tab + .tab::before { content: '•'; position: absolute; left: 0; bottom: calc(50% - 17.5px); transform: translateX(-50%);
                                                      color: #6B8174; }
-  .rivals .levels-active .tab-count { margin-left: 0; }
   /* The cards' level is the selected bar's, so it's left out, and the track names get its room. */
   .rivals .levels-active .chart-label { display: none; }
   .rivals .dlg-body { padding: 8px 4px; }
