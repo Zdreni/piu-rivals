@@ -35,11 +35,32 @@ export const formatNumber = (value: number | null | undefined) =>
   (value === null  ||  value === undefined ? '—' : value.toLocaleString('en-US'));
 
 
-export function formatTime(iso: string | null | undefined): string {
+// With `withoutYear`, the year shows only for times of an earlier year.
+export function formatTime(iso: string | null | undefined, options: { withoutYear?: boolean } = {}): string {
   if (! iso)
     return '—';
 
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' });
+  const time = new Date(iso);
+  if (options.withoutYear  &&  time.getFullYear() === new Date().getFullYear()) {
+    return time.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+  }
+
+  return time.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' });
+}
+
+
+// The time between two ISO times: "0m 45s", "12m 03s", "1h 05m 03s"; "—" without both.
+export function formatDuration(from: string | null | undefined, to: string | null | undefined): string {
+  if (! from  ||  ! to)
+    return '—';
+
+  const seconds = Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const twoDigits = (n: number) => String(n).padStart(2, '0');
+  const rest = `${twoDigits(minutes % 60)}m ${twoDigits(seconds % 60)}s`;
+  return minutes < 60 ? `${minutes}m ${twoDigits(seconds % 60)}s` : `${Math.floor(minutes / 60)}h ${rest}`;
 }
 
 
