@@ -473,6 +473,11 @@
      once the results have widened, so they don't wrap meanwhile; their line stays, so the tabs keep their height. */
   .rivals .tab-word.short { display: block; max-width: 6em; margin: 0 auto; overflow: hidden; transition: max-width 0s .3s; }
   .rivals .levels-active .tabs .tab-word.short { max-width: 0; transition-delay: 0s; }
+  /* The open tab spells its word out, and takes the room it needs from the others. */
+  .rivals .tabs .tab[aria-selected="true"] .tab-word.short { display: none; }
+  .rivals .tabs .tab[aria-selected="true"] .tab-word:not(.short) { display: block; max-width: 8em; margin: 0 auto; overflow: hidden;
+                                                                     transition: max-width 0s .3s; }
+  .rivals .levels-active .tabs .tab[aria-selected="true"] .tab-word:not(.short) { max-width: 0; transition-delay: 0s; }
   .rivals .levels-active .tabs .tab { position: relative; margin-left: 0; }
   /* The dots are on the counts' line: the tab's 16px + 3px + 16px of lines are centred in it. */
   .rivals .levels-active .tabs .tab + .tab::before { content: '•'; position: absolute; left: 0; bottom: calc(50% - 17.5px); transform: translateX(-50%);
@@ -497,7 +502,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word.short,
+  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word,
   .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div { transition: none; }
 }
 
