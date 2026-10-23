@@ -25,8 +25,9 @@
 /* Header */
 
 .rivals .dlg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #2B4034; }
-.rivals .dlg-head h2 { margin: 0; font-size: 24px; font-weight: 600; }
-.rivals .head-settings { display: flex; align-items: center; gap: 20px; margin-left: auto; }
+
+/* Settings, in the preferences panel */
+
 /* The label sits above the − value + row. */
 .rivals .stepper { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 2px 4px; color: #9AB3A3;
                    font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -46,12 +47,6 @@
 .rivals .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
 .rivals .switch button:disabled:not(.on) { opacity: .4; cursor: default; color: #9AB3A3; border-color: #2B4034; }
 .rivals .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
-/* The settings' titles, spelled out in the preferences panel only. */
-.rivals .setting-hint { display: none; }
-.rivals .head-stats { font-weight: 400; color: #9AB3A3; }
-.rivals .head-stats .blue { color: #3FA9F5; }
-.rivals .head-stats > span { opacity: .7; }
-.rivals .head-stats .zero { opacity: .2; }
 .rivals .head-status { font-size: 13px; color: #9AB3A3; max-width: 22rem; }
 .rivals .head-status.error { color: #FF5A5A; }
 
@@ -70,7 +65,12 @@
 
 /* Rivals column */
 
-.rivals .rival-list { width: 285px; flex-shrink: 0; font-weight: 400; display: flex; flex-direction: column;
+/* The rivals and the preferences take turns in this column, which slides in from the left edge (see the side panels
+   below). */
+.rivals .rival-list, .rivals .prefs-panel { width: 285px; }
+.rivals .dlg-main.side-preferences .rival-list { display: none; }
+.rivals .dlg-main.side-preferences .prefs-panel { display: flex; }
+.rivals .rival-list { flex-shrink: 0; font-weight: 400; display: flex; flex-direction: column;
                       border-right: 1px solid #2B4034; }
 .rivals .rival-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 10px 8px;
                         scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
@@ -114,6 +114,7 @@
 .rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
 .rivals .rival-stats .error { color: #FF5A5A; }
+.rivals .rival-stats .stats-label { color: #C9D8CE; }
 .rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 5px 12px;
                       font-size: 14px; text-decoration: none; }
 .rivals .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
@@ -146,10 +147,9 @@
 .rivals .rival-plus-spacer { flex-shrink: 0; width: 28px; }
 .rivals .rival-plus:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
 
-/* Preferences panel: on narrow screens, the header's settings, one under another with their titles spelled out, in the
-   rivals' place (see the narrow screens below). */
+/* Preferences panel: the settings, one under another with their titles spelled out, in the rivals' place. */
 
-.rivals .prefs-panel { display: none; flex-direction: column; border-right: 1px solid #2B4034; }
+.rivals .prefs-panel { display: none; flex-shrink: 0; flex-direction: column; border-right: 1px solid #2B4034; }
 /* As tall as the levels' top bar. */
 .rivals .prefs-top { flex-shrink: 0; box-sizing: border-box; height: calc(6px + 10px + 18px + 12px + 1px);
                      display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #2B4034;
@@ -164,6 +164,16 @@
 .rivals .prefs-panel .switch button { height: 36px; padding: 0 16px; font-size: 15px; }
 .rivals .prefs-panel .setting-hint { display: block; grid-column: 1 / -1; font-size: 13px; line-height: 1.35; color: #8A9590; }
 
+/* Side panels on wide screens: the rivals or the preferences wait off the left edge until the levels' top bar slides
+   one in; the levels follow it, and the results give it their room. Out of sight, they can't be tabbed to. */
+
+@media (min-width: 1001px) {
+  .rivals .rival-list, .rivals .prefs-panel { margin-left: -285px; visibility: hidden;
+                                              transition: margin-left .3s ease, visibility 0s .3s; }
+  .rivals .dlg-main.side-open .rival-list, .rivals .dlg-main.side-open .prefs-panel { margin-left: 0; visibility: visible;
+                                                                                      transition-delay: 0s; }
+}
+
 /* Levels column */
 
 .rivals .filters { display: flex; flex-direction: column; border-right: 1px solid #2B4034; flex-shrink: 0; }
@@ -171,18 +181,17 @@
    18px line with 10px above it and 10px + 2px (their underline less its overlap) below, and the 1px line. */
 .rivals .level-top { flex-shrink: 0; box-sizing: border-box; height: calc(6px + 10px + 18px + 12px + 1px);
                      display: flex; align-items: center; gap: 8px; padding: 0 10px 0 16px; border-bottom: 1px solid #2B4034; }
-/* Its buttons slide the rivals or the preferences in on narrow screens; on wide ones, where both are in sight, they're
-   left out. */
-.rivals .panel-toggle { display: none; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 8px;
+/* Its buttons slide the rivals or the preferences in. */
+.rivals .panel-toggle { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 10px;
                         background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
                         font: 500 14px/1 Roboto, Arial, sans-serif; cursor: pointer; }
 .rivals .panel-toggle:hover { color: #4FE33F; border-color: #4FE33F; }
 .rivals .panel-toggle.on { background: #2B4034; color: #EAF5EC; }
-.rivals .panel-toggle svg { width: 6px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6;
+.rivals .panel-toggle svg { width: 7px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6;
                             stroke-linecap: round; stroke-linejoin: round; }
 /* The preferences' button is a square with sliders, at the bar's right end. */
-.rivals .prefs-toggle { margin-left: auto; width: 26px; padding: 0; justify-content: center; }
-.rivals .prefs-toggle svg { width: 16px; height: 16px; stroke-width: 2; }
+.rivals .prefs-toggle { margin-left: auto; width: 36px; padding: 0; justify-content: center; }
+.rivals .prefs-toggle svg { width: 18px; height: 18px; stroke-width: 2; }
 .rivals .prefs-toggle circle { fill: currentColor; }
 .rivals .level-scroll { display: flex; flex: 1; min-height: 0; padding: 10px 10px 10px 16px;
                         overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
@@ -316,8 +325,8 @@
    so only the cards scroll.
    The rivals wait off the left edge, as wide as the results. The Rivals button in the levels' top bar slides the whole
    row right by that width: the rivals come in, the levels follow, and the results go off the right edge. The row is
-   laid out in widths of the view (cqw), since it is wider than the view; --levels is the levels' width. The header's
-   settings are left out: the preferences' button slides them in the same way, in the rivals' place. */
+   laid out in widths of the view (cqw), since it is wider than the view; --levels is the levels' width. The
+   preferences' button slides the preferences in the same way, in the rivals' place. */
 
 @media (max-width: 1000px) {
   .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
@@ -327,11 +336,7 @@
                       grid-template-rows: auto; transform: translateX(calc(var(--levels) - 100cqw));
                       transition: transform .3s ease; }
   .rivals .dlg-main.side-open { transform: none; }
-  .rivals .head-settings { display: none; }
   .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
-  .rivals .dlg-main.side-preferences .rival-list { display: none; }
-  .rivals .dlg-main.side-preferences .prefs-panel { display: flex; }
-  .rivals .panel-toggle { display: inline-flex; }
   .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; }
   .rivals .level-top { padding-left: 10px; }
   .rivals .level-scroll { padding-left: 10px; }
@@ -344,9 +349,6 @@
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
-  /* No title or totals; the head only shows up for a status. */
-  .rivals .dlg-head h2 { display: none; }
-  .rivals .dlg-head:not(:has(.head-status)) { display: none; }
   /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
      brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
      dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
@@ -363,10 +365,13 @@
   .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
   .rivals .filters { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
   .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
-  .rivals .level-top { padding-left: 6px; }
+  /* The buttons nearly fill the bar, 4px from its edges and at least 8px apart. */
+  .rivals .level-top { gap: 8px; padding: 0 4px; }
   /* The buttons stay bright over the dimmed levels. */
-  .rivals .panel-toggle { position: relative; z-index: 6; height: 36px; padding: 0 8px 0 6px; font-size: 13px; }
-  .rivals .prefs-toggle { width: 36px; padding: 0; }
+  .rivals .panel-toggle { position: relative; z-index: 6; gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
+  .rivals .prefs-toggle { width: 40px; padding: 0; }
+  .rivals .panel-toggle svg { width: 6px; height: 10px; }
+  .rivals .prefs-toggle svg { width: 20px; height: 20px; }
   /* As tall as the tabs here (see below). */
   .rivals .level-top, .rivals .prefs-top { height: 48px; }
   .rivals .prefs-top { padding: 0 12px; font-size: 14px; }
@@ -439,7 +444,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rivals .dlg-main, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word.short,
+  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word.short,
   .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div { transition: none; }
 }
 

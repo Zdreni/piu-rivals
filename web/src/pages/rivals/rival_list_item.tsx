@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { formatNumber, formatTime } from '../../util.ts';
 import { StatWords } from './format.tsx';
-import type { Counts } from './stats.ts';
+import { type Counts, STAT_WORDS } from './stats.ts';
 
 export interface ListedPlayer {
   playerId: string;
@@ -14,7 +14,11 @@ export interface ListedPlayer {
 
 export const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap filter';
 
-const statsSoloTip = 'Solo: the same counts as in the header, with the score cap and unplayed min rivals applied';
+const statsSoloTip = 'Solo: the same counts as on your row, with the score cap and unplayed min rivals applied';
+
+const resultsTip = 'Your results against the compared rivals, with the score cap and unplayed min rivals applied';
+const chartsTip = 'Your charts: inferior if any compared rival beats you, otherwise not played or superior, with the score cap and '
+  + 'unplayed min rivals applied';
 
 
 const ClockIcon = () => (
@@ -52,9 +56,10 @@ export function Count({ value, label }: { value: number; label: string }) {
 
 // One rival row: the name, scrape age and PUMBILITY, then (while focused) the visibility toggle and solo, the score
 // counts, the results against them, and their links. `me` marks your own row, `on` a rival checked for the stats,
-// `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader).
-export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, best, scores, onFocus, onUnfocus,
-  onToggle, onSolo, onRemove }: {
+// `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader). Your row shows
+// your `totals` instead, by results (with ties while any rival is solo, `ties`) and by charts.
+export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, totals, ties, best, scores, onFocus,
+  onUnfocus, onToggle, onSolo, onRemove }: {
   player: ListedPlayer;
   me: boolean;
   on: boolean;
@@ -63,6 +68,8 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
   focused: boolean;
   stats: Counts;
   statsWords: Record<keyof Counts, string>;
+  totals: { results: Counts; charts: Counts } | null;
+  ties: boolean;
   best: number;
   scores: number;
   onFocus: () => void;
@@ -114,6 +121,16 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
               <div className="rival-stats" title={solo ? statsSoloTip : statsTip}>
                 <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
               </div>
+            )}
+            {totals  &&  (
+              <>
+                <div className="rival-stats" title={resultsTip}>
+                  <span className="stats-label">Results:</span> <StatWords counts={totals.results} separator=" · " ties={ties} />
+                </div>
+                <div className="rival-stats" title={chartsTip}>
+                  <span className="stats-label">Charts:</span> <StatWords counts={totals.charts} separator=" · " words={STAT_WORDS.charts} />
+                </div>
+              </>
             )}
           </div>
           <div className="rival-links">

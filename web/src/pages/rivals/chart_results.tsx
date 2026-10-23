@@ -22,7 +22,7 @@ const keeps = (rivals: number) => ({
   lost: { top: rivals, bottom: 1 } as Keep,
   won: { top: 1 + rivals, bottom: 0 } as Keep,
 });
-const KEEP_DESKTOP = keeps(7);
+const KEEP_DESKTOP = keeps(6);
 const KEEP_PHONE = keeps(4);
 const onPhoneChange = (listener: () => void) => {
   PHONE.addEventListener('change', listener);
