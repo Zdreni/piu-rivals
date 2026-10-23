@@ -66,24 +66,36 @@ const runGuids = (db: Kysely<Database>, rows: RunRow[]) =>
   playerGuidsById(db, [...new Set(rows.flatMap((row) => row.player_ids  ??  []))]);
 
 
+// When the latest "all players" run started, whatever became of it.
+async function lastAllRunAt(db: Kysely<Database>): Promise<string | null> {
+  const row = await db.selectFrom('scrape_runs').select('started_at').where('kind', '=', 'all').where('started_at', 'is not', null)
+    .orderBy('started_at', 'desc').limit(1).executeTakeFirst();
+  return toIsoOrNull(row?.started_at  ??  null);
+}
+
+
 // "current": the queued and running runs, in the order the worker takes them (the running one first).
 // "previous": the finished ones (done, failed, cancelled, interrupted), the newest `limit` of them first.
 async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', limit: number): Promise<ScrapeRunsResponse> {
   if (state === 'current') {
-    const rows = await runQuery(db).where('r.status', 'in', ACTIVE_STATUSES).orderBy('r.id').execute();
+    const [rows, lastAll] = await Promise.all([
+      runQuery(db).where('r.status', 'in', ACTIVE_STATUSES).orderBy('r.id').execute(),
+      lastAllRunAt(db),
+    ]);
     const guids = await runGuids(db, rows);
-    return { runs: rows.map((row) => toRun(row, guids)), hasMore: false, total: rows.length };
+    return { runs: rows.map((row) => toRun(row, guids)), hasMore: false, total: rows.length, lastAllRunAt: lastAll };
   }
 
-  const [rows, count] = await Promise.all([
+  const [rows, count, lastAll] = await Promise.all([
     runQuery(db).where('r.status', 'not in', ACTIVE_STATUSES).orderBy('r.id', 'desc').limit(limit + 1).execute(),
     db.selectFrom('scrape_runs').select(sql<number>`COUNT(*)`.as('total')).where('status', 'not in', ACTIVE_STATUSES)
       .executeTakeFirstOrThrow(),
+    lastAllRunAt(db),
   ]);
 
   const shown = rows.slice(0, limit);
   const guids = await runGuids(db, shown);
-  return { runs: shown.map((row) => toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total) };
+  return { runs: shown.map((row) => toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total), lastAllRunAt: lastAll };
 }
 
 

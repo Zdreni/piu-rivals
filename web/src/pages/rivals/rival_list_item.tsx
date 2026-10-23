@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { formatNumber } from '../../util.ts';
+import { formatNumber, formatTime } from '../../util.ts';
 import { StatWords } from './format.tsx';
 import type { Counts } from './stats.ts';
 
@@ -38,7 +38,7 @@ function ScrapeBadge({ lastScrapedAt, href }: { lastScrapedAt: string | null; hr
     return null;
 
   return (
-    <a className="rival-visit" href={href} target="_blank" rel="noreferrer" title={`Scores last scraped ${scraped.toLocaleString()}`}>
+    <a className="rival-visit" href={href} target="_blank" rel="noreferrer" title={`Scores last scraped ${formatTime(lastScrapedAt)}`}>
       <ClockIcon />{days}d
     </a>
   );

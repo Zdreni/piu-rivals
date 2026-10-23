@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
-import { formatNumber, formatTime, useLoad } from '../../util.ts';
+import { formatAgo, formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
 // Finished runs per page; "Show older runs" asks the server for this many more.
@@ -99,7 +99,10 @@ export function RunsPage() {
     <section>
       <div className="title-row">
         <h1>Scraping</h1>
-        <button type="button" onClick={() => void scrapeAll()}>Scrape all players</button>
+        <div className="scrape-all">
+          <button type="button" onClick={() => void scrapeAll()}>Scrape all players</button>
+          {current.data  &&  <div className="muted small">Last run {formatAgo(current.data.lastAllRunAt)}</div>}
+        </div>
       </div>
       <p className="muted">
         The scrape worker runs one run at a time, in order. Start runs for single players from the Players page.
