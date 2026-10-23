@@ -52,7 +52,8 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 
 **Admin** (requires `is_admin`)
 - `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
-- `GET /admin/players`, `DELETE /admin/players/:id`
+- `GET /admin/players`, `DELETE /admin/players/:id`; `PATCH /admin/players/:id` sets the name the site shows for the player (empty: their name on PIU Scores)
+- `GET /admin/tracks`; `PATCH /admin/tracks/:id` sets a track's short name, which can't be another track's name or short name (empty: its name)
 - `POST /admin/scrape-runs` with `{ kind, players? }` queues a run, or adds register and selected players to an active register or selected run; `players` are GUIDs or piuscores player links
 - `GET /admin/scrape-runs?state=current` lists queued and running runs in the order the worker takes them; `?state=previous[&limit=<n>]` lists finished ones, newest first, 50 per page by default
 - `GET /admin/scrape-runs/:id` returns progress, the players with their states, and failures, and the IDs of the runs before and after it

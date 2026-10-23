@@ -157,6 +157,7 @@ td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Tracks: the name and the short name field get the same width. */
 .tracks-table { table-layout: fixed; }
+.tracks-table .tracks-id { width: 4.5rem; }
 .tracks-table .tracks-length { width: 6rem; }
 .tracks-table td { overflow-wrap: anywhere; }
 .tracks-table input[type="text"] { width: 100%; box-sizing: border-box; }

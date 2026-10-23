@@ -10,7 +10,8 @@ DATETIME columns are in UTC. Dates come back from the server as strings: `YYYY-M
 players
   id                        INT PK AUTO_INCREMENT  -- our own key; other tables point at players by it
   piuscores_guid            CHAR(36) UNIQUE        -- how piuscores knows the player; the API uses it too
-  name                      VARCHAR NULL
+  name                      VARCHAR NULL           -- as scraped from PIU Scores
+  display_name              VARCHAR NULL           -- set by an admin; the site shows it instead of name
   pumbility                 INT NULL               -- highest seen
   created_at                DATETIME
   created_by_user_id        INT NULL FK users

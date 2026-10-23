@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminTracksResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  AdminPlayersResponse, AdminTracksResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -12,7 +12,7 @@ import { migrateToLatest } from '../src/db/migrations/index.ts';
 import { ensurePlayers, playerIdsByGuid } from '../src/db/players.ts';
 import type { ParsedPlay } from '../src/scraper/session_page.ts';
 import { takePlayer } from '../src/scraper/runs.ts';
-import { storeSession } from '../src/scraper/store.ts';
+import { savePlayerInfo, storeSession } from '../src/scraper/store.ts';
 
 // Runs the API against a real MySQL database, which it EMPTIES first: set TEST_DATABASE_URL to a
 // database meant for tests. Skipped without it.
@@ -244,6 +244,30 @@ test('admins give tracks short names that no other track uses as a name', { skip
   assert.equal((await patch(beta!.id, 'Beta')).status, 200);
   assert.equal((await call('PATCH', '/admin/tracks/999999', { as, body: { shortTitle: 'X' } })).status, 404);
   assert.equal((await call('GET', '/admin/tracks', { as: 'player@example.com' })).status, 403);
+});
+
+
+test('admins give players a display name, shown instead of the scraped one', { skip }, async () => {
+  const as = 'admin@example.com';
+  const NAMED = '77777777-7777-4777-8777-777777777777';
+  const [namedId] = await ensurePlayers(db, [NAMED]);
+  await savePlayerInfo(db, namedId!, 'Other', null);
+  const rename = (displayName: string | null) => call('PATCH', `/admin/players/${NAMED}`, { as, body: { displayName } });
+  const listed = async () =>
+    (await call<AdminPlayersResponse>('GET', '/admin/players', { as })).body.players.find((p) => p.id === NAMED)!;
+
+  assert.equal((await rename(' Someone ')).body.player.name, 'Someone');
+  assert.deepEqual([(await listed()).name, (await listed()).scrapedName], ['Someone', 'Other']);
+
+  // Empty, or the scraped name, follows the scraped name.
+  assert.equal((await rename('')).body.player.name, 'Other');
+  await rename('Other');
+  await savePlayerInfo(db, namedId!, 'Renamed', null);
+  assert.equal((await listed()).name, 'Renamed');
+
+  assert.equal((await call('PATCH', '/admin/players/66666666-6666-4666-8666-666666666666', { as, body: { displayName: 'X' } })).status, 404);
+  assert.equal((await call('PATCH', `/admin/players/${NAMED}`, { as: 'player@example.com', body: { displayName: 'X' } })).status, 403);
+  await call('DELETE', `/admin/players/${NAMED}`, { as });
 });
 
 

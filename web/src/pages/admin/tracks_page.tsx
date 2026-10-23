@@ -1,19 +1,15 @@
 import type { AdminTrack, AdminTracksResponse } from '@piu-rivals/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { api, errorText } from '../../api.ts';
+import { type Sort, SortHeader, textLength } from '../../components/sort_header.tsx';
 import { useLoad } from '../../util.ts';
 
-type SortColumn = 'title' | 'length' | 'shortTitle';
+type SortColumn = 'id' | 'title' | 'length' | 'shortTitle';
 
-interface Sort {
-  column: SortColumn;
-  descending: boolean;
-}
-
-// Counted in characters, not UTF-16 units.
-const shortTitleLength = (track: AdminTrack) => [...track.shortTitle].length;
+const shortTitleLength = (track: AdminTrack) => textLength(track.shortTitle);
 
 const compare: Record<SortColumn, (a: AdminTrack, b: AdminTrack) => number> = {
+  id: (a, b) => a.id - b.id,
   title: (a, b) => a.title.localeCompare(b.title),
   length: (a, b) => shortTitleLength(a) - shortTitleLength(b),
   shortTitle: (a, b) => a.shortTitle.localeCompare(b.shortTitle),
@@ -55,32 +51,10 @@ function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortT
 }
 
 
-function SortHeader({ column, label, sort, onSort, className }: {
-  column: SortColumn;
-  label: string;
-  sort: Sort;
-  onSort: (sort: Sort) => void;
-  className?: string;
-}) {
-  const active = sort.column === column;
-  return (
-    <th className={className} aria-sort={active ? (sort.descending ? 'descending' : 'ascending') : 'none'}>
-      <button
-        type="button"
-        className="sort-button"
-        onClick={() => onSort({ column, descending: active ? ! sort.descending : false })}
-      >
-        {label}<span className="sort-mark">{active ? (sort.descending ? '▼' : '▲') : ''}</span>
-      </button>
-    </th>
-  );
-}
-
-
 export function TracksPage() {
   const tracks = useLoad(() => api<AdminTracksResponse>('GET', '/admin/tracks'), []);
   const [list, setList] = useState<AdminTrack[]>([]);
-  const [sort, setSort] = useState<Sort>({ column: 'title', descending: false });
+  const [sort, setSort] = useState<Sort<SortColumn>>({ column: 'title', descending: false });
   const [filter, setFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -135,9 +109,10 @@ export function TracksPage() {
 
       <div className="table-wrap">
         <table className="tracks-table">
-          <colgroup><col /><col /><col className="tracks-length" /></colgroup>
+          <colgroup><col className="tracks-id" /><col /><col /><col className="tracks-length" /></colgroup>
           <thead>
             <tr>
+              <SortHeader column="id" label="ID" className="number" {...sortProps} />
               <SortHeader column="title" label="Name" {...sortProps} />
               <SortHeader column="shortTitle" label="Short name" {...sortProps} />
               <SortHeader column="length" label="Length" className="number" {...sortProps} />
@@ -146,6 +121,7 @@ export function TracksPage() {
           <tbody>
             {shown.map((track) => (
               <tr key={track.id}>
+                <td className="number muted">{track.id}</td>
                 <td title={track.songKey}>{track.title}</td>
                 <td><ShortTitleInput track={track} onSave={(shortTitle) => saveShortTitle(track, shortTitle)} /></td>
                 <td className="number">{shortTitleLength(track)}</td>
