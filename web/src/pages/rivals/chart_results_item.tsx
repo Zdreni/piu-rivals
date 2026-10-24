@@ -1,5 +1,6 @@
-import { Fragment, type ReactNode } from 'react';
-import { Delta, Score } from './format.tsx';
+import type { SnoozeDays } from '@piu-rivals/shared';
+import { Fragment, type MouseEvent, type ReactNode, useState } from 'react';
+import { Delta, Score, timeLeft } from './format.tsx';
 import { type ChartRow, displayName, type Judgments, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
@@ -11,8 +12,11 @@ export interface Keep {
 
 type Entry = (RivalResult & { me?: false }) | { me: true; score: number };
 
-// The row unrolled for your own score.
+// The row unrolled for your own score, and the header unrolled.
 const ME = 'me';
+const HEAD = 'head';
+
+const SNOOZE_DAYS: SnoozeDays[] = [1, 3, 7];
 
 // Worst first, each count with its letters after it, e.g. "2m 0b 3gd 21gr 1850pf".
 const JUDGMENTS: [Exclude<keyof Judgments, 'maxCombo'>, string, string][] = [
@@ -56,6 +60,83 @@ function ResultDetails({ unrolled, judgments, date, score }: {
 
 
 
+// A card's header: the track's short name and the chart. A click unrolls it: the track's full name across the card,
+// then, with `canSnooze`, a "Snooze..." button (see .chart-card-more), with the chart on the right. The button calls
+// `onMenu`, and with `menuOpen` it's red, with a menu of 1, 3 and 7 days under it, which call `onSnooze`. A snoozed
+// chart's header always has that line, with how long it's snoozed for and a button to wake it.
+function CardHead({ chart, unrolled, canSnooze, now, menuOpen, onToggle, onMenu, onSnooze, onWake }: {
+  chart: ChartRow;
+  unrolled: boolean;
+  canSnooze: boolean;
+  now: number;
+  menuOpen: boolean;
+  onToggle: () => void;
+  onMenu: () => void;
+  onSnooze: (days: SnoozeDays) => void;
+  onWake: () => void;
+}) {
+  const left = chart.snoozedUntil === null ? null : timeLeft(chart.snoozedUntil - now);
+  const more = left !== null  ||  (unrolled  &&  canSnooze);
+  // The length picked in the menu, lit while the card fades out.
+  const [picked, setPicked] = useState<SnoozeDays | null>(null);
+  const press = (action: () => void) => (event: MouseEvent) => {
+    event.stopPropagation();
+    action();
+  };
+  const toggleMenu = press(() => {
+    setPicked(null);
+    onMenu();
+  });
+  const pick = (days: SnoozeDays) => press(() => {
+    setPicked(days);
+    onSnooze(days);
+  });
+
+  return (
+    <header className={`chart-card-head${unrolled ? ' unrolled' : ''}${more ? ' more' : ''}${menuOpen ? ' menu-open' : ''}`} onClick={onToggle}>
+      <div className="chart-card-title">
+        <span className="track" title={chart.trackTitle}>{unrolled ? chart.trackTitle : chart.track}</span>
+        <span className="chart-label">{chart.chart}</span>
+      </div>
+      {(left !== null  ||  canSnooze)  &&  (
+        <div className="chart-card-more">
+          <div>
+            {left === null
+              ? (
+                <span className="snooze">
+                  <span className="snooze-anchor">
+                    <button className={`snooze-button snooze-toggle${menuOpen ? ' on' : ''}`} type="button" aria-haspopup="menu"
+                      aria-expanded={menuOpen} title="Hide this chart for a while" onClick={toggleMenu}>
+                      Snooze…
+                    </button>
+                    {menuOpen  &&  (
+                      <span className="snooze-menu" role="menu">
+                        {SNOOZE_DAYS.map((days) => (
+                          <button key={days} className={picked === days ? 'picked' : undefined} type="button" role="menuitem"
+                            onClick={pick(days)}>
+                            {days === 1 ? '1 day' : `${days} days`}
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                </span>
+              )
+              : (
+                <span className="snooze">
+                  Snoozed for {left}
+                  <button className="snooze-button" type="button" title="Show this chart again now" onClick={press(onWake)}>Wake</button>
+                </span>
+              )}
+            <span className="chart-label">{chart.chart}</span>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
+
+
 // A fold button's count, e.g. "↑3", with the arrow and colour of the strongest result folded, e.g. red if any of
 // them beats you. Ties get the tie colour only with `markTies`.
 // Drawn rather than typed: font arrows sit at different heights in every font, while these span the digits exactly.
@@ -82,10 +163,14 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
 // diffs of true ties. `dimWon` dims the rivals you beat more than the others.
 // A click on a row calls `onUnroll`, and the `unrolled` row (a rival's id, or "me" for yours) unrolls the judgments and
-// the day of its best score, and the rival's score when the row has no room for it.
+// the day of its best score, and the rival's score when the row has no room for it. A click on the header unrolls it
+// ("head"), with the snooze button when `canSnooze`, whose menu (`menuOpen`, toggled by `onMenu`) calls `onSnooze`;
+// `now` counts down a snoozed chart's time left. While the menu is open, the card is dimmed; `leaving`, it fades out.
+// Wake calls `onWake`.
 export function ChartResultsItem({
-  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, onExpandFolded, onExpandHigher,
-  unrolled, onUnroll,
+  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, canSnooze, now, menuOpen,
+  leaving, onExpandFolded,
+  onExpandHigher, unrolled, onUnroll, onMenu, onSnooze, onWake,
 }: {
   chart: ChartRow;
   myName: string;
@@ -97,10 +182,17 @@ export function ChartResultsItem({
   dimWon: boolean;
   markTies: boolean;
   scoreCap: number;
+  canSnooze: boolean;
+  now: number;
+  menuOpen: boolean;
+  leaving: boolean;
   onExpandFolded: () => void;
   onExpandHigher: () => void;
   unrolled: string | null;
   onUnroll: (playerId: string | null) => void;
+  onMenu: () => void;
+  onSnooze: (days: SnoozeDays) => void;
+  onWake: () => void;
 }) {
   const all: Entry[] = [...chart.rivals];
   if (chart.mine !== null)
@@ -166,11 +258,9 @@ export function ChartResultsItem({
   }
 
   return (
-    <section className="chart-card">
-      <header className="chart-card-head">
-        <span className="track" title={chart.trackTitle}>{chart.track}</span>
-        <span className="chart-label">{chart.chart}</span>
-      </header>
+    <section className={`chart-card${menuOpen ? ' snoozing' : ''}${leaving ? ' leaving' : ''}`} data-flip={`chart ${chart.id}`}>
+      <CardHead chart={chart} unrolled={unrolled === HEAD} canSnooze={canSnooze} now={now} menuOpen={menuOpen}
+        onToggle={toggler(HEAD)} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
       <div className="chart-card-body">
         <div className="chart-card-box">
           {/* Without your score there are no diffs, so their columns are dropped. */}

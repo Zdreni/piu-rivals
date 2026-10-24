@@ -1,17 +1,23 @@
-import type { MeResponse, Preferences, PreferencesResponse, Rival, RivalsResponse } from '@piu-rivals/shared';
+import type {
+  ChartPreference, ChartPreferencesResponse, MeResponse, Preferences, PreferencesResponse, Rival, RivalsResponse, SnoozeDays,
+} from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import { playerIdsByGuid } from '../../db/players.ts';
 import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireUser, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { loadUser, playerName, playerSummary, playerSummaryColumns } from '../mappers.ts';
-import { GUID, PlayerIdParams } from './params.ts';
+import { loadUser, playerName, playerSummary, playerSummaryColumns, toIso } from '../mappers.ts';
+import { GUID, IdParams, PlayerIdParams } from './params.ts';
 
 const MAX_RIVALS = 100;
 const MAX_PREFERENCES_LENGTH = 20000;
+// A snooze of N days ends (N - 1) * 24 + 12 hours after it's set: it outlasts any session, however long, while a 1-day
+// snooze set late in the evening may still hide the chart the next morning. A fixed length doesn't depend on time zones.
+const snoozeHours = (days: SnoozeDays) => (days - 1) * 24 + 12;
+const SnoozeDaysBody = Type.Union([Type.Literal(1), Type.Literal(3), Type.Literal(7)]);
 
 
 async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]> {
@@ -29,6 +35,19 @@ async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]
 async function loadPreferences(db: Kysely<Database>, userId: number): Promise<Preferences> {
   const row = await db.selectFrom('user_preferences').select('data').where('user_id', '=', userId).executeTakeFirst();
   return row?.data  ??  {};
+}
+
+
+// The user's chart settings that are in force; expired snoozes are left out.
+async function loadChartPreferences(db: Kysely<Database>, userId: number): Promise<ChartPreference[]> {
+  const rows = await db.selectFrom('user_chart_preferences')
+    .select(['chart_id', 'snoozed_until'])
+    .where('user_id', '=', userId)
+    .where('snoozed_until', '>', sql<string>`CURRENT_TIMESTAMP`)
+    .orderBy('chart_id')
+    .execute();
+
+  return rows.map((row) => ({ chartId: row.chart_id, snoozedUntil: row.snoozed_until === null ? null : toIso(row.snoozed_until) }));
 }
 
 
@@ -66,7 +85,55 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
 
   app.get('/me', async (request): Promise<MeResponse> => {
     const { id } = sessionUser(request);
-    return { user: (await loadUser(db, id))!, rivals: await loadRivals(db, id), preferences: await loadPreferences(db, id) };
+    return {
+      user: (await loadUser(db, id))!,
+      rivals: await loadRivals(db, id),
+      preferences: await loadPreferences(db, id),
+      chartPreferences: await loadChartPreferences(db, id),
+    };
+  });
+
+
+  // Changes only the given settings of one chart. `snoozeDays` snoozes it for that long from now, replacing any snooze
+  // it has; null wakes it. Expired snoozes are cleared on the way, and charts left with no settings lose their row.
+  app.patch('/me/chart-preferences/:id', {
+    schema: {
+      params: IdParams,
+      body: Type.Object({ snoozeDays: Type.Optional(Type.Union([SnoozeDaysBody, Type.Null()])) }),
+    },
+  }, async (request): Promise<ChartPreferencesResponse> => {
+    const { id } = sessionUser(request);
+    const chartId = request.params.id;
+    const { snoozeDays } = request.body;
+    const chart = await db.selectFrom('charts').select('id').where('id', '=', chartId).executeTakeFirst();
+    if (! chart)
+      throw new HttpError(404, `Unknown chart: ${chartId}`);
+
+    await db.transaction().execute(async (trx) => {
+      await trx.updateTable('user_chart_preferences')
+        .set({ snoozed_until: null })
+        .where('user_id', '=', id)
+        .where('snoozed_until', '<=', sql<string>`CURRENT_TIMESTAMP`)
+        .execute();
+
+      if (snoozeDays) {
+        const snoozedUntil = sql<string>`CURRENT_TIMESTAMP + INTERVAL ${snoozeHours(snoozeDays)} HOUR`;
+        await trx.insertInto('user_chart_preferences')
+          .values({ user_id: id, chart_id: chartId, snoozed_until: snoozedUntil })
+          .onDuplicateKeyUpdate({ snoozed_until: snoozedUntil })
+          .execute();
+      } else if (snoozeDays === null) {
+        await trx.updateTable('user_chart_preferences')
+          .set({ snoozed_until: null })
+          .where('user_id', '=', id)
+          .where('chart_id', '=', chartId)
+          .execute();
+      }
+
+      await trx.deleteFrom('user_chart_preferences').where('user_id', '=', id).where('snoozed_until', 'is', null).execute();
+    });
+
+    return { chartPreferences: await loadChartPreferences(db, id) };
   });
 
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminPlayersResponse, AdminTracksResponse, BestsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  AdminPlayersResponse, AdminTracksResponse, BestsResponse, ChartPreferencesResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -91,7 +91,7 @@ before(async () => {
     throw error;
 
   await sql`SET FOREIGN_KEY_CHECKS = 0`.execute(db);
-  for (const table of ['auth_sessions', 'user_preferences', 'user_rivals', 'best_results', 'plays', 'scrape_failures',
+  for (const table of ['auth_sessions', 'user_chart_preferences', 'user_preferences', 'user_rivals', 'best_results', 'plays', 'scrape_failures',
     'scrape_runs', 'charts', 'tracks', 'users', 'players'])
     await sql`TRUNCATE TABLE ${sql.table(table)}`.execute(db);
 
@@ -188,6 +188,37 @@ test('changing preferences keeps the others; null removes one', { skip }, async 
   assert.deepEqual(changed.body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
   assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
   await call('PUT', '/me/preferences', { as, body: { preferences: { scoreCap: 999000 } } });
+});
+
+
+test('charts are snoozed for a fixed time and woken; expired snoozes are left out and cleared', { skip }, async () => {
+  const as = 'player@example.com';
+  const { charts } = (await call<BestsResponse>('GET', `/bests?players=${ME}`, { as })).body;
+  const [alpha, beta] = ['Alpha', 'Beta'].map((key) => charts.find((chart) => chart.songKey === key)!.id);
+  const snooze = (chartId: number, snoozeDays: unknown) =>
+    call<ChartPreferencesResponse>('PATCH', `/me/chart-preferences/${chartId}`, { as, body: { snoozeDays } });
+
+  const before = Date.now();
+  const snoozed = await snooze(alpha!, 3);
+  assert.equal(snoozed.status, 200);
+  assert.deepEqual(snoozed.body.chartPreferences.map((pref) => pref.chartId), [alpha]);
+  // 3 days are 2 days and 12 hours.
+  const hours = (Date.parse(snoozed.body.chartPreferences[0]!.snoozedUntil!) - before) / 3600_000;
+  assert.ok(Math.abs(hours - 60) < 0.1, `snoozed for ${hours}h`);
+  assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.chartPreferences, snoozed.body.chartPreferences);
+
+  assert.equal((await snooze(alpha!, 2)).status, 400);
+  assert.equal((await snooze(999999, 1)).status, 404);
+
+  // An expired snooze is no snooze, and the next change clears it.
+  await db.updateTable('user_chart_preferences').set({ snoozed_until: '2020-01-01 00:00:00' }).where('chart_id', '=', alpha!).execute();
+  assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.chartPreferences, []);
+  assert.deepEqual((await snooze(beta!, 1)).body.chartPreferences.map((pref) => pref.chartId), [beta]);
+  const rows = await db.selectFrom('user_chart_preferences').select('chart_id').execute();
+  assert.deepEqual(rows.map((row) => row.chart_id), [beta]);
+
+  assert.deepEqual((await snooze(beta!, null)).body.chartPreferences, []);
+  assert.equal((await db.selectFrom('user_chart_preferences').select('chart_id').execute()).length, 0);
 });
 
 

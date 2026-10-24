@@ -125,6 +125,14 @@ export interface UserPreferencesTable {
   data: ColumnType<Record<string, unknown>, string, string>;
 }
 
+// A user's settings for one chart. A row whose settings are all null is deleted.
+export interface UserChartPreferencesTable {
+  user_id: number;
+  chart_id: number;
+  // Hidden from the Rivals view's tabs until then (UTC); a past time is no snooze.
+  snoozed_until: string | null;
+}
+
 export interface AuthSessionsTable {
   token_hash: string;
   user_id: number;
@@ -143,6 +151,7 @@ export interface Database {
   users: UsersTable;
   user_rivals: UserRivalsTable;
   user_preferences: UserPreferencesTable;
+  user_chart_preferences: UserChartPreferencesTable;
   auth_sessions: AuthSessionsTable;
 }
 

@@ -23,6 +23,8 @@ const RETURN_REFRESH_MS = 60 * 1000;
 const DOUBLE_TAP_MS = 350;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
+// While charts are snoozed, the time is checked this often, to wake them and count down the time they have left.
+const SNOOZE_TICK_MS = 60 * 1000;
 
 
 function useAutoRefresh(refresh: () => void) {
@@ -55,9 +57,27 @@ function useAutoRefresh(refresh: () => void) {
 }
 
 
+// The time now, in ms since epoch, updated every SNOOZE_TICK_MS while `ticking`.
+function useClock(ticking: boolean) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (! ticking)
+      return;
+
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), SNOOZE_TICK_MS);
+    return () => clearInterval(timer);
+  }, [ticking]);
+
+  return now;
+}
+
+
 function RivalsView({ me }: { me: PlayerSummary }) {
   const settings = useRivalSettings();
-  const { rivals, preferences } = settings;
+  const { rivals, preferences, snoozes } = settings;
+  const now = useClock(snoozes.size > 0);
   const { scoreCap, npMinimalRivals } = preferences;
   const playerIds = useMemo(() => [me.id, ...rivals.map((rival) => rival.id)], [me.id, rivals]);
   const data = useBests(playerIds);
@@ -231,15 +251,22 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       .map((chart) => withRivals(chart, (rival) => included(rival.playerId)))
       .filter((chart): chart is ChartRow => chart !== null)
       // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
+      .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals)
+      .map((chart) => {
+        const until = snoozes.get(chart.id);
+        return until !== undefined  &&  until > now ? { ...chart, snoozedUntil: until } : chart;
+      });
 
-    // Charts the score cap hides, weighted by the real diffs so the closest calls come first.
-    const capHidden = charts.filter((chart) => chartTier(chart) === 'hidden')
+    // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
+    // listed as snoozed, the soonest to wake first.
+    const capHidden = charts.filter((chart) => chart.snoozedUntil === null  &&  chartTier(chart) === 'hidden')
       .map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
-    return { charts, capHidden, levels: sortedLevels(charts) };
-  }, [allCharts, rivals, soloRival, npMinimalRivals]);
+    const snoozed = charts.filter((chart) => chart.snoozedUntil !== null)
+      .sort((a, b) => a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
+    return { charts, capHidden, snoozed, levels: sortedLevels(charts) };
+  }, [allCharts, rivals, soloRival, npMinimalRivals, snoozes, now]);
 
-  const { charts, capHidden, levels } = view;
+  const { charts, capHidden, snoozed, levels } = view;
   const selectedLevel = ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel) ? ui.selectedLevel : levels[0]  ??  null;
 
   useEffect(() => {
@@ -316,14 +343,19 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           // Another level starts with every card folded again.
           key={selectedLevel}
           levelCharts={charts.filter(atLevel)}
-          hiddenGroups={[{ label: 'Score cap', charts: capHidden.filter(atLevel).sort(byTargetWeight) }]}
+          hiddenGroups={[
+            { label: 'Snoozed', charts: snoozed.filter(atLevel) },
+            { label: 'Score cap', charts: capHidden.filter(atLevel).sort(byTargetWeight) },
+          ]}
           selectedTab={ui.selectedTab}
           myName={me.name  ??  'You'}
           emptyMessage={emptyMessage}
           countBy={countBy}
           ties={!! soloRival}
           scoreCap={scoreCap}
+          now={now}
           onSelectTab={selectTab}
+          onSnooze={settings.snooze}
         />
       </div>
     </div>

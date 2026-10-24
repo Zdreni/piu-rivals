@@ -110,6 +110,12 @@ user_preferences
   user_id                   INT PK FK users
   data                      JSON                   -- the Rivals view's settings: score cap, np minimal rivals, count by
 
+user_chart_preferences                             -- a user's settings for single charts; a row with none set is deleted
+  user_id                   INT FK users
+  chart_id                  INT FK charts
+  snoozed_until             DATETIME NULL          -- the chart is hidden in the Rivals view until then; past = not snoozed
+  PK(user_id, chart_id)
+
 auth_sessions
   token_hash                CHAR(64) PK
   user_id                   INT FK users
@@ -125,4 +131,6 @@ auth_sessions
 - **`updated_at`** is when our server last wrote the row, in UTC from the database clock; it is never a time read from piuscores. piu-rivals can ask for rows changed since its last download. The server sends its own current time with each response, and the next request asks from that time, so the browser's clock doesn't matter.
 - **PUMBILITY** is only raised, never lowered.
 - **Players have two ids.** Tables point at a player by the integer `players.id`, which is much smaller than the GUID in every row and index of the large tables. The API and the site know players only by their piuscores GUID, `players.piuscores_guid`, and the server converts between the two.
+- **Snoozes** keep their end time, not their length, so the time left is known at any moment. An expired one is left out when read, and cleared (its row deleted, if it has no other settings) by the user's next chart preference change; nothing runs on a timer. Deleting a user or a chart deletes their rows.
+- **`user_chart_preferences` is never cleaned up as a whole.** Expired snoozes are cleared only for a user who changes a chart's settings again, so the rows of users who stop snoozing, or stop using the site, stay for good. With few users and few snoozes each this is fine for now, but it could grow into a scale issue: it will need a cleanup of unused per-chart rows, e.g. a periodic job that clears expired snoozes and deletes rows left with no settings.
 - **Deleting a player** (admin only) removes their plays, best results and scrape failures, and unlinks them from any user or rival list. Their id may stay in the `player_ids` of earlier runs; the run's page leaves them out, and a run that reaches them skips them.

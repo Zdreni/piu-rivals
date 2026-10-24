@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type { SnoozeDays } from '@piu-rivals/shared';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChartResultsItem, type Keep } from './chart_results_item.tsx';
 import { PHONE, tabsClass, useTabsFit } from './layout.ts';
 import { byLeadWeight, byTargetWeight, type ChartRow } from './model.ts';
@@ -31,6 +32,15 @@ const onPhoneChange = (listener: () => void) => {
 // Each click on a fold button lists this many more of its scores.
 const SHOW_STEP = 10;
 
+// A card snoozed or woken fades out this long, then the cards and group titles after it move into its place.
+const LEAVE_MS = 200;
+const MOVE_MS = 300;
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+// Where each card and group title in `container` is, by its data-flip key.
+const flipRects = (container: HTMLElement | null) =>
+  new Map([...container?.querySelectorAll<HTMLElement>('[data-flip]')  ??  []].map((el) => [el.dataset.flip!, el.getBoundingClientRect()]));
+
 const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
 
 
@@ -39,8 +49,13 @@ const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.le
 // its charts in the "Hidden" tab, which lists them group by group. `emptyMessage` replaces the per-tab message when
 // there is nothing to show at all. Counted by results, the tabs show the level's result counts instead of their
 // chart counts. `ties` (the solo view) adds a "Tied" tab and colours the true ties. `scoreCap` is named in the
-// tooltip of diffs that the cap turns into ties.
-export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, onSelectTab }: {
+// tooltip of diffs that the cap turns into ties. The "Snooze..." button in a card's unrolled header opens a menu of
+// lengths, and dims the card; a length snoozes its chart with `onSnooze`, and a click anywhere else only closes it.
+// Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
+// the time snoozed charts have left.
+export function ChartResults({
+  levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, now, onSelectTab, onSnooze,
+}: {
   levelCharts: ChartRow[];
   hiddenGroups: HiddenGroup[];
   selectedTab: TabId;
@@ -49,13 +64,87 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
   countBy: CountBy;
   ties: boolean;
   scoreCap: number;
+  now: number;
   onSelectTab: (tab: TabId) => void;
+  onSnooze: (chartId: number, days: SnoozeDays | null) => void;
 }) {
   // By chart, how many of its folded rivals, and of its scores above the lowest ones, were shown.
   const [shownFolded, setShownFolded] = useState<Map<number, number>>(new Map());
   const [shownHigher, setShownHigher] = useState<Map<number, number>>(new Map());
-  // The one result row unrolled, as `${chart id} ${player id}` (or "me" for yours).
+  // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
   const [unrolled, setUnrolled] = useState<string | null>(null);
+  // The chart whose snooze menu is open. Another level starts without it.
+  const [menu, setMenu] = useState<number | null>(null);
+  // The card fading out before its chart is snoozed or woken.
+  const [leaving, setLeaving] = useState<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Where the cards and group titles were before a card left, so they move from there into their new places.
+  const movedFrom = useRef<Map<string, DOMRect> | null>(null);
+
+  useLayoutEffect(() => {
+    const from = movedFrom.current;
+    if (! from)
+      return;
+
+    movedFrom.current = null;
+    for (const el of bodyRef.current?.querySelectorAll<HTMLElement>('[data-flip]')  ??  []) {
+      const old = from.get(el.dataset.flip!);
+      if (! old)
+        continue;
+
+      const now = el.getBoundingClientRect();
+      const dx = old.left - now.left, dy = old.top - now.top;
+      if (dx  ||  dy)
+        el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: MOVE_MS, easing: 'ease' });
+    }
+  });
+
+  // Snoozes (days) or wakes (null) the chart once its card has faded out; the header rolls back and the snooze menu
+  // closes with it, so the length picked stays lit while the card fades.
+  const leave = (chartId: number, days: SnoozeDays | null) => {
+    const send = () => {
+      if (! REDUCED_MOTION.matches)
+        movedFrom.current = flipRects(bodyRef.current);
+
+      setLeaving(null);
+      setUnrolled(null);
+      setMenu(null);
+      onSnooze(chartId, days);
+    };
+
+    if (REDUCED_MOTION.matches) {
+      send();
+      return;
+    }
+
+    setLeaving(chartId);
+    window.setTimeout(send, LEAVE_MS);
+  };
+
+  // While a snooze menu is open, a click anywhere but in it, or on its button, does nothing else than close it: it's
+  // caught on the window, before the page sees it. Escape closes it too.
+  useEffect(() => {
+    if (menu === null)
+      return;
+
+    const close = (event: globalThis.MouseEvent) => {
+      if ((event.target as Element).closest?.('.snooze-menu, .snooze-toggle'))
+        return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      setMenu(null);
+    };
+    const escape = (event: KeyboardEvent) => event.key === 'Escape'  &&  setMenu(null);
+
+    window.addEventListener('click', close, true);
+    window.addEventListener('keydown', escape);
+    return () => {
+      window.removeEventListener('click', close, true);
+      window.removeEventListener('keydown', escape);
+    };
+  }, [menu]);
+
   const keep = useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP;
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
@@ -99,10 +188,19 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       dimWon={tab !== 'you-win'}
       markTies={ties}
       scoreCap={scoreCap}
+      now={now}
       onExpandFolded={() => setShownFolded(showMore(shownFolded, chart.id))}
       onExpandHigher={() => setShownHigher(showMore(shownHigher, chart.id))}
       unrolled={unrolled?.startsWith(`${chart.id} `) ? unrolled.slice(`${chart.id} `.length) : null}
       onUnroll={(playerId) => setUnrolled(playerId === null ? null : `${chart.id} ${playerId}`)}
+      // Charts in the "Hidden" tab are hidden already.
+      canSnooze={tab !== 'hidden'}
+      menuOpen={menu === chart.id}
+      onMenu={() => setMenu(menu === chart.id ? null : chart.id)}
+      onSnooze={(days) => leave(chart.id, days)}
+      // A wake needs no undo: the card goes back to its tab at once.
+      leaving={leaving === chart.id}
+      onWake={() => leave(chart.id, null)}
     />
   ));
 
@@ -115,7 +213,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
       // Each group starts with a title. Diffs are coloured like in the "Inferior" tab, so capped ties show as losses.
       content = groups.map(({ label, charts }) => (
         <Fragment key={label}>
-          <h3 className="group-title">{label} · {charts.length}</h3>
+          <h3 className="group-title" data-flip={`group ${label}`}>{label} · {charts.length}</h3>
           {cards(charts, ['win', 'tie'], true, keep.lost)}
         </Fragment>
       ));
@@ -144,7 +242,7 @@ export function ChartResults({ levelCharts, hiddenGroups, selectedTab, myName, e
           </button>
         ))}
       </div>
-      <div className="dlg-body" role="tabpanel">{body}</div>
+      <div className="dlg-body" role="tabpanel" ref={bodyRef}>{body}</div>
     </div>
   );
 }

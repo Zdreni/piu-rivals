@@ -1,8 +1,8 @@
 import type { ChartRow, RivalResult } from './model.ts';
 import type { CountBy } from './preferences.ts';
 
-// "tie" is a result truly equal to yours; "hidden" a loss that the score cap alone turns into a tie (or, counted by
-// charts, a chart you'd be inferior on without the cap).
+// "tie" is a result truly equal to yours; "hidden" a loss that the score cap alone turns into a tie, or a loss or
+// non-match on a snoozed chart (counted by charts: a chart you'd be inferior on without the cap, or a snoozed one).
 export type Stat = 'lose' | 'unplayed' | 'win' | 'tie' | 'hidden';
 export type Counts = Record<Stat, number>;
 export type TabId = 'rivals-win' | 'not-played' | 'you-win' | 'tie' | 'hidden';
@@ -37,8 +37,12 @@ export function resultStat(rival: RivalResult): Stat {
 
 // The one tab a chart goes to, judged on the real scores: inferior if any rival beats you, superior otherwise
 // (or, with `ties` (the solo view), tied if any rival is truly equal). Only an inferior chart is then checked
-// against the score cap: if the cap evens out every loss, it's hidden. Unplayed charts are np.
+// against the score cap: if the cap evens out every loss, it's hidden. Unplayed charts are np. A snoozed chart is
+// hidden, whatever its scores.
 export function chartTier(chart: ChartRow, ties = false): TabId {
+  if (chart.snoozedUntil !== null)
+    return 'hidden';
+
   if (chart.unplayed)
     return 'not-played';
 
@@ -80,12 +84,15 @@ export function realCounts(charts: ChartRow[]): Map<string, Counts> {
 }
 
 
-// Like tierCounts, but counts rival results instead of charts, whatever the chart's tier.
+// Like tierCounts, but counts rival results instead of charts, whatever the chart's tier. On a snoozed chart, losses
+// and non-matches are hidden, as the score cap hides losses; wins and ties stay what they are.
 export function resultCounts(charts: ChartRow[]): Counts {
   const counts = { ...NO_COUNTS };
   for (const chart of charts) {
-    for (const rival of chart.rivals)
-      counts[resultStat(rival)]++;
+    for (const rival of chart.rivals) {
+      const stat = resultStat(rival);
+      counts[chart.snoozedUntil !== null  &&  (stat === 'lose'  ||  stat === 'unplayed') ? 'hidden' : stat]++;
+    }
   }
 
   return counts;

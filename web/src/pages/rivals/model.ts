@@ -50,6 +50,8 @@ export interface ChartRow {
   unplayed: boolean;
   // How much the rivals beat you by: the sum of the square roots of the losses.
   weight: number;
+  // When the chart wakes, in ms since epoch, while you have it snoozed: until then it's hidden, whatever its scores.
+  snoozedUntil: number | null;
 }
 
 // A player's best results by chart id.
@@ -125,6 +127,7 @@ export function buildCharts(
       rivals: results,
       unplayed: mine === null,
       weight: targetWeight(results.map((rival) => rival.delta)),
+      snoozedUntil: null,
     });
   }
 

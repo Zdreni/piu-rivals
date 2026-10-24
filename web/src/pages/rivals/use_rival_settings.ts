@@ -1,11 +1,17 @@
-import type { MeResponse, PlayerSummary, Rival, RivalsResponse } from '@piu-rivals/shared';
+import type {
+  ChartPreference, ChartPreferencesResponse, MeResponse, PlayerSummary, Rival, RivalsResponse, SnoozeDays,
+} from '@piu-rivals/shared';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { api, errorText } from '../../api.ts';
 import { useSession } from '../../session.tsx';
 import { parsePreferences, type Preferences } from './preferences.ts';
 
-// The rival list and the Rivals view's settings. Every change shows at once and is saved in the background;
-// when a save fails, the error is shown and the page goes back to what the server has.
+// How long a snooze lasts, as the server works it out; shown until the server's time comes back.
+const snoozeMs = (days: SnoozeDays) => ((days - 1) * 24 + 12) * 3600_000;
+
+
+// The rival list, the Rivals view's settings and the snoozed charts. Every change shows at once and is saved in the
+// background; when a save fails, the error is shown and the page goes back to what the server has.
 export interface RivalSettings {
   rivals: Rival[];
   preferences: Preferences;
@@ -14,6 +20,10 @@ export interface RivalSettings {
   addRival(player: PlayerSummary): void;
   removeRival(playerId: string): void;
   setRivalHidden(playerId: string, hidden: boolean): void;
+  // When each snoozed chart wakes, in ms since epoch, by chart id; a snooze may have expired since.
+  snoozes: Map<number, number>;
+  // Snoozes the chart for that many days from now, or wakes it (null).
+  snooze(chartId: number, days: SnoozeDays | null): void;
   // Loads the rival list (with fresh names and PUMBILITY) and settings again, unless a change is being saved.
   refresh(): Promise<void>;
 }
@@ -26,9 +36,13 @@ export function useRivalSettings(): RivalSettings {
   const unsent = useRef<Partial<Preferences>>({});
   const sending = useRef(false);
   const rivalRequests = useRef(0);
+  const chartRequests = useRef(0);
   const preferences = useMemo(() => parsePreferences(me?.preferences  ??  {}), [me?.preferences]);
+  const chartPreferences = me?.chartPreferences;
+  const snoozes = useMemo(() => new Map((chartPreferences  ??  []).flatMap(({ chartId, snoozedUntil }) =>
+    (snoozedUntil ? [[chartId, Date.parse(snoozedUntil)] as const] : []))), [chartPreferences]);
 
-  const busy = () => sending.current  ||  rivalRequests.current > 0  ||  Object.keys(unsent.current).length > 0;
+  const busy = () => sending.current  ||  rivalRequests.current > 0  ||  chartRequests.current > 0  ||  Object.keys(unsent.current).length > 0;
 
   const load = useCallback(async () => {
     const fresh = await api<MeResponse>('GET', '/me');
@@ -119,7 +133,31 @@ export function useRivalSettings(): RivalSettings {
     );
   }, [changeRivals]);
 
+  // Like a rival change: shown at once, and the server's list replaces it only when no other chart change is on its way.
+  const sendSnooze = useCallback(async (chartId: number, days: SnoozeDays | null) => {
+    const change = (prefs: ChartPreference[]) => {
+      const rest = prefs.filter((pref) => pref.chartId !== chartId);
+      return days === null ? rest : [...rest, { chartId, snoozedUntil: new Date(Date.now() + snoozeMs(days)).toISOString() }];
+    };
+
+    updateMe((current) => ({ ...current, chartPreferences: change(current.chartPreferences  ??  []) }));
+    chartRequests.current++;
+    try {
+      const { chartPreferences } = await api<ChartPreferencesResponse>('PATCH', `/me/chart-preferences/${chartId}`, { snoozeDays: days });
+      if (chartRequests.current === 1)
+        updateMe((current) => ({ ...current, chartPreferences }));
+
+      setError(null);
+    } catch (e) {
+      await failed(e);
+    } finally {
+      chartRequests.current--;
+    }
+  }, [updateMe, failed]);
+
+  const snooze = useCallback((chartId: number, days: SnoozeDays | null) => void sendSnooze(chartId, days), [sendSnooze]);
+
   return {
-    rivals: me?.rivals  ??  [], preferences, error, changePreferences, addRival, removeRival, setRivalHidden, refresh,
+    rivals: me?.rivals  ??  [], preferences, error, changePreferences, addRival, removeRival, setRivalHidden, refresh, snoozes, snooze,
   };
 }

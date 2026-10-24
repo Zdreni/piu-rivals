@@ -37,10 +37,21 @@ export interface Rival extends PlayerSummary {
 // The site's own settings (score cap, ...); the server stores them as given.
 export type Preferences = Record<string, unknown>;
 
+// The user's settings for one chart.
+export interface ChartPreference {
+  chartId: number;
+  // Hidden from the Rivals view's tabs until then; null when not snoozed (an expired snooze is null too).
+  snoozedUntil: string | null;
+}
+
+// How long a snooze lasts, as offered: N days end (N - 1) * 24 + 12 hours after the snooze is set.
+export type SnoozeDays = 1 | 3 | 7;
+
 export interface MeResponse {
   user: User;
   rivals: Rival[];
   preferences: Preferences;
+  chartPreferences: ChartPreference[];
 }
 
 export interface RivalsResponse {
@@ -49,6 +60,10 @@ export interface RivalsResponse {
 
 export interface PreferencesResponse {
   preferences: Preferences;
+}
+
+export interface ChartPreferencesResponse {
+  chartPreferences: ChartPreference[];
 }
 
 // A registered player with how much of them is scraped: `plays` scores in all, on `charts` charts.

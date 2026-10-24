@@ -7,6 +7,9 @@
 
 .rivals { background: #14201A; flex: 1; min-height: 0;
           display: flex; flex-direction: column; font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
+/* No blue flash on what's tapped on phones, e.g. a whole card header for its Snooze button: the view shows its own
+   pressed and selected states. */
+.rivals { -webkit-tap-highlight-color: transparent; }
 .rivals .dlg-main { display: flex; flex: 1; min-height: 0; }
 
 /* The site's own button styles stay out. */
@@ -299,14 +302,51 @@
    the room under them, the background darkens down to the results' bottom edge and lightens back. The results have a
    line on top and rounded corners at the bottom. */
 .rivals .chart-card { display: flex; flex-direction: column; }
-.rivals .chart-card-head { display: flex; align-items: baseline; gap: 10px; padding: 10px calc(var(--results-pad) + 12px);
-                           background: #14201A; }
+.rivals .chart-card-head { padding: 10px calc(var(--results-pad) + 12px); background: #14201A; cursor: pointer; }
+.rivals .chart-card-title { display: flex; align-items: baseline; gap: 10px; }
 .rivals .chart-card-body { flex: 1; padding: 0 var(--results-pad) var(--card-gap);
                            background: linear-gradient(#14201A, #0E1612 calc(100% - var(--card-gap)), #14201A); }
 .rivals .chart-card-box { overflow: hidden; background: #1A2820; border-top: 1px solid #2B4034; border-radius: 0 0 6px 6px; }
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
+/* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
+   tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it.
+   A snoozed chart's header always has that line, with its Wake button. */
+.rivals .chart-card-head.unrolled .track { white-space: normal; }
+.rivals .chart-card-head.more .chart-card-title > :not(.track) { display: none; }
+.rivals .chart-card-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.rivals .chart-card-head.more .chart-card-more { grid-template-rows: 1fr; }
+.rivals .chart-card-more > div { display: flex; align-items: center; gap: 10px; min-height: 0; overflow: hidden; visibility: hidden;
+                                 transition: visibility 0s .25s; }
+.rivals .chart-card-head.more .chart-card-more > div { visibility: visible; transition-delay: 0s; }
+.rivals .chart-card-more > div > * { margin-top: 8px; }
+/* The buttons are as tall as the levels' top bar buttons (see .panel-toggle). */
+/* The buttons stay on one line, however narrow the card. */
+.rivals .snooze { flex: 1; display: flex; align-items: center; gap: 6px; color: #9AB3A3; font-size: 14px; white-space: nowrap; }
+.rivals .snooze-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px;
+                         border: 1px solid #2B4034; border-radius: 4px; background: #1C2B22; color: #9AB3A3;
+                         font: 500 15px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .snooze-button:hover { color: #4FE33F; border-color: #4FE33F; }
+.rivals .snooze-button.on { background: #3A1813; color: #FF8A70; border-color: #FF2A00; }
+/* The "Snooze..." button's menu of lengths opens under it, over the cards below, and the line lets it out. While it's
+   open, the button is red and the card is dimmed but for its buttons, chart too; a click anywhere else closes it (see
+   ChartResults). */
+.rivals .chart-card-head.menu-open .chart-card-more > div { overflow: visible; }
+.rivals .snooze-anchor { position: relative; display: inline-flex; }
+.rivals .snooze-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 1; display: flex; flex-direction: column;
+                       min-width: 100%; padding: 4px; background: #1C2B22; border: 1px solid #2B4034; border-radius: 6px;
+                       box-shadow: 0 8px 20px rgba(0,0,0,.55); }
+.rivals .snooze-menu button { height: 40px; padding: 0 16px; border-radius: 4px; text-align: left; white-space: nowrap; color: #EAF5EC;
+                              font: 500 15px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .snooze-menu button:hover, .rivals .snooze-menu button:focus-visible { background: #2B4034; color: #4FE33F; outline: none; }
+/* The length pressed, and then picked while the card fades out. */
+.rivals .snooze-menu button:active, .rivals .snooze-menu button.picked { background: #3D5A49; color: #4FE33F; }
+.rivals .chart-card-title, .rivals .chart-card-body, .rivals .chart-card-more .chart-label { transition: opacity .2s ease; }
+.rivals .chart-card.snoozing :is(.chart-card-title, .chart-card-body, .chart-card-more .chart-label) { opacity: .2; }
+/* A card snoozed or woken fades out, then the cards after it move into its place (see ChartResults). */
+.rivals .chart-card { transition: opacity .2s ease; }
+.rivals .chart-card.leaving { opacity: 0; pointer-events: none; }
 /* The rows share the card's columns, so the diffs line up on the right. No gaps: the score column is wider than any
    score, and the diffs' padding spaces them off the scores. */
 .rivals .chart-card-results { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; padding: 4px 0; }
@@ -423,7 +463,8 @@
     .rivals .side-open .dlg-body { --results-pad: 6px; }
     .rivals .side-open .chart-grid {
         grid-template-columns: repeat(auto-fill, minmax(min(265px + 2 * var(--results-pad), 100%), 1fr)); }
-    .rivals .side-open .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
+    .rivals .side-open .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
+    .rivals .side-open .chart-card-title { gap: 6px; }
     .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
     .rivals .side-open .result { padding: 2px 6px; }
     .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
@@ -504,7 +545,9 @@
   .rivals .levels-active .chart-label { display: none; }
   .rivals .dlg-body { --results-pad: 4px; --card-gap: 14px; padding-top: 8px; }
   .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
-  .rivals .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
+  .rivals .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
+  .rivals .chart-card-title { gap: 6px; }
+  .rivals .snooze-button { height: 40px; }
   .rivals .chart-card-head .track, .rivals .chart-label { font-size: 16px; }
   /* The score column fits the score, so the name gets the rest. */
   .rivals .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; }
@@ -521,7 +564,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word,
-  .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div { transition: none; }
+  .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div,
+  .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body,
+  .rivals .chart-card-more .chart-label { transition: none; }
 }
 
 /* Results too narrow for both scores and diffs (about the same room for names either way): where there are diffs,

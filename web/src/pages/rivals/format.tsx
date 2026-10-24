@@ -12,6 +12,13 @@ export function Score({ value, tailClass = 'tail' }: { value: number | null; tai
 }
 
 
+// The time left of a snooze: in hours up to 48, e.g. "5h" or "48h", and in days beyond, e.g. "3d"; rounded up.
+export function timeLeft(ms: number) {
+  const hours = Math.max(1, Math.ceil(ms / 3600_000));
+  return hours > 48 ? `${Math.ceil(hours / 24)}d` : `${hours}h`;
+}
+
+
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 // naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
 // Signed from the rival's side: + when the rival is ahead and − when you are.

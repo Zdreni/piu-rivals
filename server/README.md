@@ -57,7 +57,8 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 |---|---|
 | `POST /auth/google` `{ idToken }` | Sign in with a Google ID token. Only users added by an admin may sign in, plus emails in `ADMIN_EMAILS` and the very first sign-in (both become admins). Returns `{ token, expiresAt, user }` |
 | `POST /auth/logout` | End this session |
-| `GET /me` | `{ user, rivals, preferences }` |
+| `GET /me` | `{ user, rivals, preferences, chartPreferences }`; `chartPreferences` leaves out expired snoozes |
+| `PATCH /me/chart-preferences/:chartId` `{ snoozeDays? }` | Change one chart's settings: `snoozeDays` 1, 3 or 7 snoozes it from now (for 12h, 2d 12h or 6d 12h), `null` wakes it; returns `{ chartPreferences }` |
 | `POST /me/rivals` `{ playerId }` | Add a rival; returns `{ rivals }` |
 | `PATCH /me/rivals/:id` `{ hidden }` | Switch a rival off or on in the Rivals view; returns `{ rivals }` |
 | `DELETE /me/rivals/:id` | Remove a rival; returns `{ rivals }` |
