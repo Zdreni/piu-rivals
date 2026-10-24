@@ -338,7 +338,7 @@
    The unrolled row's details roll out like a rival's (see .rival-more): their row grows from nothing to their
    height. Their space above and below is the items' margins, which fold with them. */
 .rivals .result-details { display: grid; grid-template-columns: subgrid; grid-template-rows: 0fr; padding: 0 12px;
-                          font-size: 13px; color: #9AB3A3; transition: grid-template-rows .25s ease; }
+                          font-size: 16px; color: #9AB3A3; transition: grid-template-rows .25s ease; }
 .rivals .result-details.unrolled { grid-template-rows: 1fr; }
 .rivals .result-details > div { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
                                 min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s .25s; }
@@ -514,7 +514,7 @@
   /* Names line up with the track name. */
   .rivals .result-player { padding-left: 2px; }
   .rivals .result .delta-tie { width: 5.5ch; }
-  .rivals .result-details { padding: 0 6px; font-size: 12px; }
+  .rivals .result-details { padding: 0 6px; }
   .rivals .result-info { gap: 2px 8px; padding-left: 2px; }
   .rivals .show-others { font-size: 12px; }
 }
