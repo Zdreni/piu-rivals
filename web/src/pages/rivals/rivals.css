@@ -263,7 +263,7 @@
 
 /* Results column */
 
-.rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; container-type: inline-size; }
 /* Room for three digits, so tabs keep their size as the counts change. */
 /* Their colours, like those of the counts on fold buttons, are only a tint: half the colour, half the text white. */
 .rivals .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
@@ -285,8 +285,8 @@
 
 /* Chart cards: the track and chart on top, then the results, in as many columns as fit. */
 /* The narrowest card leaves 126px for a name: 321px (plus the room on its sides) less borders, row padding, score,
-   arrow (20px) and diff (6ch at 16px). Results narrower than that (on a tablet, with the rivals in) get one card as
-   wide as they are, and the names make do with less. The cards meet, so there are no gaps; a row's cards are as tall
+   arrow (20px) and diff (6ch at 16px); with the rivals in, the cards get narrower (see the tablets below). Results
+   narrower than a card get one card as wide as they are, and the names make do with less. The cards meet, so there are no gaps; a row's cards are as tall
    as its tallest one. */
 .rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px + 2 * var(--results-pad), 100%), 1fr));
                       align-items: stretch; }
@@ -398,7 +398,7 @@
   .rivals .level-top { padding-left: 10px; }
   .rivals .level-scroll { padding-left: 10px; }
   .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
-  .rivals .score-content { min-height: 0; container-type: inline-size; }
+  .rivals .score-content { min-height: 0; }
   .rivals .dlg-body { --results-pad: 6px; overflow: visible; padding-top: 8px; }
   .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
 }
@@ -412,17 +412,27 @@
   .rivals .side-open .prefs-controls { padding: 12px; gap: 20px; }
   .rivals .side-open .level-top { padding: 0 6px; }
   .rivals .side-open .level-scroll { padding: 8px 6px; scrollbar-gutter: auto; }
-  /* While the rivals are in, the cards are laid out as on phones (see below): the score column fits the scores, and the
-     names line up with the track name, so the names get the room. */
-  .rivals .side-open .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
-  .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .rivals .side-open .result { padding: 2px 6px; }
-  .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
-  .rivals .side-open .result .delta { padding-left: 14px; }
-  .rivals .side-open .result-player { padding-left: 2px; }
-  .rivals .side-open .result .delta-tie { width: 5.5ch; }
-  .rivals .side-open .result-details { padding: 0 6px; }
-  .rivals .side-open .result-info { padding-left: 2px; }
+}
+
+/* Tablets and wide screens, while the rivals or the preferences are in and the results are too narrow for two cards
+   (always on tablets): the cards are laid out as on phones (see below), with the room on their sides as on tablets.
+   The score column fits the scores, and the names line up with the track name, so the names get the room, and the
+   cards get narrower: 265px leaves names about as much room as the narrowest card above, so two fit in 554px. */
+@media (min-width: 601px) {
+  @container (max-width: 719px) {
+    .rivals .side-open .dlg-body { --results-pad: 6px; }
+    .rivals .side-open .chart-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(265px + 2 * var(--results-pad), 100%), 1fr)); }
+    .rivals .side-open .chart-card-head { gap: 6px; padding: 7px calc(var(--results-pad) + 8px); }
+    .rivals .side-open .chart-card-results:not(.no-diffs) { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .rivals .side-open .result { padding: 2px 6px; }
+    .rivals .side-open .result > :nth-child(2) { padding-left: 4px; }
+    .rivals .side-open .result .delta { padding-left: 14px; }
+    .rivals .side-open .result-player { padding-left: 2px; }
+    .rivals .side-open .result .delta-tie { width: 5.5ch; }
+    .rivals .side-open .result-details { padding: 0 6px; }
+    .rivals .side-open .result-info { padding-left: 2px; }
+  }
 }
 
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
