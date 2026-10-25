@@ -44,20 +44,34 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
   border-bottom: 1px solid var(--border);
 }
 
-.brand { font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; }
-.header-left { display: flex; align-items: center; gap: 1.5rem; }
+.header-left { display: flex; align-items: center; gap: 1.5rem; min-width: 0; }
 .nav { display: flex; gap: 1rem; }
 .nav-admin { grid-column: 2; }
 .nav a { color: var(--muted); text-decoration: none; }
 .nav a.active { color: var(--text); font-weight: 600; }
+/* The user's pages: bold, and like the other menus, grey until open. They fill the room up to the account. History
+   keeps 3rem from Rivals, or less where the bar is narrow, to stay centred between Rivals and the account: the room
+   before it starts 1.5rem (the header's gap before the account) ahead of the room after it, and stops at 3rem. */
+.nav-main { flex: 1; gap: 0; font-size: 1.1rem; }
+.nav-main a, .nav-main a.active { flex: none; display: flex; align-items: center; gap: 0.4em; font-weight: 700; }
+.nav-main::before, .nav-main::after { content: ''; }
+.nav-main::before { order: 1; flex: 1 1 1.5rem; max-width: 3rem; }
+.nav-main a + a { order: 2; }
+.nav-main::after { order: 3; flex: 1 1 0; }
 .account { grid-column: 3; justify-self: end; display: flex; gap: 0.75rem; align-items: center; min-width: 0; }
-.account a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; text-decoration: none; }
+.account a { display: flex; align-items: center; gap: 0.4em; min-width: 0; max-width: 14rem; font-size: 1.1rem; font-weight: 700;
+             text-decoration: none; }
+/* Dimmer than their text, so the words lead. */
+.nav-icon { flex: none; width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+            opacity: 0.6; }
+.account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a.active { color: var(--text); }
 
-/* Too narrow for three columns: the brand and the account on the first line, the admin menu on the next, except
+/* Too narrow for three columns: the user's pages and the account on the first line, the admin menu on the next, except
    in the Rivals view, which needs the room; the user name leads to the home page, which shows the menu. */
 @media (max-width: 720px) {
   .header { display: flex; flex-wrap: wrap; }
+  .header-left { flex: 1; }
   .account { margin-left: auto; }
   .nav-admin { order: 1; flex-basis: 100%; }
   .app.full .nav-admin { display: none; }

@@ -66,7 +66,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
       .innerJoin('charts as c', 'c.id', 'b.chart_id')
       .innerJoin('tracks as t', 't.id', 'c.track_id')
       .select([
-        'pl.piuscores_guid', 'b.chart_id', 'b.last_played_on', 'b.tries', 'b.updated_at',
+        'pl.piuscores_guid', 'b.chart_id', 'b.improvement', 'b.last_played_on', 'b.tries', 'b.updated_at',
         'p.score', 'p.passed', 'p.played_on', 'p.grade', 'p.plate', 'p.perfect', 'p.great', 'p.good', 'p.bad', 'p.miss', 'p.max_combo',
         't.song_key', 't.title', 't.short_title', 'c.chart_type', 'c.level',
       ])
@@ -121,6 +121,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
         miss: row.miss,
         maxCombo: row.max_combo,
         bestPlayedOn: row.played_on,
+        improvement: row.improvement,
         lastPlayedOn: row.last_played_on,
         tries: row.tries,
         updatedAt: toIso(row.updated_at),

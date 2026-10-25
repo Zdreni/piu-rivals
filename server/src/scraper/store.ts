@@ -105,18 +105,21 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
 
 
 // Recomputes the player's best results on `chartIdList`. The best try is the highest score,
-// the earliest one on ties. Returns how many best scores were raised or added.
+// the earliest one on ties; its improvement is how much it rose over the highest earlier try, by
+// play order. Returns how many best scores were raised or added.
 async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): Promise<number> {
   if (! chartIdList.length)
     return 0;
 
   const { rows: fresh } = await sql<{
-    chart_id: number; play_id: number; score: number; last_played_on: string | null; tries: number;
+    chart_id: number; play_id: number; score: number; improvement: number | null; last_played_on: string | null; tries: number;
   }>`
-    SELECT chart_id, id AS play_id, score, last_played_on, tries
+    SELECT chart_id, id AS play_id, score, IF(score > previous_best, score - previous_best, NULL) AS improvement,
+      last_played_on, tries
     FROM (
       SELECT id, chart_id, score, played_on,
         ROW_NUMBER() OVER (PARTITION BY chart_id ORDER BY score DESC, played_on IS NULL, played_on, id) AS place,
+        MAX(score) OVER (PARTITION BY chart_id ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_best,
         MAX(played_on) OVER (PARTITION BY chart_id) AS last_played_on,
         COUNT(*) OVER (PARTITION BY chart_id) AS tries
       FROM plays
@@ -140,6 +143,7 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
   for (const row of changed) {
     const values = {
       play_id: Number(row.play_id),
+      improvement: row.improvement === null ? null : Number(row.improvement),
       last_played_on: row.last_played_on,
       tries: Number(row.tries),
       updated_at: sql<string>`CURRENT_TIMESTAMP(3)`,

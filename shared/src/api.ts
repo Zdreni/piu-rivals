@@ -103,6 +103,8 @@ export interface BestResult {
   miss: number | null;
   maxCombo: number | null;
   bestPlayedOn: string | null;
+  // How much the best score rose over the best before it, by play order; null for a chart's first best.
+  improvement: number | null;
   lastPlayedOn: string | null;
   tries: number;
   updatedAt: string;

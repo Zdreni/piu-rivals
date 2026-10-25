@@ -1,6 +1,6 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { Fragment, type MouseEvent, type ReactNode, useState } from 'react';
-import { Delta, Score, timeLeft } from './format.tsx';
+import { Delta, Gain, Score, timeLeft } from './format.tsx';
 import { type ChartRow, displayName, type Judgments, type RivalResult } from './model.ts';
 import { resultStat, type Stat } from './stats.ts';
 
@@ -161,14 +161,15 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // and `bottom` lowest of the other scores are listed, the ones between (when 2 or more) folded into a "N more..."
 // button, which calls `onExpandHigher`; `higherShown` of them, highest first, are listed above the button anyway.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one. `markTies` colours the
-// diffs of true ties. `dimWon` dims the rivals you beat more than the others.
+// diffs of true ties. `dimWon` dims the rivals you beat more than the others. `showGain` puts how much your best score
+// rose over your previous one, if it did, in your row's diff column.
 // A click on a row calls `onUnroll`, and the `unrolled` row (a rival's id, or "me" for yours) unrolls the judgments and
 // the day of its best score, and the rival's score when the row has no room for it. A click on the header unrolls it
 // ("head"), with the snooze button when `canSnooze`, whose menu (`menuOpen`, toggled by `onMenu`) calls `onSnooze`;
 // `now` counts down a snoozed chart's time left. While the menu is open, the card is dimmed; `leaving`, it fades out.
 // Wake calls `onWake`.
 export function ChartResultsItem({
-  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, scoreCap, canSnooze, now, menuOpen,
+  chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, showGain = false, scoreCap, canSnooze, now, menuOpen,
   leaving, onExpandFolded,
   onExpandHigher, unrolled, onUnroll, onMenu, onSnooze, onWake,
 }: {
@@ -181,6 +182,7 @@ export function ChartResultsItem({
   colorByRealDiff: boolean;
   dimWon: boolean;
   markTies: boolean;
+  showGain?: boolean;
   scoreCap: number;
   canSnooze: boolean;
   now: number;
@@ -228,7 +230,7 @@ export function ChartResultsItem({
           <div className={`result mine${isUnrolled ? ' unrolled' : ''}`} onClick={toggler(ME)}>
             <span className="result-player" title={myName}>{displayName(myName)}</span>
             <span className="num"><Score value={entry.score} /></span>
-            <span />
+            {showGain  &&  chart.myImprovement ? <Gain value={chart.myImprovement} /> : <span />}
           </div>
           <ResultDetails unrolled={isUnrolled} judgments={chart.myJudgments} date={chart.myDate} score={null} />
         </Fragment>

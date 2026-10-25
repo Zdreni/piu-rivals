@@ -29,6 +29,31 @@ const onPhoneChange = (listener: () => void) => {
   PHONE.addEventListener('change', listener);
   return () => PHONE.removeEventListener('change', listener);
 };
+
+type Keeps = ReturnType<typeof keeps>;
+
+// How many rival scores cards keep listed, by result, on this screen.
+export const useKeeps = () => (useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP);
+
+export interface Folding {
+  fold: Stat[];
+  colorByRealDiff: boolean;
+  keep: Keep | null;
+  dimWon: boolean;
+}
+
+// How a card of the tab's charts folds its scores. Lost charts fold the rivals you beat or truly tie with; tied ones
+// only those you beat. Lost, unplayed and won ones also fold the scores between the kept ones. Hidden ones fold like
+// lost ones, with diffs coloured by the real scores, so capped ties show as losses. Only won charts don't dim the
+// rivals you beat, since they are their point.
+export const tabFolding = (tab: TabId, keep: Keeps): Folding => (tab === 'hidden'
+  ? { fold: ['win', 'tie'], colorByRealDiff: true, keep: keep.lost, dimWon: true }
+  : {
+    fold: tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : [],
+    colorByRealDiff: false,
+    keep: { 'not-played': keep.unplayed, 'rivals-win': keep.lost, 'you-win': keep.won, tie: null }[tab],
+    dimWon: tab !== 'you-win',
+  });
 // Each click on a fold button lists this many more of its scores.
 const SHOW_STEP = 10;
 
@@ -145,7 +170,7 @@ export function ChartResults({
     };
   }, [menu]);
 
-  const keep = useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP;
+  const keep = useKeeps();
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
   const groups = hiddenGroups.filter(({ charts }) => charts.length);
@@ -174,8 +199,8 @@ export function ChartResults({
   const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
   // Rivals whose result is one of `fold`, or between the scores kept by `keep`, are folded; each click on their
-  // button shows SHOW_STEP more. The "Won" tab doesn't dim the rivals you beat, since they are its point.
-  const cards = (charts: ChartRow[], fold: Stat[], colorByRealDiff = false, keep: Keep | null = null) => charts.map((chart) => (
+  // button shows SHOW_STEP more.
+  const cards = (charts: ChartRow[], { fold, colorByRealDiff, keep, dimWon }: Folding) => charts.map((chart) => (
     <ChartResultsItem
       key={chart.id}
       chart={chart}
@@ -185,7 +210,7 @@ export function ChartResults({
       keep={keep}
       higherShown={shownHigher.get(chart.id)  ??  0}
       colorByRealDiff={colorByRealDiff}
-      dimWon={tab !== 'you-win'}
+      dimWon={dimWon}
       markTies={ties}
       scoreCap={scoreCap}
       now={now}
@@ -210,20 +235,17 @@ export function ChartResults({
   } else {
     let content;
     if (tab === 'hidden') {
-      // Each group starts with a title. Diffs are coloured like in the "Inferior" tab, so capped ties show as losses.
+      // Each group starts with a title.
       content = groups.map(({ label, charts }) => (
         <Fragment key={label}>
           <h3 className="group-title" data-flip={`group ${label}`}>{label} · {charts.length}</h3>
-          {cards(charts, ['win', 'tie'], true, keep.lost)}
+          {cards(charts, tabFolding('hidden', keep))}
         </Fragment>
       ));
     } else {
       const visible = levelCharts.filter((chart) => chartTier(chart, ties) === tab);
       visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
-      // Lost charts fold the rivals you beat or truly tie with; tied ones only those you beat. Lost, unplayed and won ones
-      // also fold the scores between the kept ones.
-      content = cards(visible, tab === 'rivals-win' ? ['win', 'tie'] : tab === 'tie' ? ['win'] : [], false,
-        { 'not-played': keep.unplayed, 'rivals-win': keep.lost, 'you-win': keep.won, tie: null }[tab]);
+      content = cards(visible, tabFolding(tab, keep));
     }
 
     // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.

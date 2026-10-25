@@ -69,6 +69,8 @@ export interface BestResultsTable {
   chart_id: number;
   // The best try; its score, pass and date are read from the play.
   play_id: number;
+  // How much the best score rose over the best before it, by play order; null for a chart's first best.
+  improvement: number | null;
   last_played_on: string | null;
   tries: number;
   // When our server last changed the row, "YYYY-MM-DD HH:MM:SS.mmm" UTC.

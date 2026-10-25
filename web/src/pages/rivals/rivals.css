@@ -298,6 +298,13 @@
 .rivals .group-title { grid-column: 1 / -1; margin: 6px var(--results-pad) 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
+
+/* The History page: the cards by day, under day titles in the levels' colours. */
+.rivals.history .dlg-body { min-height: 0; }
+.rivals .group-title.day { border-bottom-color: #2B4034; color: #9AB3A3; }
+.rivals .show-more-charts { grid-column: 1 / -1; justify-self: center; margin: 4px 0 20px; padding: 8px 16px; color: #C9D8CE;
+                            border: 1px solid #2B4034; border-radius: 4px; cursor: pointer; font: 400 15px/1.2 Roboto, Arial, sans-serif; }
+.rivals .show-more-charts:hover { color: #EAF5EC; border-color: #3D5A49; }
 /* No frame: the track bar is in the page's colour, and from under it to the next card's, around the results and in
    the room under them, the background darkens down to the results' bottom edge and lightens back. The results have a
    line on top and rounded corners at the bottom. */
@@ -409,8 +416,7 @@
 .rivals .show-others .blue { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
 /* From the baseline to the top of the digits (Roboto's and Arial's are .72em tall). */
 .rivals .fold-arrow { width: .5em; height: .72em; margin-right: .25em; overflow: visible;
-                      fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
-.rivals .show-others.top { padding: 2px 12px; }
+                      fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }.rivals .show-others.top { padding: 2px 12px; }
 .rivals .show-others:hover { color: #4FE33F; opacity: 1; }
 
 /* Narrow screens (e.g. a tablet in portrait) and phones: the levels beside the results, and the page scrolls. The levels

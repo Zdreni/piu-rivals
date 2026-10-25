@@ -27,7 +27,7 @@ const LONG_PRESS_SLOP_PX = 10;
 const SNOOZE_TICK_MS = 60 * 1000;
 
 
-function useAutoRefresh(refresh: () => void) {
+export function useAutoRefresh(refresh: () => void) {
   const latest = useRef(refresh);
   latest.current = refresh;
 

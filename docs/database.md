@@ -61,6 +61,7 @@ best_results                                       -- one row per player and cha
   player_id                 INT FK players
   chart_id                  INT FK charts
   play_id                   BIGINT                 -- the best try; its score, pass and date are read from the play
+  improvement               INT NULL               -- how much the best try beat the highest earlier try, by play id; null for a chart's first best
   last_played_on            DATE NULL              -- date of the latest try
   tries                     INT
   updated_at                DATETIME(3)            -- when our server last changed the row (UTC)

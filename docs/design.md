@@ -70,6 +70,10 @@ The Rivals tab (`/#/rivals`) is the old extension's rivals window, ported to the
 
 **Keeping scores current.** Best results are cached in IndexedDB, keyed by player and chart, with the `serverTime` of each player's last download. On opening the view, cached rows are shown at once, then `/bests` is asked for what changed since each player's last download (a newly added rival is loaded in full). Deletions never arrive as changes, e.g. after a rescan, so the site compares each player's cached row count with `counts`. A player whose counts differ is dropped from the cache and loaded again in full. While the page is visible, it syncs again every 5 minutes, and when it comes back into view after more than a minute, reloading `/me` as well for fresh names and PUMBILITY (skipped while a change is being saved). Without IndexedDB (e.g. a private window) everything is loaded once per visit.
 
+## History
+
+The History page (`/#/history`, next to Rivals in the menu bar) lists your best results, of any level, as cards like in the Rivals view, grouped by the day each best was set, the latest day first. Tries have no time of their own, so charts of the same day are listed by track. Your row shows, in the diff column and in your score's colour, how much the best rose over your previous one, with a plus, e.g. "+12,345". It comes from `best_results.improvement`, worked out on the server whenever a best is updated: the best score less the highest earlier try, by play order (within a session, the order the page lists them in); none for a chart's first best. Your rivals switched on are compared on the cards, which fold their scores like in the tab of the chart's tier; snoozes don't apply. It lists 60 charts, and 60 more with each click on Show more. It uses the same cached best results as the Rivals view, and syncs the same way.
+
 ## Deployment
 
 ### Server (VPS)

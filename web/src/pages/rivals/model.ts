@@ -45,6 +45,8 @@ export interface ChartRow {
   // The day you set your best score, if known, and its judgments.
   myDate: string | null;
   myJudgments: Judgments | null;
+  // How much your best score rose over your previous one; null for your first score on the chart.
+  myImprovement: number | null;
   // Best score first.
   rivals: RivalResult[];
   unplayed: boolean;
@@ -84,7 +86,8 @@ export const byLeadWeight = (a: ChartRow, b: ChartRow) => leadWeight(b) - leadWe
 
 
 
-// Every chart in the `levels` range that at least one of `rivals` has a score on, with your score and theirs.
+// Every chart in the `levels` range that at least one of `rivals` has a score on, with your score and theirs. With
+// `ownCharts`, also the ones only you have a score on.
 export function buildCharts(
   charts: Map<number, Chart>,
   bests: Map<string, PlayerBests>,
@@ -92,14 +95,15 @@ export function buildCharts(
   rivals: { id: string; name: string }[],
   scoreCap: number,
   levels: LevelRange,
+  ownCharts = false,
 ): ChartRow[] {
-  const chartIds = new Set<number>();
+  const own = bests.get(ownPlayerId);
+  const chartIds = new Set<number>(ownCharts ? own?.keys() : []);
   for (const rival of rivals) {
     for (const chartId of bests.get(rival.id)?.keys()  ??  [])
       chartIds.add(chartId);
   }
 
-  const own = bests.get(ownPlayerId);
   const rows: ChartRow[] = [];
   for (const chartId of chartIds) {
     const chart = charts.get(chartId);
@@ -124,6 +128,7 @@ export function buildCharts(
       mine,
       myDate: myBest?.bestPlayedOn  ??  null,
       myJudgments: myBest ? judgments(myBest) : null,
+      myImprovement: myBest?.improvement  ??  null,
       rivals: results,
       unplayed: mine === null,
       weight: targetWeight(results.map((rival) => rival.delta)),
