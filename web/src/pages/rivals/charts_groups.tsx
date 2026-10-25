@@ -12,7 +12,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // One bar, split by the share of wins / ties / not played / hidden / losses. Wins sit next to the level number and
 // losses at the outer end, so singles grow to the left and doubles to the right. Ties get a segment only with
-// `showTies`.
+// `showTies`. The not played segment grows with its count to the power of 1 / 1.5, so many unplayed charts don't
+// crowd out the rest.
 function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSelect }: {
   level: string | undefined;
   side: 'single' | 'double';
@@ -34,8 +35,8 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
   // CSS can size the labels in % of the bar with --digit and --label-pad, for bars that hide them.
   const labelWidth = (label: number | string) =>
     (String(label).length ? `${String(label).length} * var(--digit, 1ch) + 2 * min(var(--label-pad, 6px), 5%)` : '0px');
-  const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}) =>
-    (n ? <span className={className} style={{ flexGrow: n, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
+  const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}, grow = n) =>
+    (n ? <span className={className} style={{ flexGrow: grow, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
       {label}
     </span> : null);
 
@@ -55,7 +56,7 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
       <span className="level-segs">
         {part('win', counts.win)}
         {showTies  &&  part('tie', counts.tie)}
-        {part('unplayed', counts.unplayed)}
+        {part('unplayed', counts.unplayed, counts.unplayed, {}, counts.unplayed ** (1 / 1.5))}
         {part('hidden-loss', counts.hidden, '')}
         {part('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
       </span>
