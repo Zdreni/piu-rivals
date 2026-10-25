@@ -124,6 +124,9 @@ export interface BestsResponse {
 export interface AdminUser extends User {
   createdAt: string;
   lastLoginAt: string | null;
+  // How many players are in their rival list, and how many of those they switched off.
+  rivals: number;
+  rivalsOff: number;
 }
 
 export interface AdminUsersResponse {

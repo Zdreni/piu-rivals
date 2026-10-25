@@ -52,7 +52,7 @@ All requests and responses are JSON; response types are in [shared/src/api.ts](.
 - `GET /bests?players=<id,...>&since=<server time>` returns best results with judgments, plus the server's current time to pass as `since` next time. Without `since`, it returns everything for those players. It also returns each player's total number of best results (`counts`), changed or not. Each chart comes with its track's title and short title; with `since`, the charts of tracks whose short title changed since then come too, so cached charts pick up new short names. Chart cards show the short title, with the full one on hover. The site keeps the rows in IndexedDB and filters locally (see [the Rivals view](#rivals-view)).
 
 **Admin** (requires `is_admin`)
-- `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. Admins can't remove their own admin rights or delete themselves.
+- `GET/POST/PATCH/DELETE /admin/users`: email, display name, linked player (one user per player), `is_admin`. The list also has how many rivals each user has, and how many of them are switched off. Admins can't remove their own admin rights or delete themselves.
 - `GET /admin/players`, `DELETE /admin/players/:id`; `PATCH /admin/players/:id` sets the name the site shows for the player (empty: their name on PIU Scores)
 - `GET /admin/tracks`; `PATCH /admin/tracks/:id` sets a track's short name, which can't be another track's name or short name (empty: its name)
 - `POST /admin/scrape-runs` with `{ kind, players? }` queues a run, or adds register and selected players to an active register or selected run; `players` are GUIDs or piuscores player links

@@ -1,7 +1,7 @@
 import type { AdminUsersResponse, User } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import { playerIdsByGuid } from '../../db/players.ts';
 import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
@@ -38,9 +38,19 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
   app.addHook('preHandler', requireAdmin);
 
 
-  app.get('/admin/users', async (): Promise<AdminUsersResponse> => ({
-    users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt }) => ({ ...user, createdAt, lastLoginAt })),
-  }));
+  app.get('/admin/users', async (): Promise<AdminUsersResponse> => {
+    const rivalCounts = new Map((await db.selectFrom('user_rivals')
+      .select(['user_id', sql<number>`COUNT(*)`.as('rivals'), sql<number>`SUM(hidden)`.as('off')])
+      .groupBy('user_id')
+      .execute()).map((row) => [row.user_id, row]));
+
+    return {
+      users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt }) => {
+        const counts = rivalCounts.get(user.id);
+        return { ...user, createdAt, lastLoginAt, rivals: Number(counts?.rivals  ??  0), rivalsOff: Number(counts?.off  ??  0) };
+      }),
+    };
+  });
 
 
   app.post('/admin/users', {

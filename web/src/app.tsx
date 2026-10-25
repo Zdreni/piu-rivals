@@ -41,10 +41,10 @@ function Header() {
         <>
           {me.user.isAdmin  &&  (
             <nav className="nav nav-admin" aria-label="Admin">
+              <NavLink to="/admin/users">Users</NavLink>
               <NavLink to="/admin/players">Players</NavLink>
               <NavLink to="/admin/tracks">Tracks</NavLink>
               <NavLink to="/admin/runs">Scraping</NavLink>
-              <NavLink to="/admin/users">Users</NavLink>
             </nav>
           )}
           <div className="account">

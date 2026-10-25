@@ -81,6 +81,8 @@ function UserRow({ user, players, onChange }: {
           label={`Player of ${user.email}`}
         />
       </td>
+      {/* Users without a player have no Rivals view, so no rivals either. */}
+      <td className="number">{user.player  &&  (user.rivalsOff ? `${user.rivals} (-${user.rivalsOff})` : user.rivals)}</td>
       <td>
         <input
           type="checkbox"
@@ -163,7 +165,7 @@ export function UsersPage() {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Email</th><th>Name</th><th>Player</th><th>Admin</th><th>Last sign-in</th><th /></tr>
+            <tr><th>Email</th><th>Name</th><th>Player</th><th className="number">Rivals</th><th>Admin</th><th>Last sign-in</th><th /></tr>
           </thead>
           <tbody>
             {users.data?.users.map((user) => <UserRow key={user.id} user={user} players={playerList} onChange={onRowChange} />)}
