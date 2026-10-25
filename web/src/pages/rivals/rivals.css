@@ -106,7 +106,7 @@
 .rivals .rival { padding: 9px 6px; border-radius: 4px; position: relative; cursor: pointer; }
 .rivals .rival.faded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
                               background: rgba(20,32,26,.8); }
-.rivals .rival:nth-child(odd) { background: rgba(255,255,255,.05); }
+.rivals .rival:nth-child(odd of .rival) { background: rgba(255,255,255,.05); }
 .rivals .rival:hover { background: rgba(79,227,63,.12); }
 .rivals .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
 /* The focused rival unrolls its counts, results and links: their row grows from nothing to their height. Folded, they

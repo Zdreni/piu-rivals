@@ -8,6 +8,12 @@ import { MAX_SCORE_CAP } from './preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, realCounts } from './stats.ts';
 
+// The Others tab lists this many players above you and below you at first; each click on a "more" button lists
+// SHOW_STEP more.
+const SHOWN_ABOVE = 10;
+const SHOWN_BELOW = 5;
+const SHOW_STEP = 10;
+
 let playersLoad: Promise<ListedPlayer[]> | null = null;
 
 
@@ -90,10 +96,11 @@ function useOtherStats(playerId: string | null, me: string, myBests: PlayerBests
 
 
 // The Others tab: every registered player that isn't your rival, by PUMBILITY, each with a button to add them as
-// a rival. You're listed among them too, to compare with, and stay listed whatever the name filter. Clicking a
-// player unrolls how much of them is scraped, their results against yours (loaded then, judged like a rival's) and
-// a link to their Sessions page. `myBests` are your best results, `players` all registered players (null while
-// loading), `rivals` your current rivals' ids.
+// a rival. You're listed among them too, to compare with, and stay listed whatever the name filter. Without a name
+// filter, only the SHOWN_ABOVE players above you and SHOWN_BELOW below you are listed, the others folded into "more" buttons.
+// Clicking a player unrolls how much of them is scraped, their results against yours (loaded then, judged like a
+// rival's) and a link to their Sessions page. `myBests` are your best results, `players` all registered players
+// (null while loading), `rivals` your current rivals' ids.
 export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
   me: PlayerSummary;
   myBests: PlayerBests | undefined;
@@ -104,6 +111,8 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [shownAbove, setShownAbove] = useState(SHOWN_ABOVE);
+  const [shownBelow, setShownBelow] = useState(SHOWN_BELOW);
   const openStats = useOtherStats(open !== me.id ? open : null, me.id, myBests);
 
   const words = query.trim().toLowerCase();
@@ -113,6 +122,9 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
       ||  (! rivals.has(player.id)  &&  (! words  ||  (player.name  ??  player.id).toLowerCase().includes(words))))
     .sort((a, b) => (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
+  const meAt = others.findIndex((player) => player.id === me.id);
+  const first = words ? 0 : Math.max(0, meAt - shownAbove);
+  const last = words ? others.length : Math.min(others.length, meAt + 1 + shownBelow);
 
   return (
     <>
@@ -132,7 +144,12 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
         {players  &&  others.length === 1  &&  (
           <div className="muted rival-hint">{words ? 'No such player. An admin can register them.' : 'No other players.'}</div>
         )}
-        {others.map((player) => {
+        {first > 0  &&  (
+          <button className="show-others top" type="button" onClick={() => setShownAbove(shownAbove + SHOW_STEP)}>
+            ...{first} more...
+          </button>
+        )}
+        {others.slice(first, last).map((player) => {
           const isMe = player.id === me.id;
           const isOpen = player.id === open;
           const name = displayName(player.name  ??  player.id);
@@ -190,6 +207,11 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
             </div>
           );
         })}
+        {last < others.length  &&  (
+          <button className="show-others" type="button" onClick={() => setShownBelow(shownBelow + SHOW_STEP)}>
+            ...{others.length - last} more...
+          </button>
+        )}
       </div>
     </>
   );
