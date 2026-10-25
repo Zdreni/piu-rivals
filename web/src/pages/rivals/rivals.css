@@ -180,6 +180,12 @@
 .rivals .prefs-panel .stepper button { width: 36px; height: 36px; font-size: 20px; }
 .rivals .prefs-panel .switch button { height: 36px; padding: 0 16px; font-size: 15px; }
 .rivals .prefs-panel .setting-hint { display: block; grid-column: 1 / -1; font-size: 13px; line-height: 1.35; color: #8A9590; }
+/* Min and max level side by side, at the panel's edges, with their hint under them. Their buttons and values are a little
+   narrower, so that in the narrowest panel (217px inside) they still keep 17px apart. */
+.rivals .prefs-panel .level-range { display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 6px 16px; }
+.rivals .prefs-panel .level-range .stepper { gap: 6px 2px; }
+.rivals .prefs-panel .level-range .stepper-value { min-width: 32px; }
+.rivals .prefs-panel .level-range .stepper button { width: 32px; }
 
 /* Side panels on wide screens: the rivals or the preferences wait off the left edge until the levels' top bar slides
    one in; the levels follow it, and the results give it their room. Out of sight, they can't be tabbed to. */

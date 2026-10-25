@@ -4,8 +4,9 @@ import {
 } from './preferences.ts';
 
 
-// A label above a − value + row, and (in the preferences panel) the title spelled out under them.
-function Stepper({ className, label, text, title, off, canLower, canRaise, lowerLabel, raiseLabel, onStep }: {
+// A label above a − value + row, and (in the preferences panel) the title spelled out under them, unless `noHint`
+// (a pair of steppers sharing one hint).
+function Stepper({ className, label, text, title, off, canLower, canRaise, lowerLabel, raiseLabel, onStep, noHint = false }: {
   className: string;
   label: string;
   text: string;
@@ -16,6 +17,7 @@ function Stepper({ className, label, text, title, off, canLower, canRaise, lower
   lowerLabel: string;
   raiseLabel: string;
   onStep: (step: number) => void;
+  noHint?: boolean;
 }) {
   return (
     <div className={`stepper ${className}${off ? ' off' : ''}`} title={title}>
@@ -23,7 +25,7 @@ function Stepper({ className, label, text, title, off, canLower, canRaise, lower
       <button type="button" aria-label={lowerLabel} disabled={! canLower} onClick={() => onStep(-1)}>−</button>
       <span className="stepper-value">{text}</span>
       <button type="button" aria-label={raiseLabel} disabled={! canRaise} onClick={() => onStep(1)}>+</button>
-      <span className="setting-hint">{title}</span>
+      {! noHint  &&  <span className="setting-hint">{title}</span>}
     </div>
   );
 }
@@ -48,14 +50,18 @@ export function PreferenceControls({ preferences, levels, solo, onChange }: {
   const countBy = solo ? 'results' : preferences.countBy;
   const countByTitle = solo
     ? 'Solo: results are always counted'
-    : 'Count per rival result, or per chart';
+    : 'Count matches per rival, or per chart';
+  const anyMin = minLevel === MIN_LEVEL, anyMax = maxLevel >= MAX_LEVEL;
+  const levelsTitle = anyMin  &&  anyMax
+    ? 'Show charts of every level'
+    : anyMin ? `Show charts up to level ${maxLevel}` : anyMax ? `Show charts from level ${minLevel} up` : `Shows charts of levels ${minLevel}...${maxLevel}`;
   return (
     <>
       <Stepper
         className="score-cap"
         label="Score cap"
         text={`${scoreCap / 1000}k`}
-        title={scoreCap >= MAX_SCORE_CAP ? 'No score cap is applied' : `Hide losses or wins on mutual scores ≥ ${scoreCap / 1000}k`}
+        title={scoreCap >= MAX_SCORE_CAP ? 'No score cap is applied' : `Hide matches on scores ≥ ${scoreCap / 1000}k`}
         off={scoreCap >= MAX_SCORE_CAP}
         canLower={scoreCap > MIN_SCORE_CAP}
         canRaise={scoreCap < MAX_SCORE_CAP}
@@ -75,30 +81,36 @@ export function PreferenceControls({ preferences, levels, solo, onChange }: {
         raiseLabel="Raise minimal rivals for np"
         onStep={(step) => onChange({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) })}
       />
-      <Stepper
-        className="min-level"
-        label="Min level"
-        text={`${minLevel}`}
-        title={minLevel === MIN_LEVEL ? 'Show charts of every level' : `Show charts from level ${minLevel} up`}
-        off={minLevel === MIN_LEVEL}
-        canLower={minLevel > MIN_LEVEL}
-        canRaise={minLevel < maxLevel}
-        lowerLabel="Lower minimal level"
-        raiseLabel="Raise minimal level"
-        onStep={(step) => onChange({ minLevel: clampLevel(minLevel + step) })}
-      />
-      <Stepper
-        className="max-level"
-        label="Max level"
-        text={maxLevel >= MAX_LEVEL ? `${MAX_LEVEL}+` : `${maxLevel}`}
-        title={maxLevel >= MAX_LEVEL ? 'No highest level' : `Show charts up to level ${maxLevel}`}
-        off={maxLevel >= MAX_LEVEL}
-        canLower={maxLevel > minLevel}
-        canRaise={maxLevel < MAX_LEVEL}
-        lowerLabel="Lower maximal level"
-        raiseLabel="Raise maximal level"
-        onStep={(step) => onChange({ maxLevel: clampLevel(maxLevel + step) })}
-      />
+      {/* The level range on one line, with one hint for both. */}
+      <div className="level-range">
+        <Stepper
+          className="min-level"
+          label="Min level"
+          text={`${minLevel}`}
+          title={minLevel === MIN_LEVEL ? 'Show charts of every level' : `Show charts from level ${minLevel} up`}
+          off={minLevel === MIN_LEVEL}
+          canLower={minLevel > MIN_LEVEL}
+          canRaise={minLevel < maxLevel}
+          lowerLabel="Lower minimal level"
+          raiseLabel="Raise minimal level"
+          onStep={(step) => onChange({ minLevel: clampLevel(minLevel + step) })}
+          noHint
+        />
+        <Stepper
+          className="max-level"
+          label="Max level"
+          text={maxLevel >= MAX_LEVEL ? `${MAX_LEVEL}+` : `${maxLevel}`}
+          title={maxLevel >= MAX_LEVEL ? 'No highest level' : `Show charts up to level ${maxLevel}`}
+          off={maxLevel >= MAX_LEVEL}
+          canLower={maxLevel > minLevel}
+          canRaise={maxLevel < MAX_LEVEL}
+          lowerLabel="Lower maximal level"
+          raiseLabel="Raise maximal level"
+          onStep={(step) => onChange({ maxLevel: clampLevel(maxLevel + step) })}
+          noHint
+        />
+        <span className="setting-hint">{levelsTitle}</span>
+      </div>
       <div
         className="switch count-by"
         role="radiogroup"
