@@ -502,6 +502,8 @@
       background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
   .rivals .dlg-main:not(.levels-active) .filters::after, .rivals .dlg-main.levels-active .score-content::after {
       opacity: 1; pointer-events: auto; }
+  /* The levels are dimmed less than the results, so their bars still read. */
+  .rivals .filters::after { background: rgba(20,32,26,.5); }
   /* Taps go through the dimmed levels to their bars (see RivalsView); a long press there isn't a text selection or a
      menu, and a double tap doesn't zoom. */
   .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
@@ -509,7 +511,10 @@
   .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
   /* The buttons nearly fill the bar, 4px from its edges and at least 8px apart. */
   .rivals .level-top { gap: 8px; padding: 0 4px; }
-  /* The buttons stay bright over the dimmed levels. */
+  /* Beside the results, the selected bar, which shows their level, stays bright over the dimmed levels; beside the
+     rivals or the preferences, it's dimmed with the rest. */
+  .rivals .dlg-main:not(.side-open) .level-bar.on { z-index: 6; }
+  /* The buttons do too. */
   .rivals .panel-toggle { position: relative; z-index: 6; gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
   .rivals .prefs-toggle { width: 40px; padding: 0; }
   .rivals .panel-toggle svg { width: 6px; height: 10px; }
