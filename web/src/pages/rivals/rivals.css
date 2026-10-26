@@ -458,9 +458,11 @@
   .rivals .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); --side: calc(100cqw - var(--levels));
                       display: grid; width: calc(100cqw + var(--side));
                       grid-template-columns: var(--side) var(--levels) calc(100cqw - var(--levels));
-                      grid-template-rows: auto; transform: translateX(calc(-1 * var(--side)));
-                      transition: grid-template-columns .3s ease, width .3s ease, transform .3s ease; }
-  .rivals .dlg-main.side-open { transform: none; }
+                      grid-template-rows: auto; margin-left: calc(-1 * var(--side));
+                      transition: grid-template-columns .3s ease, width .3s ease, margin-left .3s ease; }
+  /* The shift is a margin, not a transform: a transform moves on its own, ahead of the columns whenever the browser
+     is slow to lay them out, which pushes the levels past the screen's left edge and back while they change width. */
+  .rivals .dlg-main.side-open { margin-left: 0; }
   .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
   .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; }
   .rivals .level-top { padding-left: 10px; }
@@ -515,11 +517,14 @@
   .rivals .dlg-main.levels-active { --levels: max(160px, min(65cqw, 100cqw - 150px)); }
   .rivals .score-content { position: relative; }
   .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
-      background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+      background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .1s ease; }
   .rivals .dlg-main:not(.levels-active) .filters::after, .rivals .dlg-main.levels-active .score-content::after {
       opacity: 1; pointer-events: auto; }
-  /* The levels are dimmed less than the results, so their bars still read. */
-  .rivals .filters::after { background: rgba(20,32,26,.5); }
+  /* The levels are dimmed less than the results, so their bars still read. Their dimming fades its colour, not its
+     opacity: a fading opacity gets its own layer, and so would every bar over it (see below), and those judder while
+     the levels change width. */
+  .rivals .filters::after { opacity: 1; background: rgba(20,32,26,0); transition: background-color .1s ease; }
+  .rivals .dlg-main:not(.levels-active) .filters::after { background: rgba(20,32,26,.5); }
   /* Taps go through the dimmed levels to their bars (see RivalsView); a long press there isn't a text selection or a
      menu, and a double tap doesn't zoom. */
   .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
@@ -529,7 +534,17 @@
   .rivals .level-top { gap: 8px; padding: 0 4px; }
   /* Beside the results, the selected bar, which shows their level, stays bright over the dimmed levels; beside the
      rivals or the preferences, it's dimmed with the rest. */
-  .rivals .dlg-main:not(.side-open) .level-bar.on { z-index: 6; }
+  /* So the switch from one bar to another can fade, every bar sits over the levels' dimming and dims itself, the same
+     way: then the old bar dims as the new one brightens, and the ring moves over with them. The bars' dimming fades
+     its colour, not its opacity: fading the opacity of every bar at once gives each its own layer, and those judder
+     while the levels change width. */
+  .rivals .level-bar { z-index: 6; box-shadow: 0 0 0 2px rgba(234,245,236,0); transition: opacity .1s ease, box-shadow .1s ease; }
+  .rivals .level-bar::after { content: ''; position: absolute; inset: 0; z-index: 5; background: rgba(20,32,26,0);
+      pointer-events: none; transition: background-color .1s ease; }
+  .rivals .dlg-main:not(.levels-active) .level-bar:not(.on)::after,
+  .rivals .dlg-main.side-open:not(.levels-active) .level-bar::after { background: rgba(20,32,26,.5); }
+  /* The ring is outside the bar, so it's dimmed by hand, as the levels' dimming would. */
+  .rivals .dlg-main.side-open:not(.levels-active) .level-bar.on { box-shadow: 0 0 0 2px color-mix(in srgb, #EAF5EC 50%, #14201A); }
   /* The buttons do too. */
   .rivals .panel-toggle { position: relative; z-index: 6; gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
   .rivals .prefs-toggle { width: 40px; padding: 0; }
