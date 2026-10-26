@@ -207,7 +207,8 @@ test('charts are snoozed for a fixed time and woken; expired snoozes are left ou
   assert.ok(Math.abs(hours - 60) < 0.1, `snoozed for ${hours}h`);
   assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.chartPreferences, snoozed.body.chartPreferences);
 
-  assert.equal((await snooze(alpha!, 2)).status, 400);
+  for (const snoozeDays of [366, 1.5])
+    assert.equal((await snooze(alpha!, snoozeDays)).status, 400, `snoozeDays ${snoozeDays}`);
   assert.equal((await snooze(999999, 1)).status, 404);
 
   // An expired snooze is no snooze, and the next change clears it.
