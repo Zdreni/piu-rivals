@@ -521,7 +521,7 @@
   .rivals .dlg-main:not(.levels-active) .filters::after, .rivals .dlg-main.levels-active .score-content::after {
       opacity: 1; pointer-events: auto; }
   /* The levels are dimmed less than the results, so their bars still read. Their dimming fades its colour, not its
-     opacity: a fading opacity gets its own layer, and so would every bar over it (see below), and those judder while
+     opacity: a fading opacity gets its own layer, and so would the bar over it (see below), and those judder while
      the levels change width. */
   .rivals .filters::after { opacity: 1; background: rgba(20,32,26,0); transition: background-color .1s ease; }
   .rivals .dlg-main:not(.levels-active) .filters::after { background: rgba(20,32,26,.5); }
@@ -533,18 +533,9 @@
   /* The buttons nearly fill the bar, 4px from its edges and at least 8px apart. */
   .rivals .level-top { gap: 8px; padding: 0 4px; }
   /* Beside the results, the selected bar, which shows their level, stays bright over the dimmed levels; beside the
-     rivals or the preferences, it's dimmed with the rest. */
-  /* So the switch from one bar to another can fade, every bar sits over the levels' dimming and dims itself, the same
-     way: then the old bar dims as the new one brightens, and the ring moves over with them. The bars' dimming fades
-     its colour, not its opacity: fading the opacity of every bar at once gives each its own layer, and those judder
-     while the levels change width. */
-  .rivals .level-bar { z-index: 6; box-shadow: 0 0 0 2px rgba(234,245,236,0); transition: opacity .1s ease, box-shadow .1s ease; }
-  .rivals .level-bar::after { content: ''; position: absolute; inset: 0; z-index: 5; background: rgba(20,32,26,0);
-      pointer-events: none; transition: background-color .1s ease; }
-  .rivals .dlg-main:not(.levels-active) .level-bar:not(.on)::after,
-  .rivals .dlg-main.side-open:not(.levels-active) .level-bar::after { background: rgba(20,32,26,.5); }
-  /* The ring is outside the bar, so it's dimmed by hand, as the levels' dimming would. */
-  .rivals .dlg-main.side-open:not(.levels-active) .level-bar.on { box-shadow: 0 0 0 2px color-mix(in srgb, #EAF5EC 50%, #14201A); }
+     rivals or the preferences, it's dimmed with the rest. Switching bars doesn't fade: the switch waits for the new
+     level's results to be laid out, so a fade only starts late and looks slow. */
+  .rivals .dlg-main:not(.side-open) .level-bar.on { z-index: 6; }
   /* The buttons do too. */
   .rivals .panel-toggle { position: relative; z-index: 6; gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
   .rivals .prefs-toggle { width: 40px; padding: 0; }
