@@ -17,6 +17,13 @@ export type RunsTab = 'current' | 'previous';
 export const runsTabPath = (tab: RunsTab) => (tab === 'previous' ? '/admin/runs?tab=previous' : '/admin/runs');
 
 
+// "4 min", "1 h 05 min": how long ago `iso` was, for a run still going.
+function formatMinutesSince(iso: string): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`;
+}
+
+
 // A run's count; zeros are dimmed, and `alert` colours the rest as errors.
 function StatCell({ value, alert = false }: { value: number; alert?: boolean }) {
   return <td className={`number${value ? (alert ? ' error' : '') : ' muted'}`}>{formatNumber(value)}</td>;
@@ -88,6 +95,14 @@ export function RunsPage() {
     return () => clearInterval(timer);
   }, [active, current.reload, previous.reload]);
 
+  // A running "all" run shows over a queued one; either disables the button.
+  const allRuns = current.data?.runs.filter((run) => run.kind === 'all')  ??  [];
+  const runningAll = allRuns.find((run) => run.status === 'running');
+  const queuedAll = allRuns.find((run) => run.status === 'queued');
+  const scrapeAllLabel = runningAll
+    ? `Running for ${formatMinutesSince(runningAll.startedAt  ??  runningAll.createdAt)}`
+    : queuedAll ? `Queued ${formatAgo(queuedAll.createdAt)}` : 'Scrape all players';
+
   const scrapeAll = async () => {
     try {
       const { run } = await api<ScrapeRunResponse>('POST', '/admin/scrape-runs', { kind: 'all' });
@@ -109,8 +124,8 @@ export function RunsPage() {
       <div className="title-row">
         <h1>Scraping</h1>
         <div className="scrape-all">
-          <button type="button" onClick={() => void scrapeAll()}>Scrape all players</button>
-          {current.data  &&  <div className="muted small">Last run {formatAgo(current.data.lastAllRunAt)}</div>}
+          <button type="button" disabled={!! (runningAll  ||  queuedAll)} onClick={() => void scrapeAll()}>{scrapeAllLabel}</button>
+          {current.data  &&  <div className="muted small">{runningAll ? 'Previous' : 'Last'} run {formatAgo(current.data.lastAllRunAt)}</div>}
         </div>
       </div>
       <p className="muted">

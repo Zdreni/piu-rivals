@@ -207,7 +207,7 @@ export interface ScrapeRunsResponse {
   hasMore: boolean;
   // How many runs there are in that state in all, beyond the limit too.
   total: number;
-  // When the latest "all players" run started; null if none has yet.
+  // When the latest finished "all players" run started; null if none has finished yet.
   lastAllRunAt: string | null;
 }
 
