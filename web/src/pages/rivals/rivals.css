@@ -284,6 +284,22 @@
 .rivals .tab[data-tab="hidden"] { margin-left: auto; }
 .rivals .tab-count.hidden { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
 .rivals .tab-word.short { display: none; }
+/* The tab a chart was just snoozed or woken into splashes in its colour: a glow that swells and fades, and a ring
+   that spreads out of it (see ChartResults). */
+.rivals .tabs .tab { position: relative; }
+.rivals .tab[data-tab="rivals-win"] { --flash: #FF2A00; }
+.rivals .tab[data-tab="not-played"] { --flash: #3FA9F5; }
+.rivals .tab[data-tab="you-win"] { --flash: #4FE33F; }
+.rivals .tab[data-tab="tie"] { --flash: #F2E8B6; }
+.rivals .tab[data-tab="hidden"] { --flash: #D0573F; }
+.rivals .tab-flash { position: absolute; inset: 2px; border-radius: 10px; pointer-events: none;
+                     background: radial-gradient(closest-side, color-mix(in srgb, var(--flash) 55%, transparent), transparent);
+                     animation: tab-flash .9s ease-out both; }
+.rivals .tab-flash::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--flash); border-radius: inherit;
+                            animation: tab-flash-ring .9s ease-out both; }
+@keyframes tab-flash { from { opacity: 0; transform: scale(.5); } 20% { opacity: 1; } to { opacity: 0; transform: scale(1.3); } }
+@keyframes tab-flash-ring { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes tab-flash-fade { from { opacity: 1; } to { opacity: 0; } }
 /* --results-pad is the room on the sides of the cards' results, and --card-gap the room under them (see the chart
    cards); their backgrounds span both. */
 .rivals .dlg-body { --results-pad: 16px; --card-gap: 20px; overflow-y: auto; overflow-x: hidden; padding: 12px 0 0; flex: 1;
@@ -325,9 +341,9 @@
 .rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
 /* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
    tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it.
-   A snoozed chart's header always has that line, with its Wake button. */
+   A snoozed chart's header always has that line, with its Wake button, and keeps its chart beside the track. */
 .rivals .chart-card-head.unrolled .track { white-space: normal; }
-.rivals .chart-card-head.more .chart-card-title > :not(.track) { display: none; }
+.rivals .chart-card-head.more:not(.maximized, .snoozed) .chart-card-title > :not(.track) { display: none; }
 .rivals .chart-card-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
 .rivals .chart-card-head.more .chart-card-more { grid-template-rows: 1fr; }
 .rivals .chart-card-more > div { display: flex; align-items: center; gap: 10px; min-height: 0; overflow: hidden; visibility: hidden;
@@ -579,11 +595,57 @@
   .rivals .show-others { font-size: 12px; }
 }
 
+/* A maximized card (phones, see ChartResults): over the dimmed page, as wide as the screen but for a margin, and as
+   tall as its results, up to the screen's height, past which its results scroll. Its header is unrolled for good, the
+   chart and a close button beside the track, and the snooze lengths are a row of buttons. Rows have room for names,
+   scores and diffs, a little bigger than in the cards. */
+.rivals.card-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+                       padding: 16px 8px; background: rgba(8,12,10,.75); overflow: hidden; }
+.rivals.card-overlay .chart-card { width: 100%; max-height: 100%; overflow: hidden; transform-origin: 0 0; border: 1px solid #2B4034; border-radius: 8px;
+                                   background: #14201A; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+.rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; cursor: default; }
+.rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
+.rivals.card-overlay .chart-card-head .track, .rivals.card-overlay .chart-label { font-size: 18px; }
+.rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+                      margin: -6px -6px -6px 0; color: #9AB3A3; cursor: pointer; }
+.rivals .card-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.rivals .card-close:hover { color: #EAF5EC; }
+.rivals.card-overlay .snooze { gap: 10px; font-size: 15px; }
+.rivals.card-overlay .snooze-button { height: 40px; padding: 0 12px; }
+/* The snooze panel: darker than the header and only as wide as its lengths, with a small "Snooze chart to
+   Hidden" over them; they share one rounded block, split by lines, each as wide as its words. A snoozed chart's header
+   has one in every card, with how long it's snoozed for over its "Wake now". */
+.rivals .chart-card-more > div > .snooze-panel { flex: none; flex-direction: column; align-items: flex-start; gap: 5px;
+    margin: 10px 0 4px; padding: 6px 7px 7px; border-radius: 9px; background: #0B120E; }
+/* The panel is centred in its card, and its words and buttons in it. */
+.rivals .chart-card-more > div > .snooze-panel { margin-inline: auto; padding-inline: 28px; }
+.rivals .snooze-panel :is(.snooze-title, .snooze-lengths) { align-self: center; }
+.rivals .snooze-title { padding-left: 2px; color: #6B8174; font: 500 12px/1 Roboto, Arial, sans-serif; letter-spacing: .04em; }
+.rivals .snooze-lengths { display: flex; overflow: hidden; border: 1px solid #2B4034; border-radius: 7px; background: #1C2B22; }
+.rivals .snooze-lengths button { height: 36px; padding: 0 9px; color: #9AB3A3; white-space: nowrap; cursor: pointer;
+                                 font: 500 14px/1 Roboto, Arial, sans-serif; }
+.rivals .snooze-lengths button + button { border-left: 1px solid #2B4034; }
+.rivals .snooze-lengths button:hover { color: #4FE33F; }
+.rivals .snooze-lengths button:active { background: #3D5A49; color: #4FE33F; }
+.rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
+.rivals.card-overlay .chart-card-box { border-radius: 0; }
+.rivals.card-overlay .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; padding: 6px 0; }
+.rivals.card-overlay .chart-card-results.no-diffs { grid-template-columns: minmax(0, 1fr) auto; }
+.rivals.card-overlay .result { padding: 5px 14px; font-size: 17px; }
+.rivals.card-overlay .result > :nth-child(2) { padding-left: 12px; }
+.rivals.card-overlay .result .delta { padding-left: 18px; }
+.rivals.card-overlay .result .delta-tie { width: 6ch; }
+.rivals.card-overlay .result-details { padding: 0 14px; font-size: 15px; }
+.rivals.card-overlay .result-info { padding-left: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word,
   .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div,
   .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body,
   .rivals .chart-card-more .chart-label { transition: none; }
+  /* The tab only glows and fades, without swelling. */
+  .rivals .tab-flash { animation-name: tab-flash-fade; }
+  .rivals .tab-flash::after { animation: none; opacity: 0; }
 }
 
 /* Results too narrow for both scores and diffs (about the same room for names either way): where there are diffs,

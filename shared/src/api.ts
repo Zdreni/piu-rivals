@@ -44,8 +44,9 @@ export interface ChartPreference {
   snoozedUntil: string | null;
 }
 
-// How long a snooze lasts, as offered: N days end (N - 1) * 24 + 12 hours after the snooze is set.
-export type SnoozeDays = 1 | 3 | 7;
+// How long a snooze lasts, in whole days from 1 to 365: N days end (N - 1) * 24 + 12 hours after the snooze is set.
+// The site picks which lengths it offers.
+export type SnoozeDays = number;
 
 export interface MeResponse {
   user: User;

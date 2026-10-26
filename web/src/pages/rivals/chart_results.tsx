@@ -1,5 +1,6 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { ChartResultsItem, type Keep } from './chart_results_item.tsx';
 import { PHONE, tabsClass, useTabsFit } from './layout.ts';
 import { byLeadWeight, byTargetWeight, type ChartRow } from './model.ts';
@@ -32,8 +33,10 @@ const onPhoneChange = (listener: () => void) => {
 
 type Keeps = ReturnType<typeof keeps>;
 
+const usePhone = () => useSyncExternalStore(onPhoneChange, () => PHONE.matches);
+
 // How many rival scores cards keep listed, by result, on this screen.
-export const useKeeps = () => (useSyncExternalStore(onPhoneChange, () => PHONE.matches) ? KEEP_PHONE : KEEP_DESKTOP);
+export const useKeeps = () => (usePhone() ? KEEP_PHONE : KEEP_DESKTOP);
 
 export interface Folding {
   fold: Stat[];
@@ -54,6 +57,10 @@ export const tabFolding = (tab: TabId, keep: Keeps): Folding => (tab === 'hidden
     keep: { 'not-played': keep.unplayed, 'rivals-win': keep.lost, 'you-win': keep.won, tie: null }[tab],
     dimWon: tab !== 'you-win',
   });
+// A maximized card lists this many of the rivals who beat you, the highest ones, and of the rivals you beat, the closest
+// ones; unplayed, it lists as many of the lowest scores as both.
+const MAXIMIZED_ABOVE = 10;
+const MAXIMIZED_BELOW = 2;
 // Each click on a fold button lists this many more of its scores.
 const SHOW_STEP = 10;
 
@@ -61,6 +68,15 @@ const SHOW_STEP = 10;
 const LEAVE_MS = 200;
 const MOVE_MS = 300;
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+// A maximized card grows out of its card this long, and shrinks back into it this long, as the page dims and brightens.
+const GROW_MS = 260;
+const SHRINK_MS = 200;
+const BACKDROP_CLEAR = 'rgba(8,12,10,0)';
+
+// The transform that puts a card laid out at `to` over `from`, scaled to its size (from its top left corner, see
+// .card-overlay).
+const transformFrom = (from: DOMRect, to: DOMRect) =>
+  `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
 
 // Where each card and group title in `container` is, by its data-flip key.
 const flipRects = (container: HTMLElement | null) =>
@@ -78,6 +94,10 @@ const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.le
 // lengths, and dims the card; a length snoozes its chart with `onSnooze`, and a click anywhere else only closes it.
 // Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
 // the time snoozed charts have left.
+// On phones, a tap on a card maximizes it: it opens over the page, as wide as the screen, with more of its rivals'
+// scores (see MAXIMIZED_ABOVE) and their diffs, its header unrolled and the snooze lengths in a row. A tap outside it, its close button or Escape closes it;
+// a snooze or a wake closes it too, and the card behind fades out. It grows out of its card in the grid, and shrinks
+// back into it. The tab a snoozed or woken chart goes into splashes once it's there.
 export function ChartResults({
   levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, now, onSelectTab, onSnooze,
 }: {
@@ -102,6 +122,17 @@ export function ChartResults({
   const [menu, setMenu] = useState<number | null>(null);
   // The card fading out before its chart is snoozed or woken.
   const [leaving, setLeaving] = useState<number | null>(null);
+  // The tab a chart just went into, snoozed or woken, which splashes (see .tab-flash); `n` restarts the splash.
+  const [flash, setFlash] = useState<{ tab: TabId; n: number } | null>(null);
+  // The chart whose card is maximized (phones only), and what's unrolled and shown in it, kept apart from its card in
+  // the grid and cleared each time it opens: the row unrolled, and how many of its folded and higher scores were shown.
+  const [maximized, setMaximized] = useState<number | null>(null);
+  const [bigUnrolled, setBigUnrolled] = useState<string | null>(null);
+  const [bigShown, setBigShown] = useState({ folded: 0, higher: 0 });
+  const phone = usePhone();
+  const overlayRef = useRef<HTMLDivElement>(null);
+  // Set while the maximized card shrinks back, so it isn't closed twice.
+  const shrinking = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   // Where the cards and group titles were before a card left, so they move from there into their new places.
   const movedFrom = useRef<Map<string, DOMRect> | null>(null);
@@ -135,6 +166,11 @@ export function ChartResults({
       setUnrolled(null);
       setMenu(null);
       onSnooze(chartId, days);
+      // A woken chart goes into the tab of its scores.
+      const chart = [...levelCharts, ...hiddenGroups.flatMap(({ charts }) => charts)].find(({ id }) => id === chartId);
+      const into = days !== null ? 'hidden' : chart  &&  chartTier({ ...chart, snoozedUntil: null }, ties);
+      if (into)
+        setFlash((last) => ({ tab: into, n: (last?.n  ??  0) + 1 }));
     };
 
     if (REDUCED_MOTION.matches) {
@@ -170,6 +206,22 @@ export function ChartResults({
     };
   }, [menu]);
 
+  // While a card is maximized, the page behind it doesn't scroll, and Escape closes it.
+  useEffect(() => {
+    if (maximized === null)
+      return;
+
+    const escape = (event: KeyboardEvent) => event.key === 'Escape'  &&  closeMaximized.current();
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = 'hidden';
+    window.addEventListener('keydown', escape);
+    return () => {
+      root.style.overflow = overflow;
+      window.removeEventListener('keydown', escape);
+    };
+  }, [maximized]);
+
   const keep = useKeeps();
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
@@ -198,36 +250,56 @@ export function ChartResults({
   // Tabs are named after what their numbers count.
   const tabWord = (id: TabId) => STAT_WORDS[countBy][TIER_STAT[id]];
 
+  // The charts listed in the open tab, with how their cards fold, so the maximized one is found among them.
+  const listed: [ChartRow, Folding][] = [];
   // Rivals whose result is one of `fold`, or between the scores kept by `keep`, are folded; each click on their
-  // button shows SHOW_STEP more.
-  const cards = (charts: ChartRow[], { fold, colorByRealDiff, keep, dimWon }: Folding) => charts.map((chart) => (
-    <ChartResultsItem
-      key={chart.id}
-      chart={chart}
-      myName={myName}
-      fold={fold}
-      foldedShown={shownFolded.get(chart.id)  ??  0}
-      keep={keep}
-      higherShown={shownHigher.get(chart.id)  ??  0}
-      colorByRealDiff={colorByRealDiff}
-      dimWon={dimWon}
-      markTies={ties}
-      scoreCap={scoreCap}
-      now={now}
-      onExpandFolded={() => setShownFolded(showMore(shownFolded, chart.id))}
-      onExpandHigher={() => setShownHigher(showMore(shownHigher, chart.id))}
-      unrolled={unrolled?.startsWith(`${chart.id} `) ? unrolled.slice(`${chart.id} `.length) : null}
-      onUnroll={(playerId) => setUnrolled(playerId === null ? null : `${chart.id} ${playerId}`)}
-      // Charts in the "Hidden" tab are hidden already.
-      canSnooze={tab !== 'hidden'}
-      menuOpen={menu === chart.id}
-      onMenu={() => setMenu(menu === chart.id ? null : chart.id)}
-      onSnooze={(days) => leave(chart.id, days)}
-      // A wake needs no undo: the card goes back to its tab at once.
-      leaving={leaving === chart.id}
-      onWake={() => leave(chart.id, null)}
-    />
-  ));
+  // button shows SHOW_STEP more. A maximized card folds the rivals you beat (and, but in the solo view, tie with) past
+  // the closest MAXIMIZED_BELOW, and those who beat you past the highest MAXIMIZED_ABOVE.
+  const card = (chart: ChartRow, { fold, colorByRealDiff, keep, dimWon }: Folding, big = false) => {
+    const unrolledHere = big ? bigUnrolled : unrolled?.startsWith(`${chart.id} `) ? unrolled.slice(`${chart.id} `.length) : null;
+    return (
+      <ChartResultsItem
+        key={chart.id}
+        chart={chart}
+        myName={myName}
+        fold={! big ? fold : ties ? ['win'] : ['win', 'tie']}
+        foldedShown={big ? MAXIMIZED_BELOW + bigShown.folded : shownFolded.get(chart.id)  ??  0}
+        keep={! big ? keep : chart.mine === null ? { top: 0, bottom: MAXIMIZED_ABOVE + MAXIMIZED_BELOW } : { top: MAXIMIZED_ABOVE, bottom: 1 }}
+        higherShown={big ? bigShown.higher : shownHigher.get(chart.id)  ??  0}
+        colorByRealDiff={colorByRealDiff}
+        dimWon={dimWon}
+        markTies={ties}
+        scoreCap={scoreCap}
+        now={now}
+        onExpandFolded={() => (big ? setBigShown({ ...bigShown, folded: bigShown.folded + SHOW_STEP })
+          : setShownFolded(showMore(shownFolded, chart.id)))}
+        onExpandHigher={() => (big ? setBigShown({ ...bigShown, higher: bigShown.higher + SHOW_STEP })
+          : setShownHigher(showMore(shownHigher, chart.id)))}
+        unrolled={unrolledHere}
+        onUnroll={(playerId) => (big ? setBigUnrolled(playerId) : setUnrolled(playerId === null ? null : `${chart.id} ${playerId}`))}
+        // Charts in the "Hidden" tab are hidden already.
+        canSnooze={tab !== 'hidden'}
+        menuOpen={! big  &&  menu === chart.id}
+        onMenu={() => setMenu(menu === chart.id ? null : chart.id)}
+        onSnooze={(days) => (big ? closeMaximized.current(() => leave(chart.id, days)) : leave(chart.id, days))}
+        // A wake needs no undo: the card goes back to its tab at once.
+        leaving={! big  &&  leaving === chart.id}
+        onWake={() => (big ? closeMaximized.current(() => leave(chart.id, null)) : leave(chart.id, null))}
+        maximized={big}
+        onMaximize={phone  &&  ! big ? () => {
+          setMenu(null);
+          setBigUnrolled(null);
+          setBigShown({ folded: 0, higher: 0 });
+          setMaximized(chart.id);
+        } : undefined}
+        onClose={() => closeMaximized.current()}
+      />
+    );
+  };
+  const cards = (charts: ChartRow[], folding: Folding) => charts.map((chart) => {
+    listed.push([chart, folding]);
+    return card(chart, folding);
+  });
 
   let body;
   if (tabCounts[tab] === 0) {
@@ -252,6 +324,62 @@ export function ChartResults({
     body = <div className={`chart-grid${tab === 'not-played' ? ' narrow' : ''}`}>{content}</div>;
   }
 
+  // A card stays maximized only while its chart is listed in the open tab, and on phones.
+  const big = phone ? listed.find(([chart]) => chart.id === maximized) : undefined;
+  useEffect(() => {
+    if (maximized !== null  &&  ! big)
+      setMaximized(null);
+  }, [maximized, big]);
+
+  // The maximized card and its card in the grid, where it grows from and shrinks back to.
+  const growing = () => {
+    const overlay = overlayRef.current;
+    const card = overlay?.firstElementChild as HTMLElement | null | undefined;
+    const source = bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximized}"]`);
+    return overlay  &&  card  &&  source  &&  ! REDUCED_MOTION.matches ? { overlay, card, from: source.getBoundingClientRect() } : null;
+  };
+
+  const bigId = big?.[0].id;
+  useLayoutEffect(() => {
+    shrinking.current = false;
+    const grow = bigId === undefined ? null : growing();
+    if (! grow)
+      return;
+
+    const { overlay, card, from } = grow;
+    card.animate([{ transform: transformFrom(from, card.getBoundingClientRect()) }, { transform: 'none' }],
+      { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    overlay.animate({ backgroundColor: [BACKDROP_CLEAR, getComputedStyle(overlay).backgroundColor] }, { duration: GROW_MS });
+  }, [bigId]);
+
+  // Shrinks the maximized card back into its card, then closes it and calls `then`.
+  const closeMaximized = useRef((then?: () => void) => {});
+  closeMaximized.current = (then?: () => void) => {
+    if (shrinking.current)
+      return;
+
+    const done = () => {
+      shrinking.current = false;
+      setMaximized(null);
+      then?.();
+    };
+    const grow = growing();
+    if (! grow) {
+      done();
+      return;
+    }
+
+    shrinking.current = true;
+    const { overlay, card, from } = grow;
+    // Measured where it's laid out, even if it's still growing.
+    card.getAnimations().forEach((animation) => animation.cancel());
+    overlay.getAnimations().forEach((animation) => animation.cancel());
+    card.animate([{ transform: 'none' }, { transform: transformFrom(from, card.getBoundingClientRect()) }],
+      { duration: SHRINK_MS, easing: 'ease-in', fill: 'forwards' });
+    overlay.animate({ backgroundColor: [getComputedStyle(overlay).backgroundColor, BACKDROP_CLEAR] }, { duration: SHRINK_MS, fill: 'forwards' })
+      .finished.then(done, done);
+  };
+
   return (
     <div className="score-content">
       <div className={`tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist" aria-label="Score results">
@@ -261,10 +389,19 @@ export function ChartResults({
             <span className="tab-word">{capitalized(tabWord(id))}</span>
             <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalized(tabWord(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
+            {flash?.tab === id  &&  <span key={flash.n} className="tab-flash" aria-hidden="true" onAnimationEnd={() => setFlash(null)} />}
           </button>
         ))}
       </div>
       <div className="dlg-body" role="tabpanel" ref={bodyRef}>{body}</div>
+      {/* Out of the panels, which slide by transforms and so would hold a fixed overlay inside them. */}
+      {big  &&  createPortal(
+        <div className="rivals card-overlay" ref={overlayRef} role="dialog" aria-modal="true" aria-label={big[0].trackTitle}
+          onClick={(event) => event.target === event.currentTarget  &&  closeMaximized.current()}>
+          {card(big[0], big[1], true)}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

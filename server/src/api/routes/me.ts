@@ -17,7 +17,7 @@ const MAX_PREFERENCES_LENGTH = 20000;
 // A snooze of N days ends (N - 1) * 24 + 12 hours after it's set: it outlasts any session, however long, while a 1-day
 // snooze set late in the evening may still hide the chart the next morning. A fixed length doesn't depend on time zones.
 const snoozeHours = (days: SnoozeDays) => (days - 1) * 24 + 12;
-const SnoozeDaysBody = Type.Union([Type.Literal(1), Type.Literal(3), Type.Literal(7)]);
+const SnoozeDaysBody = Type.Integer({ minimum: 1, maximum: 365 });
 
 
 async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]> {
