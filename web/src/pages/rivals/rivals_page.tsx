@@ -19,8 +19,7 @@ import './rivals.css';
 // comes back into view after a while.
 const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
-// While the levels are dimmed, a double tap or a long press on them brings them into use; in use, a double tap dims them.
-const DOUBLE_TAP_MS = 350;
+// While the levels are dimmed, a long press on them brings them into use.
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
 // While charts are snoozed, the time is checked this often, to wake them and count down the time they have left.
@@ -111,15 +110,14 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [solo, setSolo] = useState<string | null>(null);
   // On phones, the panel in use is the wide one. A tap on the dimmed results only brings them into use, so they can't
   // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
-  // use; a tap on the level already picked, a double tap or a long press brings the levels into use. In use, a tap on
-  // the level already picked or a double tap gives the room back to the results.
+  // use; a tap on the level already picked or a long press brings the levels into use. In use, a tap on the level
+  // already picked gives the room back to the results.
   const [levelsActive, setLevelsActive] = useState(false);
   // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
   // in stays shown while it slides out. On phones, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
   const levelsActiveBeforeSide = useRef(false);
-  const lastLevelsTap = useRef(0);
   const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
   // Set once a long press has brought the levels into use, so the click that ends it does nothing more.
   const longPressed = useRef(false);
@@ -157,13 +155,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     if (! PHONE.matches  ||  target.closest('.panel-toggle'))
       return;
 
-    // A tap that switches the levels doesn't start a double tap, so a double tap on the level picked switches them once.
     if (levels) {
-      const now = event.timeStamp;
-      const doubleTap = now - lastLevelsTap.current < DOUBLE_TAP_MS;
-      const switches = doubleTap  ||  !! target.closest('.level-bar.on');
-      lastLevelsTap.current = switches ? 0 : now;
-      if (switches)
+      if (target.closest('.level-bar.on'))
         setLevelsActive(! levelsActive);
       return;
     }
