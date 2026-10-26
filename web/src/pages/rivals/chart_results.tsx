@@ -73,6 +73,9 @@ const GROW_MS = 260;
 const SHRINK_MS = 200;
 const BACKDROP_CLEAR = 'rgba(8,12,10,0)';
 
+// Wider than phones, a maximized card keeps this far from the window's top and bottom.
+const IN_PLACE_MARGIN_PX = 16;
+
 // The transform that puts a card laid out at `to` over `from`, scaled to its size (from its top left corner, see
 // .card-overlay).
 const transformFrom = (from: DOMRect, to: DOMRect) =>
@@ -94,10 +97,11 @@ const byRivalCount = (a: ChartRow, b: ChartRow) => b.rivals.length - a.rivals.le
 // lengths, and dims the card; a length snoozes its chart with `onSnooze`, and a click anywhere else only closes it.
 // Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
 // the time snoozed charts have left.
-// On phones, a tap on a card maximizes it: it opens over the page, as wide as the screen, with more of its rivals'
-// scores (see MAXIMIZED_ABOVE) and their diffs, its header unrolled and the snooze lengths in a row. A tap outside it, its close button or Escape closes it;
-// a snooze or a wake closes it too, and the card behind fades out. It grows out of its card in the grid, and shrinks
-// back into it. The tab a snoozed or woken chart goes into splashes once it's there.
+// A click on a card maximizes it, so its header doesn't unroll here, nor its Snooze... menu open: it opens over the
+// page, as wide as the screen on phones and centred on wider ones, with more of its rivals' scores (see MAXIMIZED_ABOVE)
+// and their diffs, its header unrolled and the snooze lengths in a row. A click outside it, its close button or Escape closes it;
+// a snooze or a wake closes it too, and the card behind fades out; so does a resize, at once. It grows out of its card
+// in the grid, and shrinks back into it; wider than phones, it keeps its card's width and place, and only gets longer. The tab a snoozed or woken chart goes into splashes once it's there.
 export function ChartResults({
   levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, now, onSelectTab, onSnooze,
 }: {
@@ -124,7 +128,7 @@ export function ChartResults({
   const [leaving, setLeaving] = useState<number | null>(null);
   // The tab a chart just went into, snoozed or woken, which splashes (see .tab-flash); `n` restarts the splash.
   const [flash, setFlash] = useState<{ tab: TabId; n: number } | null>(null);
-  // The chart whose card is maximized (phones only), and what's unrolled and shown in it, kept apart from its card in
+  // The chart whose card is maximized, and what's unrolled and shown in it, kept apart from its card in
   // the grid and cleared each time it opens: the row unrolled, and how many of its folded and higher scores were shown.
   const [maximized, setMaximized] = useState<number | null>(null);
   const [bigUnrolled, setBigUnrolled] = useState<string | null>(null);
@@ -212,13 +216,17 @@ export function ChartResults({
       return;
 
     const escape = (event: KeyboardEvent) => event.key === 'Escape'  &&  closeMaximized.current();
+    // Its place is its card's, measured once.
+    const resize = () => setMaximized(null);
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = 'hidden';
     window.addEventListener('keydown', escape);
+    window.addEventListener('resize', resize);
     return () => {
       root.style.overflow = overflow;
       window.removeEventListener('keydown', escape);
+      window.removeEventListener('resize', resize);
     };
   }, [maximized]);
 
@@ -286,7 +294,9 @@ export function ChartResults({
         leaving={! big  &&  leaving === chart.id}
         onWake={() => (big ? closeMaximized.current(() => leave(chart.id, null)) : leave(chart.id, null))}
         maximized={big}
-        onMaximize={phone  &&  ! big ? () => {
+        // Wider than phones, where it keeps its card's place, a click on its header rolls it back.
+        closeOnHead={! phone}
+        onMaximize={! big ? () => {
           setMenu(null);
           setBigUnrolled(null);
           setBigShown({ folded: 0, higher: 0 });
@@ -324,19 +334,25 @@ export function ChartResults({
     body = <div className={`chart-grid${tab === 'not-played' ? ' narrow' : ''}`}>{content}</div>;
   }
 
-  // A card stays maximized only while its chart is listed in the open tab, and on phones.
-  const big = phone ? listed.find(([chart]) => chart.id === maximized) : undefined;
+  // A card stays maximized only while its chart is listed in the open tab.
+  const big = listed.find(([chart]) => chart.id === maximized);
   useEffect(() => {
     if (maximized !== null  &&  ! big)
       setMaximized(null);
   }, [maximized, big]);
 
-  // The maximized card and its card in the grid, where it grows from and shrinks back to.
+  // The maximized card, and where its card in the grid is, which it grows from and shrinks back to: on phones the
+  // whole card, wider only its results' box, as wide as it's drawn, from the header's top down.
   const growing = () => {
     const overlay = overlayRef.current;
     const card = overlay?.firstElementChild as HTMLElement | null | undefined;
     const source = bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximized}"]`);
-    return overlay  &&  card  &&  source  &&  ! REDUCED_MOTION.matches ? { overlay, card, from: source.getBoundingClientRect() } : null;
+    const box = source?.querySelector('.chart-card-box')?.getBoundingClientRect();
+    if (! overlay  ||  ! card  ||  ! source  ||  ! box)
+      return null;
+
+    const whole = source.getBoundingClientRect();
+    return { overlay, card, from: phone ? whole : new DOMRect(box.left, whole.top, box.width, box.bottom - whole.top) };
   };
 
   const bigId = big?.[0].id;
@@ -347,6 +363,15 @@ export function ChartResults({
       return;
 
     const { overlay, card, from } = grow;
+    if (! phone) {
+      overlay.style.setProperty('--card-left', `${from.left}px`);
+      overlay.style.setProperty('--card-width', `${from.width}px`);
+      const top = Math.min(from.top, window.innerHeight - IN_PLACE_MARGIN_PX - card.offsetHeight);
+      overlay.style.setProperty('--card-top', `${Math.max(IN_PLACE_MARGIN_PX, top)}px`);
+    }
+    if (REDUCED_MOTION.matches)
+      return;
+
     card.animate([{ transform: transformFrom(from, card.getBoundingClientRect()) }, { transform: 'none' }],
       { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' });
     overlay.animate({ backgroundColor: [BACKDROP_CLEAR, getComputedStyle(overlay).backgroundColor] }, { duration: GROW_MS });
@@ -363,7 +388,7 @@ export function ChartResults({
       setMaximized(null);
       then?.();
     };
-    const grow = growing();
+    const grow = REDUCED_MOTION.matches ? null : growing();
     if (! grow) {
       done();
       return;
@@ -396,7 +421,7 @@ export function ChartResults({
       <div className="dlg-body" role="tabpanel" ref={bodyRef}>{body}</div>
       {/* Out of the panels, which slide by transforms and so would hold a fixed overlay inside them. */}
       {big  &&  createPortal(
-        <div className="rivals card-overlay" ref={overlayRef} role="dialog" aria-modal="true" aria-label={big[0].trackTitle}
+        <div className={`rivals card-overlay${phone ? '' : ' in-place'}`} ref={overlayRef} role="dialog" aria-modal="true" aria-label={big[0].trackTitle}
           onClick={(event) => event.target === event.currentTarget  &&  closeMaximized.current()}>
           {card(big[0], big[1], true)}
         </div>,

@@ -610,17 +610,26 @@
   .rivals .show-others { font-size: 12px; }
 }
 
-/* A maximized card (phones, see ChartResults): over the dimmed page, as wide as the screen but for a margin, and as
-   tall as its results, up to the screen's height, past which its results scroll. Its header is unrolled for good, the
-   chart and a close button beside the track, and the snooze lengths are a row of buttons. Rows have room for names,
-   scores and diffs, a little bigger than in the cards. */
+/* A maximized card (see ChartResults): over the dimmed page, as tall as its results, up to the screen's height, past
+   which its results scroll. On phones it's as wide as the screen but for a margin, and its rows have room for names,
+   scores and diffs, a little bigger than in the cards. Wider (.in-place), it keeps its card's width and place across the
+   page, and its rows their sizes, so it only gets longer: its top is its card's, or higher if it doesn't fit below
+   (--card-left, --card-top and --card-width, set by ChartResults). Its header is unrolled for good, the chart and a
+   close button beside the track, and the snooze lengths are a row of buttons. Cards that open so show it on hover. */
 .rivals.card-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
                        padding: 16px 8px; background: rgba(8,12,10,.75); overflow: hidden; }
+.rivals .chart-card.maximizable { cursor: pointer; }
+@media (hover: hover) {
+  .rivals .chart-card.maximizable:hover .chart-card-box { border-top-color: #3D5A49; background: #1D2D24; }
+}
 .rivals.card-overlay .chart-card { width: 100%; max-height: 100%; overflow: hidden; transform-origin: 0 0; border: 1px solid #2B4034; border-radius: 8px;
                                    background: #14201A; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+.rivals.card-overlay.in-place .chart-card { position: absolute; left: var(--card-left); top: var(--card-top); width: var(--card-width);
+                                            max-height: calc(100% - 32px); }
 .rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; cursor: default; }
+.rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; cursor: pointer; }
 .rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
-.rivals.card-overlay .chart-card-head .track, .rivals.card-overlay .chart-label { font-size: 18px; }
+.rivals.card-overlay:not(.in-place) .chart-card-head .track, .rivals.card-overlay:not(.in-place) .chart-label { font-size: 18px; }
 .rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
                       margin: -6px -6px -6px 0; color: #9AB3A3; cursor: pointer; }
 .rivals .card-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
@@ -644,14 +653,14 @@
 .rivals .snooze-lengths button:active { background: #3D5A49; color: #4FE33F; }
 .rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
 .rivals.card-overlay .chart-card-box { border-radius: 0; }
-.rivals.card-overlay .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; padding: 6px 0; }
-.rivals.card-overlay .chart-card-results.no-diffs { grid-template-columns: minmax(0, 1fr) auto; }
-.rivals.card-overlay .result { padding: 5px 14px; font-size: 17px; }
-.rivals.card-overlay .result > :nth-child(2) { padding-left: 12px; }
-.rivals.card-overlay .result .delta { padding-left: 18px; }
-.rivals.card-overlay .result .delta-tie { width: 6ch; }
-.rivals.card-overlay .result-details { padding: 0 14px; font-size: 15px; }
-.rivals.card-overlay .result-info { padding-left: 0; }
+.rivals.card-overlay:not(.in-place) .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; padding: 6px 0; }
+.rivals.card-overlay:not(.in-place) .chart-card-results.no-diffs { grid-template-columns: minmax(0, 1fr) auto; }
+.rivals.card-overlay:not(.in-place) .result { padding: 5px 14px; font-size: 17px; }
+.rivals.card-overlay:not(.in-place) .result > :nth-child(2) { padding-left: 12px; }
+.rivals.card-overlay:not(.in-place) .result .delta { padding-left: 18px; }
+.rivals.card-overlay:not(.in-place) .result .delta-tie { width: 6ch; }
+.rivals.card-overlay:not(.in-place) .result-details { padding: 0 14px; font-size: 15px; }
+.rivals.card-overlay:not(.in-place) .result-info { padding-left: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word,
