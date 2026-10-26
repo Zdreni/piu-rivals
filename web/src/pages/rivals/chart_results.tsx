@@ -230,6 +230,26 @@ export function ChartResults({
     };
   }, [maximized]);
 
+  // The back button (on phones, mostly) closes a maximized card rather than leaving the page: opening it adds a step
+  // to the browser's history, which closing it any other way takes back.
+  const open = maximized !== null;
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(() => {
+    if (! open)
+      return;
+
+    if (! window.history.state?.maximized)
+      window.history.pushState({ ...window.history.state, maximized: true }, '');
+    const back = () => closeMaximized.current();
+    window.addEventListener('popstate', back);
+    return () => {
+      window.removeEventListener('popstate', back);
+      // A moment later, so a card opened again at once (as React's strict mode does) keeps its step.
+      window.setTimeout(() => ! openRef.current  &&  window.history.state?.maximized  &&  window.history.back());
+    };
+  }, [open]);
+
   const keep = useKeeps();
   const showMore = (shown: Map<number, number>, chartId: number) =>
     new Map(shown).set(chartId, (shown.get(chartId)  ??  0) + SHOW_STEP);
