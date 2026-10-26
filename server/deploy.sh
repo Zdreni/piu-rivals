@@ -5,7 +5,9 @@
 #
 # Without a commit it deploys the latest origin/main. The deploy workflow runs it over SSH through a forced
 # command (see docs/vps_deployment.md), so the commit then comes in SSH_ORIGINAL_COMMAND.
-# Only fast-forwards: local changes to tracked files on the VPS stop the deploy instead of being lost.
+# GitHub is the source of truth: the checkout is moved to the commit even when the history was rewritten
+# (force pushes), and local changes to tracked files on the VPS are discarded. Untracked files (server/.env,
+# node_modules) stay.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -25,8 +27,8 @@ if [ "${1:-}" != "--updated" ]; then
   fi
 
   previous=$(git rev-parse HEAD)
-  git fetch --quiet origin main
-  git merge --ff-only --quiet "${target:-origin/main}"
+  git fetch --quiet --force origin main
+  git checkout --quiet --force -B main "${target:-origin/main}"
   echo "deploy: $(git log -1 --format='%h %s')"
   # The rest runs from the new version of this script.
   exec bash server/deploy.sh --updated "$previous"

@@ -148,11 +148,11 @@ By hand, from the repo folder:
 bash server/deploy.sh   # latest origin/main; or pass a commit hash
 ```
 
-[`server/deploy.sh`](../server/deploy.sh) fast-forwards the checkout and, only when
+[`server/deploy.sh`](../server/deploy.sh) moves the checkout to the commit and, only when
 `package-lock.json` changed, runs `npm ci` and installs Playwright's Chromium. Then it runs the
-database migrations, restarts the pm2 apps and waits for `/health`. It never overwrites local
-changes to tracked files: if there are any, it stops and changes nothing. `server/.env` isn't
-tracked, so it always stays.
+database migrations, restarts the pm2 apps and waits for `/health`. GitHub is the source of truth:
+the checkout follows it even after a force push or rewritten history, and local changes to tracked
+files on the VPS are discarded. `server/.env` isn't tracked, so it always stays.
 
 A worker restart stops the scrape run in progress; it shows as "interrupted", and everything
 stored up to then stays. Start a new run to continue. So the worker restarts only when the
