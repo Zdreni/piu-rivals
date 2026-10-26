@@ -134,6 +134,15 @@ export interface AdminUsersResponse {
   users: AdminUser[];
 }
 
+// One user's page: their account, rival list and Rivals view settings, as they have them.
+export interface AdminUserResponse {
+  user: AdminUser;
+  rivals: Rival[];
+  preferences: Preferences;
+  // How many charts they have snoozed now.
+  snoozes: number;
+}
+
 export interface AdminPlayer extends ListedPlayer {
   // Our own id, in the order players were added; `id` is the PIU Scores GUID.
   dbId: number;

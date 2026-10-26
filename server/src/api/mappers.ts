@@ -1,4 +1,4 @@
-import type { PlayerSummary, User } from '@piu-rivals/shared';
+import type { ChartPreference, PlayerSummary, Preferences, Rival, User } from '@piu-rivals/shared';
 import { type Kysely, sql } from 'kysely';
 import type { Database } from '../db/schema.ts';
 
@@ -57,4 +57,35 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
 
 export async function loadUser(db: Kysely<Database>, userId: number): Promise<User | null> {
   return (await loadUsers(db, [userId]))[0]?.user  ??  null;
+}
+
+
+export async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]> {
+  const rows = await db.selectFrom('user_rivals')
+    .innerJoin('players', 'players.id', 'user_rivals.player_id')
+    .select([...playerSummaryColumns, 'user_rivals.hidden'])
+    .where('user_rivals.user_id', '=', userId)
+    .orderBy(playerName())
+    .execute();
+
+  return rows.map((row) => ({ ...playerSummary(row), hidden: !! row.hidden }));
+}
+
+
+export async function loadPreferences(db: Kysely<Database>, userId: number): Promise<Preferences> {
+  const row = await db.selectFrom('user_preferences').select('data').where('user_id', '=', userId).executeTakeFirst();
+  return row?.data  ??  {};
+}
+
+
+// The user's chart settings that are in force; expired snoozes are left out.
+export async function loadChartPreferences(db: Kysely<Database>, userId: number): Promise<ChartPreference[]> {
+  const rows = await db.selectFrom('user_chart_preferences')
+    .select(['chart_id', 'snoozed_until'])
+    .where('user_id', '=', userId)
+    .where('snoozed_until', '>', sql<string>`CURRENT_TIMESTAMP`)
+    .orderBy('chart_id')
+    .execute();
+
+  return rows.map((row) => ({ chartId: row.chart_id, snoozedUntil: row.snoozed_until === null ? null : toIso(row.snoozed_until) }));
 }

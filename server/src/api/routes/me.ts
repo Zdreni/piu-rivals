@@ -1,5 +1,5 @@
 import type {
-  ChartPreference, ChartPreferencesResponse, MeResponse, Preferences, PreferencesResponse, Rival, RivalsResponse, SnoozeDays,
+  ChartPreferencesResponse, MeResponse, Preferences, PreferencesResponse, RivalsResponse, SnoozeDays,
 } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
@@ -9,7 +9,7 @@ import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireUser, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { loadUser, playerName, playerSummary, playerSummaryColumns, toIso } from '../mappers.ts';
+import { loadChartPreferences, loadPreferences, loadRivals, loadUser } from '../mappers.ts';
 import { GUID, IdParams, PlayerIdParams } from './params.ts';
 
 const MAX_RIVALS = 100;
@@ -18,37 +18,6 @@ const MAX_PREFERENCES_LENGTH = 20000;
 // snooze set late in the evening may still hide the chart the next morning. A fixed length doesn't depend on time zones.
 const snoozeHours = (days: SnoozeDays) => (days - 1) * 24 + 12;
 const SnoozeDaysBody = Type.Integer({ minimum: 1, maximum: 365 });
-
-
-async function loadRivals(db: Kysely<Database>, userId: number): Promise<Rival[]> {
-  const rows = await db.selectFrom('user_rivals')
-    .innerJoin('players', 'players.id', 'user_rivals.player_id')
-    .select([...playerSummaryColumns, 'user_rivals.hidden'])
-    .where('user_rivals.user_id', '=', userId)
-    .orderBy(playerName())
-    .execute();
-
-  return rows.map((row) => ({ ...playerSummary(row), hidden: !! row.hidden }));
-}
-
-
-async function loadPreferences(db: Kysely<Database>, userId: number): Promise<Preferences> {
-  const row = await db.selectFrom('user_preferences').select('data').where('user_id', '=', userId).executeTakeFirst();
-  return row?.data  ??  {};
-}
-
-
-// The user's chart settings that are in force; expired snoozes are left out.
-async function loadChartPreferences(db: Kysely<Database>, userId: number): Promise<ChartPreference[]> {
-  const rows = await db.selectFrom('user_chart_preferences')
-    .select(['chart_id', 'snoozed_until'])
-    .where('user_id', '=', userId)
-    .where('snoozed_until', '>', sql<string>`CURRENT_TIMESTAMP`)
-    .orderBy('chart_id')
-    .execute();
-
-  return rows.map((row) => ({ chartId: row.chart_id, snoozedUntil: row.snoozed_until === null ? null : toIso(row.snoozed_until) }));
-}
 
 
 function preferencesData(preferences: Preferences): string {

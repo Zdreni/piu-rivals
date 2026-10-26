@@ -1,4 +1,4 @@
-import type { AdminUsersResponse, User } from '@piu-rivals/shared';
+import type { AdminUserResponse, AdminUsersResponse, User } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { type Kysely, sql } from 'kysely';
@@ -7,7 +7,7 @@ import type { Database } from '../../db/schema.ts';
 import type { AppDeps } from '../app.ts';
 import { requireAdmin, sessionUser } from '../auth.ts';
 import { HttpError } from '../errors.ts';
-import { loadUser, loadUsers } from '../mappers.ts';
+import { loadChartPreferences, loadPreferences, loadRivals, loadUser, loadUsers } from '../mappers.ts';
 import { GUID, IdParams } from './params.ts';
 
 const UserFields = {
@@ -49,6 +49,23 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
         const counts = rivalCounts.get(user.id);
         return { ...user, createdAt, lastLoginAt, rivals: Number(counts?.rivals  ??  0), rivalsOff: Number(counts?.off  ??  0) };
       }),
+    };
+  });
+
+
+  app.get('/admin/users/:id', { schema: { params: IdParams } }, async (request): Promise<AdminUserResponse> => {
+    const { id } = request.params;
+    const [loaded] = await loadUsers(db, [id]);
+    if (! loaded)
+      throw new HttpError(404, 'Unknown user');
+
+    const rivals = await loadRivals(db, id);
+    const { user, createdAt, lastLoginAt } = loaded;
+    return {
+      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((rival) => rival.hidden).length },
+      rivals,
+      preferences: await loadPreferences(db, id),
+      snoozes: (await loadChartPreferences(db, id)).length,
     };
   });
 

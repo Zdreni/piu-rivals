@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminPlayersResponse, AdminTracksResponse, BestsResponse, ChartPreferencesResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  AdminPlayersResponse, AdminUserResponse, AdminTracksResponse, BestsResponse, ChartPreferencesResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -152,6 +152,13 @@ test('a user keeps rivals and preferences; their own player is never a rival', {
   assert.equal(me.body.user.player?.id, ME);
   assert.deepEqual(me.body.rivals.map((r) => r.id), [RIVAL]);
   assert.deepEqual(me.body.preferences, { scoreCap: 999000 });
+
+  const page = await call<AdminUserResponse>('GET', `/admin/users/${me.body.user.id}`, { as: 'admin@example.com' });
+  assert.deepEqual(page.body.rivals.map((r) => r.id), [RIVAL]);
+  assert.equal(page.body.user.rivals, 1);
+  assert.deepEqual(page.body.preferences, { scoreCap: 999000 });
+  assert.equal((await call('GET', '/admin/users/999999', { as: 'admin@example.com' })).status, 404);
+  assert.equal((await call('GET', `/admin/users/${me.body.user.id}`, { as: 'player@example.com' })).status, 403);
 });
 
 

@@ -67,7 +67,7 @@ All bodies are JSON. Requests other than `/auth/google` and `/health` need
 | `PUT /me/preferences` `{ preferences }` | Replace the site's settings object |
 | `GET /players` | Players with scraped results and a name or PUMBILITY |
 | `GET /bests?players=<id,...>[&since=<serverTime>]` | Best results with chart and try details; with `since`, only rows changed since an earlier response's `serverTime`. `counts` has each player's total number of best results |
-| `GET/POST /admin/users`, `PATCH/DELETE /admin/users/:id` | Manage users: email, display name, linked player, admin; the list also has how many rivals each has, and how many of them are switched off, e.g. "12 (-3)" |
+| `GET/POST /admin/users`, `GET/PATCH/DELETE /admin/users/:id` | Manage users: email, display name, linked player, admin; the list also has how many rivals each has, and how many of them are switched off, e.g. "12 (-3)"; one user also comes with their rivals, settings and number of snoozed charts |
 | `GET /admin/players`, `DELETE /admin/players/:id` | Players with play counts; deleting removes their results |
 | `POST /admin/scrape-runs` `{ kind, players? }` | Queue a run: `all`, or `register`/`selected`/`rescan` with player GUIDs or piuscores links. Register and selected players join an active register or selected run when there is one |
 | `GET /admin/scrape-runs?state=current` | Queued and running runs with progress, in the order the worker takes them |

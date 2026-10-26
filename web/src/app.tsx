@@ -5,6 +5,7 @@ import { PlayersPage } from './pages/admin/players_page.tsx';
 import { RunPage } from './pages/admin/run_page.tsx';
 import { RunsPage } from './pages/admin/runs_page.tsx';
 import { TracksPage } from './pages/admin/tracks_page.tsx';
+import { UserPage } from './pages/admin/user_page.tsx';
 import { UsersPage } from './pages/admin/users_page.tsx';
 import { HistoryPage } from './pages/rivals/history_page.tsx';
 import { RivalsPage } from './pages/rivals/rivals_page.tsx';
@@ -107,6 +108,7 @@ export function App() {
             <Route path="/admin/runs/:id" element={<AdminOnly><RunPage /></AdminOnly>} />
             <Route path="/admin/tracks" element={<AdminOnly><TracksPage /></AdminOnly>} />
             <Route path="/admin/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
+            <Route path="/admin/users/:id" element={<AdminOnly><UserPage /></AdminOnly>} />
             <Route path="*" element={<p>Page not found.</p>} />
           </Routes>
         </Layout>
