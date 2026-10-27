@@ -20,6 +20,8 @@
 
 - Never commit on your own, not even after a finished, tested change. Commit only when told to, and push only when told to; "commit" is not permission to push. Pushing `main` triggers the automatic deploy.
 
+- MANDATORY: before every commit, even when told to commit, ask for confirmation with the suggested message and the files to be staged, offering to use it as is or replace it with the user's own message (e.g. with AskUserQuestion, where "Other" takes their message). Commit only after that answer, with the message they chose.
+
 - Stage only the files you changed or created for the change (e.g. a new database migration). Leave other untracked files alone and don't keep mentioning them.
 
 - Keep commit messages short: one line about the overall change, e.g. improved UX on phones, shows some new info, adds a feature. Don't list each parameter, value or pixel change, and don't copy the long, detailed style of older commits.
