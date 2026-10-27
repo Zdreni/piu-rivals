@@ -1,5 +1,5 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { type MouseEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartResults } from './chart_results.tsx';
@@ -19,9 +19,6 @@ import './rivals.css';
 // comes back into view after a while.
 const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
-// While the levels are dimmed, a long press on them brings them into use.
-const LONG_PRESS_MS = 500;
-const LONG_PRESS_SLOP_PX = 10;
 // While charts are snoozed, the time is checked this often, to wake them and count down the time they have left.
 const SNOOZE_TICK_MS = 60 * 1000;
 
@@ -108,19 +105,10 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [focused, setFocused] = useState<string | null>(null);
   // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
   const [solo, setSolo] = useState<string | null>(null);
-  // On phones, the panel in use is the wide one. A tap on the dimmed results only brings them into use, so they can't
-  // open a link while they're still moving. A tap on the dimmed levels still picks a level, and the results stay in
-  // use; a tap on the level already picked or a long press brings the levels into use. In use, a tap on the level
-  // already picked gives the room back to the results.
-  const [levelsActive, setLevelsActive] = useState(false);
   // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
   // in stays shown while it slides out. On phones, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
-  const levelsActiveBeforeSide = useRef(false);
-  const longPress = useRef<{ timer: number; x: number; y: number } | null>(null);
-  // Set once a long press has brought the levels into use, so the click that ends it does nothing more.
-  const longPressed = useRef(false);
 
   useAutoRefresh(() => {
     void settings.refresh();
@@ -137,80 +125,51 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   const selectTab = useCallback((tab: TabId) => changeUi({ selectedTab: tab }), [changeUi]);
 
-  const activatePanel = (event: MouseEvent) => {
+  // The back button slides a side panel out rather than leaving the page: sliding one in adds a step to the browser's
+  // history, which sliding it out any other way takes back. A maximized card opened over it adds its own step on top
+  // (see ChartResults), and going back from that one leaves the panel in.
+  const sideOpenRef = useRef(sideOpen);
+  sideOpenRef.current = sideOpen;
+  useEffect(() => {
+    if (! sideOpen)
+      return;
+
+    if (! window.history.state?.sideOpen)
+      window.history.pushState({ ...window.history.state, sideOpen: true }, '');
+    const back = () => ! window.history.state?.sideOpen  &&  setSideOpen(false);
+    window.addEventListener('popstate', back);
+    return () => {
+      window.removeEventListener('popstate', back);
+      // A moment later, so a panel slid in again at once (as React's strict mode does) keeps its step.
+      window.setTimeout(() => ! sideOpenRef.current  &&  window.history.state?.sideOpen  &&  window.history.back());
+    };
+  }, [sideOpen]);
+
+  // On phones, while a side panel is in, a tap on the levels (but on their top bar's buttons) slides it out; a tap on a
+  // bar selects its level too.
+  const closeSideOnLevels = (event: MouseEvent) => {
     const target = event.target as Element;
-    const levels = !! target.closest('.filters');
-    if (longPressed.current) {
-      longPressed.current = false;
+    if (! sideOpen  ||  ! PHONE.matches  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
+      return;
+
+    if (! target.closest('.level-bar')) {
       event.preventDefault();
       event.stopPropagation();
-      return;
     }
-    if (sideOpen  &&  PHONE.matches  &&  levels  &&  ! target.closest('.panel-toggle')) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleSide(sidePanel);
-      return;
-    }
-    if (! PHONE.matches  ||  target.closest('.panel-toggle'))
-      return;
-
-    if (levels) {
-      if (target.closest('.level-bar.on'))
-        setLevelsActive(! levelsActive);
-      return;
-    }
-    if (! levelsActive  ||  ! target.closest('.score-content'))
-      return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    setLevelsActive(false);
+    toggleSide(sidePanel);
   };
 
-  const cancelLongPress = () => {
-    if (longPress.current)
-      clearTimeout(longPress.current.timer);
-    longPress.current = null;
-  };
-
-  const startLongPress = (event: PointerEvent) => {
-    cancelLongPress();
-    longPressed.current = false;
-    const target = event.target as Element;
-    if (! PHONE.matches  ||  levelsActive  ||  sideOpen  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
-      return;
-
-    const timer = window.setTimeout(() => {
-      longPress.current = null;
-      longPressed.current = true;
-      setLevelsActive(true);
-    }, LONG_PRESS_MS);
-    longPress.current = { timer, x: event.clientX, y: event.clientY };
-  };
-
-  // A press that moves, e.g. to scroll the levels, isn't a long press.
-  const moveLongPress = (event: PointerEvent) => {
-    const press = longPress.current;
-    if (press  &&  Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP_PX)
-      cancelLongPress();
-  };
-
-  // The side panels come in beside the levels out of use; once they're gone, the levels are back in the state they
-  // were in. The other panel's button swaps the panels in place.
+  // The other panel's button swaps the panels in place.
   const toggleSide = (panel: SidePanel) => {
     if (sideOpen  &&  panel !== sidePanel) {
       setSidePanel(panel);
       return;
     }
     if (sideOpen) {
-      setLevelsActive(levelsActiveBeforeSide.current);
       setSideOpen(false);
       return;
     }
 
-    levelsActiveBeforeSide.current = levelsActive;
-    setLevelsActive(false);
     if (panel === sidePanel) {
       setSideOpen(true);
       return;
@@ -287,16 +246,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     <div className="rivals">
       <WindowHeader status={status} />
       <div
-        className={`dlg-main${levelsActive ? ' levels-active' : ''}${sideOpen ? ' side-open' : ''}${sidePanel === 'preferences' ? ' side-preferences' : ''}`}
-        onClickCapture={activatePanel}
-        onPointerDownCapture={startLongPress}
-        onPointerMoveCapture={moveLongPress}
-        onPointerUpCapture={cancelLongPress}
-        onPointerCancelCapture={cancelLongPress}
-        onContextMenu={(event) => {
-          if (PHONE.matches  &&  (event.target as Element).closest('.filters'))
-            event.preventDefault();
-        }}
+        className={`dlg-main${sideOpen ? ' side-open' : ''}${sidePanel === 'preferences' ? ' side-preferences' : ''}`}
+        onClickCapture={closeSideOnLevels}
       >
         <RivalList
           tab={ui.rivalTab}

@@ -1,7 +1,7 @@
 import { type RefObject, useLayoutEffect, useState } from 'react';
 
-// The phone layout in rivals.css, where the levels and the results take turns being the wide panel, and result rows
-// unroll on a tap instead of opening their links.
+// The phone layout in rivals.css, where the levels and the results are side by side, and result rows unroll on a tap
+// instead of opening their links.
 export const PHONE = window.matchMedia('(max-width: 600px)');
 
 // The panels that wait off the left edge until the levels' top bar slides one in.

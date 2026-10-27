@@ -230,12 +230,15 @@
                      font-variant-numeric: tabular-nums; }
 .rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
 .rivals .level-bar { position: relative; display: block; height: 92%; align-self: center; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
-                     border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: .75; }
+                     border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: var(--bar-dim); }
 /* Safari wraps a button's children in an anonymous box that doesn't stretch, so the segments get their own flex box
    pinned to the button's edges. */
 .rivals .level-segs { position: absolute; inset: 0; display: flex; }
 .rivals .level-bar.single .level-segs { flex-direction: row-reverse; }
-.rivals .level-bar:hover { opacity: 1; }
+/* Bars but the selected one are dimmed, on every screen, to --bar-dim; a mouse over one brightens it (not a tap, which
+   would leave it bright). */
+.rivals { --bar-dim: .4; }
+@media (hover: hover) { .rivals .level-bar:hover { opacity: 1; } }
 .rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
 .rivals .level-bar.placeholder { visibility: hidden; }
 /* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 5% of the bar (up to 6px) on
@@ -509,35 +512,19 @@
 /* Phones: smaller everything, and narrower results; the levels go up to 240px. */
 @media (max-width: 600px) {
   .rivals { font-size: 16px; }
-  /* The panel in use, levels or results, gets 65% of the width, and the other one is dimmed; a tap on the dimmed one
-     brings it into use (see RivalsView). In use, the levels never get narrower than bars with three 3-digit counts need;
-     dimmed, they have no counts (see below), so they take just their 35%. Dimmed, the results still keep 150px, enough
-     for names and diffs, unless the levels need it for their counts. */
-  .rivals .dlg-main { --levels: 35cqw; }
-  .rivals .dlg-main.levels-active { --levels: max(160px, min(65cqw, 100cqw - 150px)); }
-  .rivals .score-content { position: relative; }
-  .rivals .filters::after, .rivals .score-content::after { content: ''; position: absolute; inset: 0; z-index: 5;
-      background: rgba(20,32,26,.55); opacity: 0; pointer-events: none; transition: opacity .1s ease; }
-  .rivals .dlg-main:not(.levels-active) .filters::after, .rivals .dlg-main.levels-active .score-content::after {
-      opacity: 1; pointer-events: auto; }
-  /* The levels are dimmed less than the results, so their bars still read. Their dimming fades its colour, not its
-     opacity: a fading opacity gets its own layer, and so would the bar over it (see below), and those judder while
-     the levels change width. */
-  .rivals .filters::after { opacity: 1; background: rgba(20,32,26,0); transition: background-color .1s ease; }
-  .rivals .dlg-main:not(.levels-active) .filters::after { background: rgba(20,32,26,.5); }
-  /* Taps go through the dimmed levels to their bars (see RivalsView); a long press there isn't a text selection or a
-     menu, and a double tap doesn't zoom. */
-  .rivals .dlg-main:not(.levels-active) .filters::after { pointer-events: none; }
+  /* The levels get 45% of the width, and the results the rest. Beside the rivals or the preferences, the levels narrow
+     to 35%, and those panels get the rest. */
+  .rivals .dlg-main { --levels: 45cqw; }
+  .rivals .dlg-main.side-open { --levels: 35cqw; }
+  /* Beside the rivals or the preferences, the selected bar and the levels' heads are dimmed like the other bars, and
+     a tap on the levels slides the panel out, and on a bar selects its level too (see RivalsView). */
+  .rivals .side-open :is(.level-bar.on, .level-head) { opacity: var(--bar-dim); }
+  /* Taps on the levels aren't text selections, and a double tap doesn't zoom. */
   .rivals .filters { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
   .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
   /* The buttons nearly fill the bar, 4px from its edges and at least 8px apart. */
   .rivals .level-top { gap: 8px; padding: 0 4px; }
-  /* Beside the results, the selected bar, which shows their level, stays bright over the dimmed levels; beside the
-     rivals or the preferences, it's dimmed with the rest. Switching bars doesn't fade: the switch waits for the new
-     level's results to be laid out, so a fade only starts late and looks slow. */
-  .rivals .dlg-main:not(.side-open) .level-bar.on { z-index: 6; }
-  /* The buttons do too. */
-  .rivals .panel-toggle { position: relative; z-index: 6; gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
+  .rivals .panel-toggle { gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
   .rivals .prefs-toggle { width: 40px; padding: 0; }
   .rivals .panel-toggle svg { width: 6px; height: 10px; }
   .rivals .prefs-toggle svg { width: 20px; height: 20px; }
@@ -549,13 +536,12 @@
                         transition: grid-template-columns .3s ease; }
   .rivals .level-head { font-size: 12px; padding-bottom: 6px; }
   .rivals .level-num { font-size: 12px; transition: opacity .3s ease; }
-  /* While the results are in use, the levels drop their numbers, and the bars get their room: the selected bar shows
-     the results' level. */
-  .rivals .dlg-main:not(.levels-active) .level-chart { grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr); }
-  .rivals .dlg-main:not(.levels-active) .level-num { opacity: 0; }
+  /* Narrowed beside a side panel, the levels drop their numbers, and the bars get their room. */
+  .rivals .side-open .level-chart { grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr); }
+  .rivals .side-open .level-num { opacity: 0; }
   /* The bars drop their counts too, and with them the room the counts need (see LevelBar); segments keep as much of
      their bar as with their counts, about 4.5% a digit and 5% on either side, so the bars look the same, only smaller. */
-  .rivals .dlg-main:not(.levels-active) .level-segs > span { color: transparent; --digit: 4.5%; --label-pad: 5%; }
+  .rivals .side-open .level-segs > span { color: transparent; --digit: 4.5%; --label-pad: 5%; }
   .rivals .level-other .level-num { padding-right: 4px; }
   .rivals .level-segs > span { font-size: 9px; }
   /* The results' and the rivals' tabs are alike here: their word, with its count a gap under it, in a row as tall as
@@ -567,21 +553,10 @@
   .rivals .tabs .tab { flex: 1 1 0; margin-left: 0; padding-left: 2px; padding-right: 2px; }
   .rivals .tab-count { display: block; min-width: 0; margin: 3px 0 0; text-align: center; }
   .rivals .tab-word:not(.short) { display: none; }
-  /* While the levels are in use, the tabs show only their counts, with dots between them. The letters come back only
-     once the results have widened, so they don't wrap meanwhile; their line stays, so the tabs keep their height. */
-  .rivals .tab-word.short { display: block; max-width: 6em; margin: 0 auto; overflow: hidden; transition: max-width 0s .3s; }
-  .rivals .levels-active .tabs .tab-word.short { max-width: 0; transition-delay: 0s; }
+  .rivals .tab-word.short { display: block; margin: 0 auto; overflow: hidden; }
   /* The open tab spells its word out, and takes the room it needs from the others. */
   .rivals .tabs .tab[aria-selected="true"] .tab-word.short { display: none; }
-  .rivals .tabs .tab[aria-selected="true"] .tab-word:not(.short) { display: block; max-width: 8em; margin: 0 auto; overflow: hidden;
-                                                                     transition: max-width 0s .3s; }
-  .rivals .levels-active .tabs .tab[aria-selected="true"] .tab-word:not(.short) { max-width: 0; transition-delay: 0s; }
-  .rivals .levels-active .tabs .tab { position: relative; margin-left: 0; }
-  /* The dots are on the counts' line: the tab's 16px + 3px + 16px of lines are centred in it. */
-  .rivals .levels-active .tabs .tab + .tab::before { content: '•'; position: absolute; left: 0; bottom: calc(50% - 17.5px); transform: translateX(-50%);
-                                                     color: #6B8174; }
-  /* The cards' level is the selected bar's, so it's left out, and the track names get its room. */
-  .rivals .levels-active .chart-label { display: none; }
+  .rivals .tabs .tab[aria-selected="true"] .tab-word:not(.short) { display: block; margin: 0 auto; overflow: hidden; }
   .rivals .dlg-body { --results-pad: 4px; --card-gap: 14px; padding-top: 8px; }
   .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
   .rivals .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
@@ -654,7 +629,7 @@
 .rivals.card-overlay:not(.in-place) .result-info { padding-left: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .filters::after, .rivals .score-content::after, .rivals .tab-word,
+  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel, .rivals .tab-word,
   .rivals .level-chart, .rivals .level-num, .rivals .rival-more, .rivals .rival-more > div, .rivals .result-details, .rivals .result-details > div,
   .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body,
   .rivals .chart-card-more .chart-label { transition: none; }
