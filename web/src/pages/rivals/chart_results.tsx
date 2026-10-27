@@ -314,8 +314,6 @@ export function ChartResults({
         leaving={! big  &&  leaving === chart.id}
         onWake={() => (big ? closeMaximized.current(() => leave(chart.id, null)) : leave(chart.id, null))}
         maximized={big}
-        // Wider than phones, where it keeps its card's place, a click on its header rolls it back.
-        closeOnHead={! phone}
         onMaximize={! big ? () => {
           setMenu(null);
           setBigUnrolled(null);
@@ -394,6 +392,8 @@ export function ChartResults({
 
     card.animate([{ transform: transformFrom(from, card.getBoundingClientRect()) }, { transform: 'none' }],
       { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    // Faded in from its card, which stays under it, as it leaves it.
+    card.animate([{ opacity: 0 }, { opacity: 1, offset: .4 }, { opacity: 1 }], { duration: GROW_MS });
     overlay.animate({ backgroundColor: [BACKDROP_CLEAR, getComputedStyle(overlay).backgroundColor] }, { duration: GROW_MS });
   }, [bigId]);
 
@@ -420,7 +420,9 @@ export function ChartResults({
     card.getAnimations().forEach((animation) => animation.cancel());
     overlay.getAnimations().forEach((animation) => animation.cancel());
     card.animate([{ transform: 'none' }, { transform: transformFrom(from, card.getBoundingClientRect()) }],
-      { duration: SHRINK_MS, easing: 'ease-in', fill: 'forwards' });
+      { duration: SHRINK_MS, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' });
+    // Faded out into its card once it's nearly there.
+    card.animate([{ opacity: 1 }, { opacity: 1, offset: .3 }, { opacity: 0 }], { duration: SHRINK_MS, fill: 'forwards' });
     overlay.animate({ backgroundColor: [getComputedStyle(overlay).backgroundColor, BACKDROP_CLEAR] }, { duration: SHRINK_MS, fill: 'forwards' })
       .finished.then(done, done);
   };

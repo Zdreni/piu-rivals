@@ -195,10 +195,10 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // `now` counts down a snoozed chart's time left. While the menu is open, the card is dimmed; `leaving`, it fades out.
 // Wake calls `onWake`.
 // With `onMaximize`, a click anywhere on the card but on its header's buttons only calls it (see ChartResults). A `maximized` card has its
-// header unrolled for good, with a close button calling `onClose`; with `closeOnHead`, a click on the header calls it too.
+// header unrolled for good, with a close button calling `onClose`; a click on the header calls it too.
 export function ChartResultsItem({
   chart, myName, fold, foldedShown, keep, higherShown, colorByRealDiff, dimWon, markTies, showGain = false, scoreCap, canSnooze, now, menuOpen,
-  leaving, maximized = false, closeOnHead = false, onExpandFolded,
+  leaving, maximized = false, onExpandFolded,
   onExpandHigher, unrolled, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
 }: {
   chart: ChartRow;
@@ -217,7 +217,6 @@ export function ChartResultsItem({
   menuOpen: boolean;
   leaving: boolean;
   maximized?: boolean;
-  closeOnHead?: boolean;
   onExpandFolded: () => void;
   onExpandHigher: () => void;
   unrolled: string | null;
@@ -304,7 +303,7 @@ export function ChartResultsItem({
         onMaximize();
       })}>
       <CardHead chart={chart} unrolled={unrolled === HEAD} canSnooze={canSnooze} now={now} menuOpen={menuOpen} maximized={maximized}
-        onToggle={! maximized ? toggler(HEAD) : closeOnHead ? onClose : undefined} onClose={onClose} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
+        onToggle={! maximized ? toggler(HEAD) : onClose} onClose={onClose} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
       <div className="chart-card-body">
         <div className="chart-card-box">
           {/* Without your score there are no diffs, so their columns are dropped. */}

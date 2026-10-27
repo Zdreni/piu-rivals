@@ -617,8 +617,8 @@
                                    background: #14201A; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
 .rivals.card-overlay.in-place .chart-card { position: absolute; left: var(--card-left); top: var(--card-top); width: var(--card-width);
                                             max-height: calc(100% - 32px); }
-.rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; cursor: default; }
-.rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; cursor: pointer; }
+.rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; }
+.rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; }
 .rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
 .rivals.card-overlay:not(.in-place) .chart-card-head .track, .rivals.card-overlay:not(.in-place) .chart-label { font-size: 18px; }
 .rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
