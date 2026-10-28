@@ -1,13 +1,13 @@
 # Coding rules
 
-For all code in the repository: the site (`web/`), the server, the shared types and both Chrome
-extensions, in JavaScript, TypeScript and TSX alike.
+For all code in the repository: the site (`web/`), the server, the shared types and the Chrome
+extension, in JavaScript, TypeScript and TSX alike.
 
 ## Naming
 
 Use underscores, not hyphens, in source folder and module names (for example
-`page_scrappers/common.js`, `components/charts/chart_card.tsx`). The package folders at the
-top (`piuscores-extension`, `piuscores-scrap-extension`) keep their names.
+`scraper/session_page.ts`, `components/charts/chart_card.tsx`). The package folder at the
+top (`piuscores-scrap-extension`) keeps its name.
 
 Name functions and write comments in the project's own terms (open session, newest session,
 PUMBILITY, rivals), not in the scraped site's markup terms. Words like "ceremony" or "hero"
@@ -33,12 +33,11 @@ const isHidden = (rival)  =>  hiddenIds.includes(rival.id);
 ```
 
 Give a function that transforms the value it's given, but may return `null` instead, the
-`OrNull` suffix: `withRivalsOrNull(chart, keep)`, `getPhoenix2CardInfoOrNull(card)`. Callers
-then see they have to handle `null`, as with `.filter` and a type guard in TypeScript.
-Functions that look something up or read the page (`findGrownSession`, `readSessionsPage`)
-and parsers (`parseChartLabel`) don't need it: "nothing found" is part of what their name
-says. Neither does one that returns `null` only when the value it's given is missing
-(`daysSince(date)`).
+`OrNull` suffix: `withRivalsOrNull(chart, keep)`. Callers then see they have to handle
+`null`, as with `.filter` and a type guard in TypeScript. Functions that look something up
+(`loadUser`, `claimNextRun`) and parsers (`parseChartLabel`, `parseOpenSession`) don't need
+it: "nothing found" is part of what their name says. Neither does one that returns `null`
+only when the value it's given is missing.
 
 ```ts
 const charts = allCharts

@@ -16,7 +16,6 @@ piu-rivals  <─HTTPS──┤ API server  <── nginx (TLS)        │
 
 | Folder | What | Stack |
 |---|---|---|
-| `piuscores-extension/` | Old extension, left untouched | JS |
 | `server/` | API server and scrape worker, both from one codebase | Node, TS, Fastify, Kysely, MySQL, Playwright, pm2 |
 | `web/` | piu-rivals site, including the admin section | Vite, React, TS |
 | `shared/` | API request/response types, grade/plate/chart helpers | TS |

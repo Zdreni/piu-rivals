@@ -15,9 +15,6 @@ queued or running, the server adds the player to it instead of queueing a new ru
 added one after another are scraped together. The button is disabled, reading **Already in piu-rivals**, for a player who is
 stored, and **Scraping…** while a run covering the player is queued or running.
 
-It is separate from [piuscores-extension](../piuscores-extension), which keeps its scores in the
-browser; the two can be installed side by side.
-
 ## Signing in
 
 The extension has no sign-in of its own: it uses your piu-rivals login. A content script on
