@@ -139,6 +139,24 @@ test('admins manage users; a player belongs to one user', { skip }, async ()  =>
 });
 
 
+test('opening the site marks a user as seen; the scraper extension does not', { skip }, async ()  => {
+  await db.updateTable('users').set({ last_seen_at: null }).where('email', '=', 'player@example.com').execute();
+
+  const lastSeen = async ()  =>  (await db.selectFrom('users').select('last_seen_at')
+    .where('email', '=', 'player@example.com').executeTakeFirstOrThrow()).last_seen_at;
+
+  await app.inject({
+    method: 'GET',
+    url: '/me',
+    headers: { authorization: `Bearer ${tokens['player@example.com']}`, origin: 'chrome-extension://abc' },
+  });
+  assert.equal(await lastSeen(), null);
+
+  await call('GET', '/me', { as: 'player@example.com' });
+  assert.notEqual(await lastSeen(), null);
+});
+
+
 test('a user keeps rivals and preferences; their own player is never a rival', { skip }, async ()  => {
   const rivals = await call('PUT', '/me/rivals', { as: 'player@example.com', body: { playerIds: [RIVAL, ME] } });
   assert.equal(rivals.status, 200);

@@ -150,6 +150,7 @@ export function UserPage() {
           <dt>Email</dt><dd>{user.email}</dd>
           <dt>Added</dt><dd>{formatTime(user.createdAt)}</dd>
           <dt>Last sign-in</dt><dd>{formatAgo(user.lastLoginAt)}</dd>
+          <dt>Last seen</dt><dd>{formatAgo(user.lastSeenAt)}</dd>
         </dl>
       </div>
 

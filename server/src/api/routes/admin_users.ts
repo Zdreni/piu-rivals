@@ -45,9 +45,9 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
       .execute()).map((row)  =>  [row.user_id, row]));
 
     return {
-      users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt })  => {
+      users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt, lastSeenAt })  => {
         const counts = rivalCounts.get(user.id);
-        return { ...user, createdAt, lastLoginAt, rivals: Number(counts?.rivals  ??  0), rivalsOff: Number(counts?.off  ??  0) };
+        return { ...user, createdAt, lastLoginAt, lastSeenAt, rivals: Number(counts?.rivals  ??  0), rivalsOff: Number(counts?.off  ??  0) };
       }),
     };
   });
@@ -60,9 +60,9 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
       throw new HttpError(404, 'Unknown user');
 
     const rivals = await loadRivals(db, id);
-    const { user, createdAt, lastLoginAt } = loaded;
+    const { user, createdAt, lastLoginAt, lastSeenAt } = loaded;
     return {
-      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((r)  =>  r.hidden).length },
+      user: { ...user, createdAt, lastLoginAt, lastSeenAt, rivals: rivals.length, rivalsOff: rivals.filter((r)  =>  r.hidden).length },
       rivals,
       preferences: await loadPreferences(db, id),
       snoozes: (await loadChartPreferences(db, id)).length,

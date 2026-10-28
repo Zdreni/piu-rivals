@@ -114,6 +114,7 @@ export interface UsersTable {
   is_admin: Generated<number>;
   created_at: CreatedAt;
   last_login_at: string | null;
+  last_seen_at: string | null;
 }
 
 export interface UserRivalsTable {

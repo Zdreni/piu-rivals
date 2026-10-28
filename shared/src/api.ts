@@ -125,6 +125,8 @@ export interface BestsResponse {
 export interface AdminUser extends User {
   createdAt: string;
   lastLoginAt: string | null;
+  // When they last opened the site, even without signing in again.
+  lastSeenAt: string | null;
   // How many players are in their rival list, and how many of those they switched off.
   rivals: number;
   rivalsOff: number;

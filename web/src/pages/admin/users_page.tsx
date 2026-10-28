@@ -15,7 +15,7 @@ function UserRow({ user }: { user: AdminUser }) {
           {user.displayName  ||  user.email}
         </Link>
       </td>
-      <td className="muted">{formatAgo(user.lastLoginAt)}</td>
+      <td className="muted">{formatAgo(user.lastSeenAt)}</td>
       {/* Users without a player have no Rivals view, so no rivals either. */}
       <td className="number">{user.player  &&  (user.rivalsOff  ?  `${user.rivals} (-${user.rivalsOff})`  :  user.rivals)}</td>
     </tr>
@@ -81,7 +81,7 @@ export function UsersPage() {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Last sign-in</th><th className="number">Rivals</th></tr>
+            <tr><th>Name</th><th>Last seen</th><th className="number">Rivals</th></tr>
           </thead>
           <tbody>
             {users.data?.users.map((user)  =>  <UserRow key={user.id} user={user} />)}

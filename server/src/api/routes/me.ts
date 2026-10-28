@@ -52,8 +52,12 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
   app.addHook('preHandler', requireUser);
 
 
+  // The site loads this on every visit, so it marks the user as seen; the scraper extension's calls don't.
   app.get('/me', async (request): Promise<MeResponse>  => {
     const { id } = sessionUser(request);
+    if (! request.headers.origin?.startsWith('chrome-extension://'))
+      await db.updateTable('users').set({ last_seen_at: sql<string>`CURRENT_TIMESTAMP` }).where('id', '=', id).execute();
+
     return {
       user: (await loadUser(db, id))!,
       rivals: await loadRivals(db, id),

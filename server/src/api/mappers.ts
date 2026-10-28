@@ -33,7 +33,7 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
     .leftJoin('players', 'players.id', 'users.player_id')
     .select([
       'users.id as user_id', 'users.email', 'users.display_name', 'users.is_admin', 'users.created_at',
-      'users.last_login_at', ...playerSummaryColumns,
+      'users.last_login_at', 'users.last_seen_at', ...playerSummaryColumns,
     ])
     .orderBy('users.email');
 
@@ -51,6 +51,7 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
     } satisfies User,
     createdAt: toIso(row.created_at),
     lastLoginAt: toIsoOrNull(row.last_login_at),
+    lastSeenAt: toIsoOrNull(row.last_seen_at),
   }));
 }
 
