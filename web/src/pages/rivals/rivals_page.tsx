@@ -7,7 +7,7 @@ import { PHONE } from '../../components/media.ts';
 import type { SidePanel } from './layout.ts';
 import { SelectedLevelCharts } from './selected_level_charts.tsx';
 import { autoLevels, type Preferences, resolveLevels } from '../../data/preferences.ts';
-import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from '../../data/model.ts';
+import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivalsOrNull } from '../../data/model.ts';
 import { PreferencesPanel } from './preferences_panel.tsx';
 import { RivalList } from './rival_list.tsx';
 import { chartTier, countCharts, levelStats, sortedLevels, type TabId } from '../../data/stats.ts';
@@ -45,12 +45,12 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const { rivals, preferences, snoozes } = settings;
   const now = useClock(snoozes.size > 0);
   const { scoreCap, npMinimalRivals } = preferences;
-  const playerIds = useMemo(()  =>  [me.id, ...rivals.map((rival)  =>  rival.id)], [me.id, rivals]);
+  const playerIds = useMemo(()  =>  [me.id, ...rivals.map((r)  =>  r.id)], [me.id, rivals]);
   const data = useBests(playerIds);
   // Until the level range is set, it follows your scores; see below.
   const autoRange = useMemo(()  => {
     const charts = [...data.bests.get(me.id)?.keys()  ??  []].map((chartId)  =>  data.charts.get(chartId));
-    return autoLevels(charts.flatMap((chart)  =>  (chart  ?  [chart.level]  :  [])));
+    return autoLevels(charts.flatMap((c)  =>  (c  ?  [c.level]  :  [])));
   }, [data.version, data.charts, data.bests, me.id]);
 
   const levelRange = resolveLevels(preferences, autoRange);
@@ -167,39 +167,39 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   };
 
   const allCharts = useMemo(
-    ()  =>  buildCharts(data.charts, data.bests, me.id, rivals.map((rival)  =>  ({ id: rival.id, name: rival.name  ??  rival.id })), scoreCap,
+    ()  =>  buildCharts(data.charts, data.bests, me.id, rivals.map((r)  =>  ({ id: r.id, name: r.name  ??  r.id })), scoreCap,
       { minLevel, maxLevel }),
     [data.version, data.charts, data.bests, me.id, rivals, scoreCap, minLevel, maxLevel],
   );
 
-  const soloRival = (rivals.some((rival)  =>  rival.id === solo)  ?  solo  :  null);
+  const soloRival = (rivals.some((r)  =>  r.id === solo)  ?  solo  :  null);
   // A solo rival is always counted by results, whatever the setting says.
   const countBy = (soloRival  ?  'results'  :  preferences.countBy);
   const view = useMemo(()  => {
-    const hidden = new Set(rivals.filter((rival)  =>  rival.hidden).map((rival)  =>  rival.id));
+    const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
     // A solo rival is compared alone, whatever the stored selection says.
-    const included = (playerId: string)  =>  (soloRival  ?  playerId === soloRival  :  ! hidden.has(playerId));
+    const isIncluded = (playerId: string)  =>  (soloRival  ?  playerId === soloRival  :  ! hiddenIds.has(playerId));
     const charts = allCharts
-      .map((chart)  =>  withRivals(chart, (rival)  =>  included(rival.playerId)))
-      .filter((chart): chart is ChartRow  =>  chart !== null)
+      .map((c)  =>  withRivalsOrNull(c, (r)  =>  isIncluded(r.playerId)))
+      .filter((c): c is ChartRow  =>  c !== null)
       // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((chart)  =>  ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals)
-      .map((chart)  => {
-        const until = snoozes.get(chart.id);
-        return ((until !== undefined  &&  until > now)  ?  { ...chart, snoozedUntil: until }  :  chart);
+      .filter((c)  =>  ! c.unplayed  ||  c.rivals.length >= npMinimalRivals)
+      .map((c)  => {
+        const until = snoozes.get(c.id);
+        return ((until !== undefined  &&  until > now)  ?  { ...c, snoozedUntil: until }  :  c);
       });
 
     // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
     // listed as snoozed, the soonest to wake first.
-    const capHidden = charts.filter((chart)  =>  chart.snoozedUntil === null  &&  chartTier(chart) === 'hidden')
-      .map((chart)  =>  ({ ...chart, weight: targetWeight(chart.rivals.map((rival)  =>  rival.realDelta)) }));
+    const capHiddenCharts = charts.filter((c)  =>  c.snoozedUntil === null  &&  chartTier(c) === 'hidden')
+      .map((c)  =>  ({ ...c, weight: targetWeight(c.rivals.map((r)  =>  r.realDelta)) }));
 
-    const snoozed = charts.filter((chart)  =>  chart.snoozedUntil !== null)
+    const snoozedCharts = charts.filter((c)  =>  c.snoozedUntil !== null)
       .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
-    return { charts, capHidden, snoozed, levels: sortedLevels(charts) };
+    return { charts, capHiddenCharts, snoozedCharts, levels: sortedLevels(charts) };
   }, [allCharts, rivals, soloRival, npMinimalRivals, snoozes, now]);
 
-  const { charts, capHidden, snoozed, levels } = view;
+  const { charts, capHiddenCharts, snoozedCharts, levels } = view;
   const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
 
   useEffect(()  => {
@@ -264,8 +264,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           key={selectedLevel}
           levelCharts={charts.filter(atLevel)}
           hiddenGroups={[
-            { label: 'Snoozed', charts: snoozed.filter(atLevel) },
-            { label: 'Score cap', charts: capHidden.filter(atLevel).sort(byTargetWeight) },
+            { label: 'Snoozed', charts: snoozedCharts.filter(atLevel) },
+            { label: 'Score cap', charts: capHiddenCharts.filter(atLevel).sort(byTargetWeight) },
           ]}
           selectedTab={ui.selectedTab}
           myName={me.name  ??  'You'}

@@ -23,7 +23,7 @@ function getSessionCardMix(card) {
 }
 
 
-function getPhoenix2CardInfo(card) {
+function getPhoenix2CardInfoOrNull(card) {
   if (getSessionCardMix(card) !== 'Phoenix 2')
     return null;
 
@@ -48,7 +48,7 @@ export function currentPhoenix2Sessions() {
     if (mix !== 'Phoenix 2')
       continue;
 
-    const info = getPhoenix2CardInfo(card);
+    const info = getPhoenix2CardInfoOrNull(card);
     if (info)
       sessions.push({ card, info });
   }
@@ -58,7 +58,7 @@ export function currentPhoenix2Sessions() {
 
 
 export function sessionCardSignature() {
-  return JSON.stringify(getSessionCards().map((card)  =>  getPhoenix2CardInfo(card)  ||  text(card)));
+  return JSON.stringify(getSessionCards().map((card)  =>  getPhoenix2CardInfoOrNull(card)  ||  text(card)));
 }
 
 

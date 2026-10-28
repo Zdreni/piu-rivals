@@ -62,7 +62,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
     const rivals = await loadRivals(db, id);
     const { user, createdAt, lastLoginAt } = loaded;
     return {
-      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((rival)  =>  rival.hidden).length },
+      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((r)  =>  r.hidden).length },
       rivals,
       preferences: await loadPreferences(db, id),
       snoozes: (await loadChartPreferences(db, id)).length,

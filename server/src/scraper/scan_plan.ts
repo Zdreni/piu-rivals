@@ -109,7 +109,7 @@ export function planScan(checkpoint: Checkpoint, collected: SessionCard[], stop:
     throw new Error(`Neither the latest scanned session ("${describe(latest)}") nor the one `
       + `before it ("${describe(checkpoint.anchor)}") is in the Sessions history; the player needs a rescan`);
 
-  const index = Math.max(0, oldestFirst.findIndex((card)  =>  card.mix === 'Phoenix 2'));
+  const index = Math.max(0, oldestFirst.findIndex((c)  =>  c.mix === 'Phoenix 2'));
   if (! oldestFirst.length)
     throw new Error(`The latest scanned session ("${describe(latest)}") is missing from the `
       + 'Sessions history; the player needs a rescan');

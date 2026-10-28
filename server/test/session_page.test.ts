@@ -18,7 +18,7 @@ test('reads the player name, session cards and pagination', ()  => {
   assert.deepEqual(page.cards[0], {
     mix: 'Phoenix 2', title: 'Official Import · DINO #3869', timestamp: 'Wed 14 Oct · 8:02 PM', isOpen: true,
   });
-  assert.equal(page.cards.filter((card)  =>  card.isOpen).length, 1);
+  assert.equal(page.cards.filter((c)  =>  c.isOpen).length, 1);
   assert.equal(page.hasOlderPage, true);
   assert.equal(page.hasNewerPage, false);
 });
@@ -26,7 +26,7 @@ test('reads the player name, session cards and pagination', ()  => {
 
 test('tells Phoenix 2 cards from older-mix cards', ()  => {
   const { cards, hasOlderPage } = parseSessionsPage(fixture('sessions_plates'));
-  assert.deepEqual(cards.map((card)  =>  card.mix), ['Phoenix 2', 'Phoenix', 'Phoenix']);
+  assert.deepEqual(cards.map((c)  =>  c.mix), ['Phoenix 2', 'Phoenix', 'Phoenix']);
   assert.equal(cards[1]!.title, 'Backfill');
   assert.equal(hasOlderPage, false);
 });
@@ -83,9 +83,9 @@ test('reads plays with grade and judgments, skipping stage breaks', ()  => {
 test('reads plates, and plays imported without judgments', ()  => {
   const { plays } = parseSessionPlays(fixture('sessions_plates'));
   assert.equal(plays.length, 92);
-  assert.ok(plays.some((play)  =>  play.plate === 'pg'));
+  assert.ok(plays.some((p)  =>  p.plate === 'pg'));
 
-  const bare = plays.find((play)  =>  play.perfect === null);
+  const bare = plays.find((p)  =>  p.perfect === null);
   assert.ok(bare);
   assert.equal(bare.maxCombo, null);
   assert.ok(bare.score > 0);
@@ -94,12 +94,12 @@ test('reads plates, and plays imported without judgments', ()  => {
 
 test('reads a broken play as its grade, not passed', ()  => {
   const { plays } = parseSessionPlays(fixture('sessions_broken'));
-  const broken = plays.filter((play)  =>  ! play.passed);
-  assert.equal(broken.length, 1);
-  assert.equal(broken[0]!.songTitle, 'Nyarlathotep');
-  assert.equal(broken[0]!.grade, 'aa');
-  assert.equal(broken[0]!.score, 932938);
-  assert.ok(plays.every((play)  =>  ! play.grade?.includes('broken')));
+  const brokenPlays = plays.filter((p)  =>  ! p.passed);
+  assert.equal(brokenPlays.length, 1);
+  assert.equal(brokenPlays[0]!.songTitle, 'Nyarlathotep');
+  assert.equal(brokenPlays[0]!.grade, 'aa');
+  assert.equal(brokenPlays[0]!.score, 932938);
+  assert.ok(plays.every((p)  =>  ! p.grade?.includes('broken')));
 });
 
 

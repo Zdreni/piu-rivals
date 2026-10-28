@@ -61,7 +61,7 @@ function compareLevels(a, b) {
 }
 
 
-export const sortedLevels = (charts)  =>  [...new Set(charts.map((chart)  =>  chart.chart))].sort(compareLevels);
+export const sortedLevels = (charts)  =>  [...new Set(charts.map((c)  =>  c.chart))].sort(compareLevels);
 
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.

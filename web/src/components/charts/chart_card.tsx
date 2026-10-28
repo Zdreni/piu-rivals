@@ -193,7 +193,7 @@ const FOLD_TONES: [Stat, string, ReactNode][] = [
 
 
 function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: number; markTies: boolean }) {
-  const stats = new Set(entries.flatMap((entry)  =>  (entry.me  ?  []  :  [resultStat(entry)])));
+  const stats = new Set(entries.flatMap((e)  =>  (e.me  ?  []  :  [resultStat(e)])));
   const tone = FOLD_TONES.find(([stat])  =>  stats.has(stat));
   const className = ((tone  &&  (tone[0] !== 'tie'  ||  markTies))  ?  tone[1]  :  undefined);
   return <span className={className}>{tone?.[2]}{count}</span>;
@@ -242,31 +242,31 @@ export function ChartCard({
 }) {
   const { fold, keep } = folding;
 
-  const all: Entry[] = [...chart.rivals];
+  const allEntries: Entry[] = [...chart.rivals];
   if (chart.mine !== null)
-    all.push({ me: true, score: chart.mine });
+    allEntries.push({ me: true, score: chart.mine });
 
-  all.sort((a, b)  =>  b.score - a.score  ||  Number(!! b.me) - Number(!! a.me));
+  allEntries.sort((a, b)  =>  b.score - a.score  ||  Number(!! b.me) - Number(!! a.me));
 
   const isFolded = (entry: Entry)  =>  ! entry.me  &&  fold.includes(resultStat(entry));
   // A single folded or higher score is shown rather than folded.
-  const foldable = all.filter(isFolded);
-  const lower = foldable.length - shown.folded;
+  const foldableEntries = allEntries.filter(isFolded);
+  const lower = foldableEntries.length - shown.folded;
   const folded = (lower >= 2  ?  lower  :  0);
-  const hiddenBelow = foldable.slice(foldable.length - folded);
-  const kept = all.filter((entry)  =>  ! isFolded(entry));
+  const hiddenBelow = foldableEntries.slice(foldableEntries.length - folded);
+  const keptEntries = allEntries.filter((e)  =>  ! isFolded(e));
   const firstHidden = (keep?.top  ??  0) + shown.higher;
-  const higher = (keep === null  ?  0  :  kept.length - firstHidden - keep.bottom);
+  const higher = (keep === null  ?  0  :  keptEntries.length - firstHidden - keep.bottom);
   const above = (higher >= 2  ?  higher  :  0);
   // The rivals you don't fold are the top of the list, so the ones after the shown highest are hidden.
-  const hiddenAbove = kept.slice(firstHidden, firstHidden + above);
-  const hidden = new Set([...hiddenAbove, ...hiddenBelow]);
-  const list = all.filter((entry)  =>  ! hidden.has(entry));
+  const hiddenAbove = keptEntries.slice(firstHidden, firstHidden + above);
+  const hiddenEntries = new Set([...hiddenAbove, ...hiddenBelow]);
+  const shownEntries = allEntries.filter((e)  =>  ! hiddenEntries.has(e));
 
   const toggler = (id: string)  =>  ()  =>  onUnroll((unrolled === id  ?  null  :  id));
 
-  // One node per score, so the "more" button for the higher ones goes in by its place in `list`.
-  const rows: ReactNode[] = list.map((entry)  => {
+  // One node per score, so the "more" button for the higher ones goes in by its place in `shownEntries`.
+  const rows: ReactNode[] = shownEntries.map((entry)  => {
     const id = (entry.me  ?  ME  :  entry.playerId);
     return (
       <ResultItem key={id} chart={chart} entry={entry} myName={myName} unrolled={unrolled === id} colorByRealDiff={folding.colorByRealDiff}

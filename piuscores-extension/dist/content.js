@@ -85,7 +85,7 @@
           myDates: { bestScoreDate: myRecord?.bestScoreDate, lastTryDate: myRecord?.lastTryDate },
           rivals,
           unplayed: mine === null,
-          weight: targetWeight(rivals.map((rival) => rival.delta))
+          weight: targetWeight(rivals.map((r) => r.delta))
         });
       }
     }
@@ -136,13 +136,13 @@
     const { preferences } = await chrome.storage.local.get("preferences");
     await chrome.storage.local.set({ preferences: { ...preferences || {}, ...changes } });
   }
-  function withRivals(chart, keep) {
+  function withRivalsOrNull(chart, keep) {
     const rivals = chart.rivals.filter(keep);
     if (rivals.length === chart.rivals.length)
       return chart;
     if (!rivals.length)
       return null;
-    return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
+    return { ...chart, rivals, weight: targetWeight(rivals.map((r) => r.delta)) };
   }
   async function deletePlayer(playerId) {
     const { players, results, preferences, ownPlayerId } = await chrome.storage.local.get(["players", "results", "preferences", "ownPlayerId"]);
@@ -206,11 +206,11 @@
     return counts;
   }
   function levelStats(charts, hiddenCharts) {
-    const shown = resultCounts(charts);
-    const hidden = resultCounts(hiddenCharts, (rival) => rival.realDelta);
+    const shownCounts = resultCounts(charts);
+    const hiddenCounts = resultCounts(hiddenCharts, (rival) => rival.realDelta);
     return {
       charts: { ...tierCounts(charts), hidden: hiddenCharts.length },
-      results: { lose: shown.lose, unplayed: shown.unplayed, win: shown.win + hidden.win, hidden: hidden.lose }
+      results: { lose: shownCounts.lose, unplayed: shownCounts.unplayed, win: shownCounts.win + hiddenCounts.win, hidden: hiddenCounts.lose }
     };
   }
   function resultCounts(charts, diff = (rival) => rival.delta) {
@@ -247,15 +247,15 @@
 Last try: ${lastTryDate || "unknown"}`;
   var rowStart = (i) => i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : "<tr>";
   function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, scoreCap }) {
-    const all = [...chart.rivals];
+    const allRivals = [...chart.rivals];
     if (chart.mine !== null)
-      all.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
-    all.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
+      allRivals.push({ player: "You", score: chart.mine, me: true, ...chart.myDates });
+    allRivals.sort((a, b) => b.score - a.score || (b.me ? 1 : 0) - (a.me ? 1 : 0));
     const isWon = (rival) => !rival.me && rival.delta !== null && rival.delta > 0;
-    const folded = collapseWon ? all.filter(isWon).length : 0;
-    const list = folded ? all.filter((rival) => !isWon(rival)) : all;
-    const rowCount = list.length + (folded ? 1 : 0);
-    const rows = list.map((rival, i) => {
+    const folded = collapseWon ? allRivals.filter(isWon).length : 0;
+    const shownRivals = folded ? allRivals.filter((r) => !isWon(r)) : allRivals;
+    const rowCount = shownRivals.length + (folded ? 1 : 0);
+    const rows = shownRivals.map((rival, i) => {
       const head = i === 0 ? `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
          <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>` : "";
       const tr = rowStart(i);
@@ -268,7 +268,7 @@ Last try: ${lastTryDate || "unknown"}`;
       return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta, scoreCap)}</td></tr>`;
     });
     if (folded) {
-      rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" data-expand="${esc(chartKey(chart))}">...show ${folded} other${folded === 1 ? "" : "s"}...</button></td></tr>`);
+      rows.push(`${rowStart(shownRivals.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" data-expand="${esc(chartKey(chart))}">...show ${folded} other${folded === 1 ? "" : "s"}...</button></td></tr>`);
     }
     return rows;
   }
@@ -343,7 +343,7 @@ Last try: ${lastTryDate || "unknown"}`;
       const groups = hiddenGroups.filter(({ charts }) => charts.length);
       const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
         id,
-        id === "hidden" ? groups.reduce((acc, { charts }) => acc + charts.length, 0) : levelCharts.filter((chart) => chartTier(chart) === id).length
+        id === "hidden" ? groups.reduce((acc, { charts }) => acc + charts.length, 0) : levelCharts.filter((c) => chartTier(c) === id).length
       ]));
       const tabNumber = (id) => results ? results[TIER_STAT[id]] : tabCounts[id];
       const tabWord = (id) => STAT_WORDS[results ? "results" : "charts"][TIER_STAT[id]];
@@ -362,10 +362,10 @@ Last try: ${lastTryDate || "unknown"}`;
       if (selectedTab === "hidden") {
         rows = groups.map(({ label, charts }) => `<tr><td class="group-title" colspan="5">${esc(label)} \xB7 ${charts.length}</td></tr>` + tableRows(charts, myName, scoreCap, true, true).join("")).join("");
       } else {
-        const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
+        const visibleCharts = levelCharts.filter((c) => chartTier(c) === selectedTab);
         const byRivalCount = (a, b) => b.rivals.length - a.rivals.length || a.track.localeCompare(b.track);
-        visible.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
-        rows = tableRows(visible, myName, scoreCap, selectedTab === "rivals-win").join("");
+        visibleCharts.sort({ "you-win": byLeadWeight, "not-played": byRivalCount }[selectedTab] || byTargetWeight);
+        rows = tableRows(visibleCharts, myName, scoreCap, selectedTab === "rivals-win").join("");
       }
       body.innerHTML = `<table>
       <thead><tr><th class="track">Track</th><th class="col-chart">Chart</th><th class="col-player">Player</th><th class="num col-score">Score</th><th class="num col-diff">Diff</th></tr></thead>
@@ -427,7 +427,7 @@ Last try: ${lastTryDate || "unknown"}`;
     const ta = levelType(a), tb = levelType(b);
     return (TYPE_ORDER[ta] ?? 9) - (TYPE_ORDER[tb] ?? 9) || ta.localeCompare(tb) || levelNum(a) - levelNum(b);
   }
-  var sortedLevels = (charts) => [...new Set(charts.map((chart) => chart.chart))].sort(compareLevels);
+  var sortedLevels = (charts) => [...new Set(charts.map((c) => c.chart))].sort(compareLevels);
   function createChartsGroups(container, onSelect) {
     container.addEventListener("click", (event) => {
       const bar = event.target.closest(".level-bar[data-level]");
@@ -569,12 +569,12 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       if (!box)
         return;
       try {
-        const hidden = new Set((await loadPreferences()).hiddenRivals);
+        const hiddenIds = new Set((await loadPreferences()).hiddenRivals);
         if (box.checked)
-          hidden.delete(box.dataset.player);
+          hiddenIds.delete(box.dataset.player);
         else
-          hidden.add(box.dataset.player);
-        await savePreferences({ hiddenRivals: [...hidden] });
+          hiddenIds.add(box.dataset.player);
+        await savePreferences({ hiddenRivals: [...hiddenIds] });
         await onChange();
       } catch (error) {
         console.error("[piuscores] Unable to save rival selection", error);
@@ -610,7 +610,7 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
         console.error("[piuscores] Unable to delete player data", error);
       }
     });
-    function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats, countBy) {
+    function render(charts, players, ownPlayerId, hiddenIds, bestCounts, soloStats, countBy) {
       const rivalStats = {};
       for (const chart of charts) {
         for (const rival of chart.rivals) {
@@ -632,7 +632,7 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       rivals.sort((a, b) => (b.pumbility ?? -1) - (a.pumbility ?? -1) || a.name.localeCompare(b.name, void 0, { sensitivity: "base" }));
       container.innerHTML = rivals.length ? rivals.map((rival) => {
         const me = rival.playerId === ownPlayerId;
-        const on = me || !hidden.has(rival.playerId);
+        const on = me || !hiddenIds.has(rival.playerId);
         const solo = rival.playerId === soloRival;
         return rivalListItem(rival, players[rival.playerId], {
           me,
@@ -951,18 +951,18 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       ensure();
       const [allCharts, { players, ownPlayerId, bestCounts }, preferences] = await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
       const { hiddenRivals, tryCooldown, npMinimalRivals } = preferences;
-      const hidden = new Set(hiddenRivals);
+      const hiddenIds = new Set(hiddenRivals);
       const solo = rivalList.soloRival();
-      const included = (playerId) => solo ? playerId === solo : !hidden.has(playerId);
-      const coolingDown = (chart) => {
+      const isIncluded = (playerId) => solo ? playerId === solo : !hiddenIds.has(playerId);
+      const isCoolingDown = (chart) => {
         const days = daysSince(chart.myDates.lastTryDate);
         return chartTier(chart) === "rivals-win" && days !== null && days < tryCooldown;
       };
-      const shownCharts = allCharts.map((chart) => withRivals(chart, (rival) => included(rival.playerId))).filter(Boolean).filter((chart) => !chart.unplayed || chart.rivals.length >= npMinimalRivals);
-      const charts = shownCharts.filter((chart) => !coolingDown(chart));
-      const coolingCharts = shownCharts.filter(coolingDown);
-      const isCapLoss = (chart) => chartTier(chart) !== "rivals-win" && chart.rivals.some((rival) => rival.realDelta !== null && rival.realDelta < 0);
-      const capLosses = charts.filter(isCapLoss).map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
+      const shownCharts = allCharts.map((c) => withRivalsOrNull(c, (r) => isIncluded(r.playerId))).filter(Boolean).filter((c) => !c.unplayed || c.rivals.length >= npMinimalRivals);
+      const charts = shownCharts.filter((c) => !isCoolingDown(c));
+      const coolingCharts = shownCharts.filter(isCoolingDown);
+      const isCapLoss = (chart) => chartTier(chart) !== "rivals-win" && chart.rivals.some((r) => r.realDelta !== null && r.realDelta < 0);
+      const capLosses = charts.filter(isCapLoss).map((c) => ({ ...c, weight: targetWeight(c.rivals.map((r) => r.realDelta)) }));
       const levels = sortedLevels(shownCharts);
       if (!levels.includes(state.selectedLevel)) {
         state.selectedLevel = levels[0] ?? null;
@@ -971,8 +971,8 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       const { countBy } = preferences;
       const totals = countBy === "charts" ? tierCounts(charts) : resultCounts(charts);
       header.render(players[ownPlayerId], totals, preferences);
-      rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null, countBy);
-      const barCharts = charts.filter((chart) => !isCapLoss(chart));
+      rivalList.render(allCharts, players, ownPlayerId, hiddenIds, bestCounts, solo ? totals : null, countBy);
+      const barCharts = charts.filter((c) => !isCapLoss(c));
       const hiddenCharts = [...coolingCharts, ...capLosses];
       chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
       const emptyMessage = allCharts.length === 0 ? "No saved rival scores yet \u2014 grab them on a player's Sessions page." : shownCharts.length === 0 ? "No charts for the selected rivals \u2014 check some rivals on the left." : null;
@@ -1595,7 +1595,7 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
       return "Phoenix";
     return null;
   }
-  function getPhoenix2CardInfo(card) {
+  function getPhoenix2CardInfoOrNull(card) {
     if (getSessionCardMix(card) !== "Phoenix 2")
       return null;
     const meta = text(card.querySelector(".sbd-card-meta")).replace(/\s+/g, " ");
@@ -1613,14 +1613,14 @@ ${plural(byCharts[stat2], `${STAT_WORDS.charts[stat2]} chart`)} / ${plural(byRes
         return { sessions, reachedOlderMix: true };
       if (mix !== "Phoenix 2")
         continue;
-      const info = getPhoenix2CardInfo(card);
+      const info = getPhoenix2CardInfoOrNull(card);
       if (info)
         sessions.push({ card, info });
     }
     return { sessions, reachedOlderMix: false };
   }
   function sessionCardSignature() {
-    return JSON.stringify(getSessionCards().map((card) => getPhoenix2CardInfo(card) || text(card)));
+    return JSON.stringify(getSessionCards().map((card) => getPhoenix2CardInfoOrNull(card) || text(card)));
   }
   function sessionCheckpointMatches(checkpoint, info) {
     return checkpoint?.title === info.title && checkpoint?.timestamp === info.timestamp;

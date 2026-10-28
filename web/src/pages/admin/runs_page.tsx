@@ -96,9 +96,9 @@ export function RunsPage() {
   }, [active, current.reload, previous.reload]);
 
   // A running "all" run shows over a queued one; either disables the button.
-  const allRuns = current.data?.runs.filter((run)  =>  run.kind === 'all')  ??  [];
-  const runningAll = allRuns.find((run)  =>  run.status === 'running');
-  const queuedAll = allRuns.find((run)  =>  run.status === 'queued');
+  const allRuns = current.data?.runs.filter((r)  =>  r.kind === 'all')  ??  [];
+  const runningAll = allRuns.find((r)  =>  r.status === 'running');
+  const queuedAll = allRuns.find((r)  =>  r.status === 'queued');
   const scrapeAllLabel = (runningAll
     ?  `Running for ${formatMinutesSince(runningAll.startedAt  ??  runningAll.createdAt)}`
     :  queuedAll  ?  `Queued ${formatAgo(queuedAll.createdAt)}`  :  'Scrape all players');
@@ -112,7 +112,7 @@ export function RunsPage() {
     }
   };
 
-  const shown = (tab === 'current'  ?  current  :  previous);
+  const shownRuns = (tab === 'current'  ?  current  :  previous);
   const tabButton = (id: RunsTab, label: string, count?: number)  =>  (
     <button type="button" role="tab" aria-selected={tab === id} onClick={()  =>  setSearchParams((id === 'previous'  ?  { tab: id }  :  {}))}>
       {label}{count !== undefined  &&  <span className="tab-count"> {count}</span>}
@@ -132,7 +132,7 @@ export function RunsPage() {
         The scrape worker runs one run at a time, in order. Start runs for single players from the Players page.
       </p>
 
-      {(error  ??  shown.error)  &&  <p className="error" role="alert">{error  ??  shown.error}</p>}
+      {(error  ??  shownRuns.error)  &&  <p className="error" role="alert">{error  ??  shownRuns.error}</p>}
 
       <div className="page-tabs" role="tablist" aria-label="Scraping">
         {tabButton('current', 'Current', current.data?.runs.length)}
@@ -140,9 +140,9 @@ export function RunsPage() {
       </div>
 
       <div role="tabpanel">
-        {shown.data  &&  shown.data.runs.length > 0  &&  <RunsTable runs={shown.data.runs} finished={tab === 'previous'} />}
-        {! shown.data  &&  ! shown.error  &&  <p className="muted">Loading…</p>}
-        {shown.data  &&  ! shown.data.runs.length  &&  (
+        {shownRuns.data  &&  shownRuns.data.runs.length > 0  &&  <RunsTable runs={shownRuns.data.runs} finished={tab === 'previous'} />}
+        {! shownRuns.data  &&  ! shownRuns.error  &&  <p className="muted">Loading…</p>}
+        {shownRuns.data  &&  ! shownRuns.data.runs.length  &&  (
           <p className="muted">{tab === 'current'  ?  'Nothing is queued or running.'  :  'No finished runs yet.'}</p>
         )}
         {tab === 'previous'  &&  previous.data?.hasMore  &&  (

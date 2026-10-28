@@ -94,9 +94,9 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
     lastAllRunAt(db),
   ]);
 
-  const shown = rows.slice(0, limit);
-  const guids = await runGuids(db, shown);
-  return { runs: shown.map((row)  =>  toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total), lastAllRunAt: lastAll };
+  const shownRows = rows.slice(0, limit);
+  const guids = await runGuids(db, shownRows);
+  return { runs: shownRows.map((row)  =>  toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total), lastAllRunAt: lastAll };
 }
 
 

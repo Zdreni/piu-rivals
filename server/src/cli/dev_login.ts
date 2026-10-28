@@ -37,7 +37,7 @@ async function createTestUser(db: ReturnType<typeof createDatabase>): Promise<nu
   if (player)
     rivals = rivals.where('players.id', '!=', player.id);
 
-  const rivalIds = (await rivals.execute()).map((rival)  =>  rival.id);
+  const rivalIds = (await rivals.execute()).map((r)  =>  r.id);
   if (rivalIds.length)
     await db.insertInto('user_rivals').values(rivalIds.map((id)  =>  ({ user_id: userId, player_id: id }))).execute();
 

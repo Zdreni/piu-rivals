@@ -28,8 +28,8 @@ const dayTitle = (day: string | null)  =>  (day === null  ?  'Unknown day'  :  D
 function HistoryView({ me }: { me: PlayerSummary }) {
   const settings = useRivalSettings();
   const { rivals, preferences: { scoreCap } } = settings;
-  const shownRivals = useMemo(()  =>  rivals.filter((rival)  =>  ! rival.hidden), [rivals]);
-  const playerIds = useMemo(()  =>  [me.id, ...shownRivals.map((rival)  =>  rival.id)], [me.id, shownRivals]);
+  const shownRivals = useMemo(()  =>  rivals.filter((r)  =>  ! r.hidden), [rivals]);
+  const playerIds = useMemo(()  =>  [me.id, ...shownRivals.map((r)  =>  r.id)], [me.id, shownRivals]);
   const data = useBests(playerIds);
   const keep = useKeeps();
   const [shown, setShown] = useState(PAGE_CHARTS);
@@ -44,9 +44,9 @@ function HistoryView({ me }: { me: PlayerSummary }) {
   });
 
   const bests = useMemo(
-    ()  =>  buildCharts(data.charts, data.bests, me.id, shownRivals.map((rival)  =>  ({ id: rival.id, name: rival.name  ??  rival.id })),
+    ()  =>  buildCharts(data.charts, data.bests, me.id, shownRivals.map((r)  =>  ({ id: r.id, name: r.name  ??  r.id })),
       scoreCap, { minLevel: MIN_LEVEL, maxLevel: MAX_LEVEL }, true)
-      .filter((chart)  =>  ! chart.unplayed)
+      .filter((c)  =>  ! c.unplayed)
       .sort((a, b)  =>  (b.myDate  ??  '').localeCompare(a.myDate  ??  '')  ||  a.track.localeCompare(b.track)),
     [data.version, data.charts, data.bests, me.id, shownRivals, scoreCap],
   );

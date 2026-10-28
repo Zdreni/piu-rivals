@@ -75,11 +75,11 @@ export function tierCounts(charts) {
 // losses hidden by the try cooldown or the score cap. They are judged uncapped, so score-cap losses count as hidden
 // losses, while the rivals you beat on them still count as yours.
 export function levelStats(charts, hiddenCharts) {
-  const shown = resultCounts(charts);
-  const hidden = resultCounts(hiddenCharts, (rival)  =>  rival.realDelta);
+  const shownCounts = resultCounts(charts);
+  const hiddenCounts = resultCounts(hiddenCharts, (rival)  =>  rival.realDelta);
   return {
     charts: { ...tierCounts(charts), hidden: hiddenCharts.length },
-    results: { lose: shown.lose, unplayed: shown.unplayed, win: shown.win + hidden.win, hidden: hidden.lose },
+    results: { lose: shownCounts.lose, unplayed: shownCounts.unplayed, win: shownCounts.win + hiddenCounts.win, hidden: hiddenCounts.lose },
   };
 }
 

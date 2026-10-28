@@ -44,16 +44,16 @@ export async function joinOrQueueRun(db: Db, kind: 'register' | 'selected', play
 
     // A run's players from players_done on are being scraped or still to come.
     const waitingIn = (run: typeof runs[number])  =>  (run.player_ids  ??  []).slice(run.players_done);
-    const waiting = new Set(runs.flatMap(waitingIn));
-    const added = playerIds.filter((id)  =>  ! waiting.has(id));
-    if (! added.length)
-      return runs.find((run)  =>  waitingIn(run).some((id)  =>  playerIds.includes(id)))!.id;
+    const waitingIds = new Set(runs.flatMap(waitingIn));
+    const addedIds = playerIds.filter((id)  =>  ! waitingIds.has(id));
+    if (! addedIds.length)
+      return runs.find((r)  =>  waitingIn(r).some((id)  =>  playerIds.includes(id)))!.id;
 
-    const target = runs.find((run)  =>  JOINABLE_KINDS.includes(run.kind));
+    const target = runs.find((r)  =>  JOINABLE_KINDS.includes(r.kind));
     if (! target)
-      return queueRun(trx, kind, added, userId);
+      return queueRun(trx, kind, addedIds, userId);
 
-    const ids = [...(target.player_ids  ??  []), ...added];
+    const ids = [...(target.player_ids  ??  []), ...addedIds];
     await trx.updateTable('scrape_runs')
       .set({ player_ids: JSON.stringify(ids), players_total: ids.length })
       .where('id', '=', target.id)

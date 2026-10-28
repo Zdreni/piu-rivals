@@ -49,9 +49,9 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
   const players = [me, ...rivals].map(listed).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
     ||  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-  const hidden = new Set(rivals.filter((rival)  =>  rival.hidden).map((rival)  =>  rival.id));
-  const rivalIds = new Set(rivals.map((rival)  =>  rival.id));
-  const othersCount = allPlayers  &&  allPlayers.filter((player)  =>  player.id !== me.id  &&  ! rivalIds.has(player.id)).length;
+  const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
+  const rivalIds = new Set(rivals.map((r)  =>  r.id));
+  const othersCount = allPlayers  &&  allPlayers.filter((p)  =>  p.id !== me.id  &&  ! rivalIds.has(p.id)).length;
 
   // A newly added rival is focused; it's brought into view once you're back on My rivals. A rival unrolls as it's
   // focused, so it's brought into view again once it has.
@@ -104,7 +104,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
                   key={player.playerId}
                   player={player}
                   me={isMe}
-                  on={isMe  ||  ! hidden.has(player.playerId)}
+                  on={isMe  ||  ! hiddenIds.has(player.playerId)}
                   solo={isSolo}
                   faded={!! solo  &&  ! isMe  &&  ! isSolo}
                   focused={player.playerId === focused}

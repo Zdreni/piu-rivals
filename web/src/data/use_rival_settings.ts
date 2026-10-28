@@ -114,21 +114,21 @@ export function useRivalSettings(): RivalSettings {
 
   const addRival = useCallback((player: PlayerSummary)  => {
     void changeRivals(
-      (rivals)  =>  (rivals.some((rival)  =>  rival.id === player.id)  ?  rivals  :  [...rivals, { ...player, hidden: false }]),
+      (rivals)  =>  (rivals.some((r)  =>  r.id === player.id)  ?  rivals  :  [...rivals, { ...player, hidden: false }]),
       ()  =>  api<RivalsResponse>('POST', '/me/rivals', { playerId: player.id }),
     );
   }, [changeRivals]);
 
   const removeRival = useCallback((playerId: string)  => {
     void changeRivals(
-      (rivals)  =>  rivals.filter((rival)  =>  rival.id !== playerId),
+      (rivals)  =>  rivals.filter((r)  =>  r.id !== playerId),
       ()  =>  api<RivalsResponse>('DELETE', `/me/rivals/${playerId}`),
     );
   }, [changeRivals]);
 
   const setRivalHidden = useCallback((playerId: string, hidden: boolean)  => {
     void changeRivals(
-      (rivals)  =>  rivals.map((rival)  =>  (rival.id === playerId  ?  { ...rival, hidden }  :  rival)),
+      (rivals)  =>  rivals.map((r)  =>  (r.id === playerId  ?  { ...r, hidden }  :  r)),
       ()  =>  api<RivalsResponse>('PATCH', `/me/rivals/${playerId}`, { hidden }),
     );
   }, [changeRivals]);

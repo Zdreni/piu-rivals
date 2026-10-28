@@ -13,6 +13,51 @@ Name functions and write comments in the project's own terms (open session, newe
 PUMBILITY, rivals), not in the scraped site's markup terms. Words like "ceremony" or "hero"
 from its `data-testid` values and CSS classes stay in selectors only.
 
+Name a collection after the entity it holds (`hiddenPlayers`, `soloRivals`, `newCharts`),
+not with an adjective alone such as `hidden`.
+
+When a lambda is passed to `map`, `filter`, `some` or a similar method of such a collection,
+its parameter may be a one or two letter name for the entity instead of the full word:
+`p` for a player, `r` for a rival, `t` for a track, `c` or `ch` for a chart.
+
+```js
+const hiddenIds = hiddenPlayers.map((p)  =>  p.id);
+const doubles = newCharts.filter((ch)  =>  ch.double);
+```
+
+Name a function or lambda that returns a boolean for an adjective with the `is` prefix:
+`isHidden`, not `hidden`.
+
+```js
+const isHidden = (rival)  =>  hiddenIds.includes(rival.id);
+```
+
+Give a function that transforms the value it's given, but may return `null` instead, the
+`OrNull` suffix: `withRivalsOrNull(chart, keep)`, `getPhoenix2CardInfoOrNull(card)`. Callers
+then see they have to handle `null`, as with `.filter` and a type guard in TypeScript.
+Functions that look something up or read the page (`findGrownSession`, `readSessionsPage`)
+and parsers (`parseChartLabel`) don't need it: "nothing found" is part of what their name
+says. Neither does one that returns `null` only when the value it's given is missing
+(`daysSince(date)`).
+
+```ts
+const charts = allCharts
+  .map((c)  =>  withRivalsOrNull(c, isShown))
+  .filter((c): c is ChartRow  =>  c !== null);
+```
+
+## Variables
+
+Don't keep an element from `querySelector` in a variable when it's used only once, for
+example to add an event listener. Call the method on the `querySelector` result directly:
+
+```js
+container.querySelector('.close').addEventListener('click', close);
+```
+
+Keep the variable when the element is used again later, such as in a render function.
+
+
 ## Module size
 
 Keep a module under roughly 300 lines and 10 KB. When a module grows past that, check

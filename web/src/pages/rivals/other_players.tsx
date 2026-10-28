@@ -54,8 +54,8 @@ function loadOtherBests(playerId: string): Promise<OtherBests> {
   let load = otherBestsLoads.get(playerId);
   if (! load) {
     load = api<BestsResponse>('GET', `/bests?players=${playerId}`).then((response)  =>  ({
-      charts: new Map(response.charts.map((chart)  =>  [chart.id, chart])),
-      bests: new Map(response.bests.map((best)  =>  [best.chartId, best])),
+      charts: new Map(response.charts.map((c)  =>  [c.id, c])),
+      bests: new Map(response.bests.map((b)  =>  [b.chartId, b])),
     }));
     load.catch(()  =>  otherBestsLoads.delete(playerId));
     otherBestsLoads.set(playerId, load);
@@ -116,16 +116,16 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
   const openStats = useOtherStats((open !== me.id  ?  open  :  null), me.id, myBests);
 
   const words = query.trim().toLowerCase();
-  const others: (PlayerSummary | ListedPlayer)[] = [players?.find((player)  =>  player.id === me.id)  ??  me,
-    ...(players  ??  []).filter((player)  =>  player.id !== me.id)]
-    .filter((player)  =>  player.id === me.id
-      ||  (! rivals.has(player.id)  &&  (! words  ||  (player.name  ??  player.id).toLowerCase().includes(words))))
+  const otherPlayers: (PlayerSummary | ListedPlayer)[] = [players?.find((p)  =>  p.id === me.id)  ??  me,
+    ...(players  ??  []).filter((p)  =>  p.id !== me.id)]
+    .filter((p)  =>  p.id === me.id
+      ||  (! rivals.has(p.id)  &&  (! words  ||  (p.name  ??  p.id).toLowerCase().includes(words))))
     .sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
 
-  const meAt = others.findIndex((player)  =>  player.id === me.id);
+  const meAt = otherPlayers.findIndex((p)  =>  p.id === me.id);
   const first = (words  ?  0  :  Math.max(0, meAt - shownAbove));
-  const last = (words  ?  others.length  :  Math.min(others.length, meAt + 1 + shownBelow));
+  const last = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + shownBelow));
 
   return (
     <>
@@ -142,7 +142,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
       <div className="rival-scroll">
         {error  &&  <div className="rival-hint error">{error}</div>}
         {! error  &&  ! players  &&  <div className="muted rival-hint">Loading players…</div>}
-        {players  &&  others.length === 1  &&  (
+        {players  &&  otherPlayers.length === 1  &&  (
           <div className="muted rival-hint">{words  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
         )}
         {first > 0  &&  (
@@ -150,7 +150,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
             ...{first} more...
           </button>
         )}
-        {others.slice(first, last).map((player)  => {
+        {otherPlayers.slice(first, last).map((player)  => {
           const isMe = player.id === me.id;
           const isOpen = player.id === open;
           const name = displayName(player.name  ??  player.id);
@@ -209,9 +209,9 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
             </div>
           );
         })}
-        {last < others.length  &&  (
+        {last < otherPlayers.length  &&  (
           <button className="show-others" type="button" onClick={()  =>  setShownBelow(shownBelow + SHOW_STEP)}>
-            ...{others.length - last} more...
+            ...{otherPlayers.length - last} more...
           </button>
         )}
       </div>

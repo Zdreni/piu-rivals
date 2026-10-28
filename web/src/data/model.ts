@@ -78,7 +78,7 @@ export const byTargetWeight = (a: ChartRow, b: ChartRow)  =>
 
 
 export const leadWeight = (chart: ChartRow)  =>
-  chart.rivals.reduce((acc, rival)  =>  acc + ((rival.delta !== null  &&  rival.delta > 0)  ?  Math.sqrt(rival.delta)  :  0), 0);
+  chart.rivals.reduce((acc, r)  =>  acc + ((r.delta !== null  &&  r.delta > 0)  ?  Math.sqrt(r.delta)  :  0), 0);
 
 
 export const byLeadWeight = (a: ChartRow, b: ChartRow)  =>  leadWeight(b) - leadWeight(a)  ||  a.track.localeCompare(b.track);
@@ -112,7 +112,7 @@ export function buildCharts(
 
     const myBest = own?.get(chartId);
     const mine = myBest?.score  ??  null;
-    const results = rivals.flatMap((rival): RivalResult[]  => {
+    const rivalResults = rivals.flatMap((rival): RivalResult[]  => {
       const best = bests.get(rival.id)?.get(chartId);
       return (best
         ?  [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn, judgments: judgments(best),
@@ -129,9 +129,9 @@ export function buildCharts(
       myDate: myBest?.bestPlayedOn  ??  null,
       myJudgments: (myBest  ?  judgments(myBest)  :  null),
       myImprovement: myBest?.improvement  ??  null,
-      rivals: results,
+      rivals: rivalResults,
       unplayed: mine === null,
-      weight: targetWeight(results.map((rival)  =>  rival.delta)),
+      weight: targetWeight(rivalResults.map((r)  =>  r.delta)),
       snoozedUntil: null,
     });
   }
@@ -141,7 +141,7 @@ export function buildCharts(
 
 
 // Returns the chart limited to rivals passing `keep`, or null when none remain.
-export function withRivals(chart: ChartRow, keep: (rival: RivalResult) => boolean): ChartRow | null {
+export function withRivalsOrNull(chart: ChartRow, keep: (rival: RivalResult) => boolean): ChartRow | null {
   const rivals = chart.rivals.filter(keep);
   if (rivals.length === chart.rivals.length)
     return chart;
@@ -149,5 +149,5 @@ export function withRivals(chart: ChartRow, keep: (rival: RivalResult) => boolea
   if (! rivals.length)
     return null;
 
-  return { ...chart, rivals, weight: targetWeight(rivals.map((rival)  =>  rival.delta)) };
+  return { ...chart, rivals, weight: targetWeight(rivals.map((r)  =>  r.delta)) };
 }

@@ -146,24 +146,24 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
   }, async (request): Promise<RivalsResponse>  => {
     const { id } = sessionUser(request);
     const user = await loadUser(db, id);
-    const wanted = [...new Set(request.body.playerIds.map((guid)  =>  guid.toLowerCase()))]
+    const wantedGuids = [...new Set(request.body.playerIds.map((guid)  =>  guid.toLowerCase()))]
       .filter((guid)  =>  guid !== user?.player?.id);
 
-    const ids = await playerIdsByGuid(db, wanted);
-    const known = [...ids.values()];
-    const unknown = wanted.filter((guid)  =>  ! ids.has(guid));
-    if (unknown.length)
-      throw new HttpError(404, `Unknown players: ${unknown.join(', ')}`);
+    const ids = await playerIdsByGuid(db, wantedGuids);
+    const knownIds = [...ids.values()];
+    const unknownGuids = wantedGuids.filter((guid)  =>  ! ids.has(guid));
+    if (unknownGuids.length)
+      throw new HttpError(404, `Unknown players: ${unknownGuids.join(', ')}`);
 
     await db.transaction().execute(async (trx)  => {
       let removal = trx.deleteFrom('user_rivals').where('user_id', '=', id);
-      if (known.length)
-        removal = removal.where('player_id', 'not in', known);
+      if (knownIds.length)
+        removal = removal.where('player_id', 'not in', knownIds);
 
       await removal.execute();
-      if (known.length) {
+      if (knownIds.length) {
         await trx.insertInto('user_rivals').ignore()
-          .values(known.map((rival)  =>  ({ user_id: id, player_id: rival })))
+          .values(knownIds.map((playerId)  =>  ({ user_id: id, player_id: playerId })))
           .execute();
       }
     });

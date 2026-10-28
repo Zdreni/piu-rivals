@@ -39,18 +39,18 @@ const rowStart = (i)  =>  (i === 0  ?  '<tr class="group alt">'  :  i % 2 === 0 
 // With `collapseWon`, rivals you beat are folded into a "show N others..." row.
 // With `colorByRealDiff`, the diff is coloured by the real diff instead of the capped one.
 export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, scoreCap }) {
-  const all = [...chart.rivals];
+  const allRivals = [...chart.rivals];
   if (chart.mine !== null)
-    all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
+    allRivals.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
 
-  all.sort((a, b)  =>  b.score - a.score  ||  (b.me  ?  1  :  0) - (a.me  ?  1  :  0));
+  allRivals.sort((a, b)  =>  b.score - a.score  ||  (b.me  ?  1  :  0) - (a.me  ?  1  :  0));
 
   const isWon = (rival)  =>  ! rival.me  &&  rival.delta !== null  &&  rival.delta > 0;
-  const folded = (collapseWon  ?  all.filter(isWon).length  :  0);
-  const list = (folded  ?  all.filter((rival)  =>  ! isWon(rival))  :  all);
-  const rowCount = list.length + (folded  ?  1  :  0);
+  const folded = (collapseWon  ?  allRivals.filter(isWon).length  :  0);
+  const shownRivals = (folded  ?  allRivals.filter((r)  =>  ! isWon(r))  :  allRivals);
+  const rowCount = shownRivals.length + (folded  ?  1  :  0);
 
-  const rows = list.map((rival, i)  => {
+  const rows = shownRivals.map((rival, i)  => {
     const head = (i === 0
       ?  `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
          <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>`
@@ -70,7 +70,7 @@ export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, 
   });
 
   if (folded) {
-    rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
+    rows.push(`${rowStart(shownRivals.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
       + `data-expand="${esc(chartKey(chart))}">...show ${folded} other${(folded === 1  ?  ''  :  's')}...</button></td></tr>`);
   }
 

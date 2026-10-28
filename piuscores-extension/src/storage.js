@@ -135,7 +135,7 @@ export async function loadCharts() {
         myDates: { bestScoreDate: myRecord?.bestScoreDate, lastTryDate: myRecord?.lastTryDate },
         rivals,
         unplayed: mine === null,
-        weight: targetWeight(rivals.map((rival)  =>  rival.delta)),
+        weight: targetWeight(rivals.map((r)  =>  r.delta)),
       });
     }
   }
@@ -218,7 +218,7 @@ export async function savePreferences(changes) {
 
 
 // Returns the chart limited to rivals passing `keep`, or null when none remain.
-export function withRivals(chart, keep) {
+export function withRivalsOrNull(chart, keep) {
   const rivals = chart.rivals.filter(keep);
   if (rivals.length === chart.rivals.length)
     return chart;
@@ -226,7 +226,7 @@ export function withRivals(chart, keep) {
   if (! rivals.length)
     return null;
 
-  return { ...chart, rivals, weight: targetWeight(rivals.map((rival)  =>  rival.delta)) };
+  return { ...chart, rivals, weight: targetWeight(rivals.map((r)  =>  r.delta)) };
 }
 
 

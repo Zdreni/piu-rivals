@@ -81,16 +81,16 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
     .where('song_key', 'in', songs.map(([songKey])  =>  songKey))
     .execute()).map((row)  =>  [row.song_key, row.id]));
 
-  const unique = [...new Map(plays.map((p)  =>  [chartKey(p.songKey, p.chartType, p.level), p])).values()];
+  const uniquePlays = [...new Map(plays.map((p)  =>  [chartKey(p.songKey, p.chartType, p.level), p])).values()];
   await trx.insertInto('charts')
-    .values(unique.map((p)  =>  ({ track_id: trackIds.get(p.songKey)!, chart_type: p.chartType, level: p.level })))
+    .values(uniquePlays.map((p)  =>  ({ track_id: trackIds.get(p.songKey)!, chart_type: p.chartType, level: p.level })))
     .ignore()
     .execute();
 
   const rows = await trx.selectFrom('charts as c')
     .innerJoin('tracks as t', 't.id', 'c.track_id')
     .select(['c.id', 't.song_key', 'c.chart_type', 'c.level'])
-    .where((eb)  =>  eb.or(unique.map((p)  =>  eb.and([
+    .where((eb)  =>  eb.or(uniquePlays.map((p)  =>  eb.and([
       eb('c.track_id', '=', trackIds.get(p.songKey)!),
       eb('c.chart_type', '=', p.chartType),
       eb('c.level', '=', p.level),
@@ -111,7 +111,7 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
   if (! chartIdList.length)
     return 0;
 
-  const { rows: fresh } = await sql<{
+  const { rows: freshBests } = await sql<{
     chart_id: number; play_id: number; score: number; improvement: number | null; last_played_on: string | null; tries: number;
   }>`
     SELECT chart_id, id AS play_id, score, IF(score > previous_best, score - previous_best, NULL) AS improvement,
@@ -127,20 +127,20 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
     ) ranked
     WHERE place = 1`.execute(trx);
 
-  const stored = new Map((await trx.selectFrom('best_results as b')
+  const storedBests = new Map((await trx.selectFrom('best_results as b')
     .innerJoin('plays as p', 'p.id', 'b.play_id')
     .select(['b.chart_id', 'b.play_id', 'b.last_played_on', 'b.tries', 'p.score'])
     .where('b.player_id', '=', playerId)
     .where('b.chart_id', 'in', chartIdList)
     .execute()).map((row)  =>  [row.chart_id, row]));
 
-  const changed = fresh.filter((row)  => {
-    const old = stored.get(row.chart_id);
+  const changedBests = freshBests.filter((row)  => {
+    const old = storedBests.get(row.chart_id);
     return ! old  ||  Number(old.play_id) !== Number(row.play_id)  ||  old.last_played_on !== row.last_played_on
       ||  old.tries !== Number(row.tries);
   });
 
-  for (const row of changed) {
+  for (const row of changedBests) {
     const values = {
       play_id: Number(row.play_id),
       improvement: (row.improvement === null  ?  null  :  Number(row.improvement)),
@@ -155,7 +155,7 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
       .execute();
   }
 
-  return changed.filter((row)  =>  row.score > (stored.get(row.chart_id)?.score  ??  -1)).length;
+  return changedBests.filter((b)  =>  b.score > (storedBests.get(b.chart_id)?.score  ??  -1)).length;
 }
 
 
@@ -184,13 +184,13 @@ export async function storeSession(db: Db, options: {
 
     let toInsert = scanned;
     if (grown) {
-      const stored = await trx.selectFrom('plays')
+      const storedPlays = await trx.selectFrom('plays')
         .select(['chart_id as chartId', 'score', 'passed', 'perfect', 'great', 'good', 'bad', 'miss', 'max_combo as maxCombo'])
         .where('player_id', '=', playerId)
         .where('session_no', '=', sessionNo)
         .execute();
 
-      toInsert = newTries(stored.map((t)  =>  ({ ...t, passed: !! t.passed })), scanned);
+      toInsert = newTries(storedPlays.map((t)  =>  ({ ...t, passed: !! t.passed })), scanned);
     }
 
     if (toInsert.length) {

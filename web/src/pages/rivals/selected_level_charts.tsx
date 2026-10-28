@@ -149,7 +149,7 @@ export function SelectedLevelCharts({
   const tabCounts = Object.fromEntries(TABS.map((id)  =>  [
     id, id === 'hidden'
       ?  groups.reduce((acc, { charts })  =>  acc + charts.length, 0)
-      :  levelCharts.filter((chart)  =>  chartTier(chart, ties) === id).length,
+      :  levelCharts.filter((c)  =>  chartTier(c, ties) === id).length,
   ])) as Record<TabId, number>;
 
   // The "Hidden" tab only shows up when there is something hidden, and "Tied" only in the solo view;
@@ -201,17 +201,17 @@ export function SelectedLevelCharts({
   );
 
   // The "Hidden" tab lists its charts group by group, each under a title.
-  let listed: ChartCardsGroup[];
+  let listedGroups: ChartCardsGroup[];
   if (tab === 'hidden') {
-    listed = groups.map(({ label, charts })  =>  ({ key: label, title: `${label} · ${charts.length}`, charts }));
+    listedGroups = groups.map(({ label, charts })  =>  ({ key: label, title: `${label} · ${charts.length}`, charts }));
   } else {
-    const visible = levelCharts.filter((chart)  =>  chartTier(chart, ties) === tab);
-    visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
-    listed = [{ key: tab, title: null, charts: visible }];
+    const visibleCharts = levelCharts.filter((c)  =>  chartTier(c, ties) === tab);
+    visibleCharts.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
+    listedGroups = [{ key: tab, title: null, charts: visibleCharts }];
   }
 
   // A card stays maximized only while its chart is listed in the open tab.
-  const big = listed.flatMap(({ charts })  =>  charts).find((chart)  =>  chart.id === maximized);
+  const big = listedGroups.flatMap(({ charts })  =>  charts).find((c)  =>  c.id === maximized);
 
   useEffect(()  => {
     if (maximized !== null  &&  ! big)
@@ -237,7 +237,7 @@ export function SelectedLevelCharts({
         empty={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${STAT_WORDS.charts[TIER_STAT[tab]]} charts at this level.`  :  null)}
         // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
         narrow={tab === 'not-played'}
-        groups={listed}
+        groups={listedGroups}
         card={card}
       />
       {big  &&  (

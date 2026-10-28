@@ -91,7 +91,7 @@ export function createChartResults(container, onSelectTab) {
     const tabCounts = Object.fromEntries(TABS.map(({ id })  =>  [
       id, id === 'hidden'
         ?  groups.reduce((acc, { charts })  =>  acc + charts.length, 0)
-        :  levelCharts.filter((chart)  =>  chartTier(chart) === id).length,
+        :  levelCharts.filter((c)  =>  chartTier(c) === id).length,
     ]));
 
     const tabNumber = (id)  =>  (results  ?  results[TIER_STAT[id]]  :  tabCounts[id]);
@@ -121,10 +121,10 @@ export function createChartResults(container, onSelectTab) {
         `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
         + tableRows(charts, myName, scoreCap, true, true).join('')).join('');
     } else {
-      const visible = levelCharts.filter((chart)  =>  chartTier(chart) === selectedTab);
+      const visibleCharts = levelCharts.filter((c)  =>  chartTier(c) === selectedTab);
       const byRivalCount = (a, b)  =>  b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
-      visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab]  ||  byTargetWeight);
-      rows = tableRows(visible, myName, scoreCap, selectedTab === 'rivals-win').join('');
+      visibleCharts.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab]  ||  byTargetWeight);
+      rows = tableRows(visibleCharts, myName, scoreCap, selectedTab === 'rivals-win').join('');
     }
 
     body.innerHTML = `<table>

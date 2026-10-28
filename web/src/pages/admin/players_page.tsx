@@ -144,7 +144,7 @@ export function PlayersPage() {
     setSelected(next);
   };
 
-  const list = useMemo(()  => {
+  const sortedPlayers = useMemo(()  => {
     const sign = (sort.descending  ?  -1  :  1);
     // Ties go by name.
     return [...players.data?.players  ??  []].sort((a, b)  =>  sign * compare[sort.column](a, b)  ||  compare.name(a, b));
@@ -168,7 +168,7 @@ export function PlayersPage() {
       {(error  ??  players.error)  &&  <p className="error" role="alert">{error  ??  players.error}</p>}
 
       <div className="title-row">
-        <span className="muted">{list.length} player{list.length === 1  ?  ''  :  's'}{chosen.length  ?  `, ${chosen.length} selected`  :  ''}</span>
+        <span className="muted">{sortedPlayers.length} player{sortedPlayers.length === 1  ?  ''  :  's'}{chosen.length  ?  `, ${chosen.length} selected`  :  ''}</span>
         <div className="buttons">
           <button type="button" disabled={! chosen.length} onClick={()  =>  void startRun('selected', chosen)}>Scrape selected</button>
           <button type="button" className="secondary" disabled={! chosen.length} onClick={()  =>  void startRun('rescan', chosen)}>
@@ -185,8 +185,8 @@ export function PlayersPage() {
                 <input
                   type="checkbox"
                   aria-label="Select all"
-                  checked={list.length > 0  &&  chosen.length === list.length}
-                  onChange={(event)  =>  setSelected(new Set((event.target.checked  ?  list.map((p)  =>  p.id)  :  [])))}
+                  checked={sortedPlayers.length > 0  &&  chosen.length === sortedPlayers.length}
+                  onChange={(event)  =>  setSelected(new Set((event.target.checked  ?  sortedPlayers.map((p)  =>  p.id)  :  [])))}
                 />
               </th>
               <SortHeader column="dbId" label="ID" className="number" {...sortProps} />
@@ -202,7 +202,7 @@ export function PlayersPage() {
             </tr>
           </thead>
           <tbody>
-            {list.map((player)  =>  (
+            {sortedPlayers.map((player)  =>  (
               <tr key={player.id}>
                 <td>
                   <input
@@ -232,7 +232,7 @@ export function PlayersPage() {
         </table>
       </div>
       {! players.data  &&  ! players.error  &&  <p className="muted">Loading…</p>}
-      {players.data  &&  ! list.length  &&  <p className="muted">No players yet: register some above.</p>}
+      {players.data  &&  ! sortedPlayers.length  &&  <p className="muted">No players yet: register some above.</p>}
     </section>
   );
 }

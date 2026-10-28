@@ -33,13 +33,13 @@ export function createRivalList(container, onChange) {
       return;
 
     try {
-      const hidden = new Set((await loadPreferences()).hiddenRivals);
+      const hiddenIds = new Set((await loadPreferences()).hiddenRivals);
       if (box.checked)
-        hidden.delete(box.dataset.player);
+        hiddenIds.delete(box.dataset.player);
       else
-        hidden.add(box.dataset.player);
+        hiddenIds.add(box.dataset.player);
 
-      await savePreferences({ hiddenRivals: [...hidden] });
+      await savePreferences({ hiddenRivals: [...hiddenIds] });
       await onChange();
     } catch (error) {
       console.error('[piuscores] Unable to save rival selection', error);
@@ -92,7 +92,7 @@ export function createRivalList(container, onChange) {
   // with none of the settings applied.
   // Below the links: scores and sessions grabbed by the scrap button, and stored best scores.
   // `soloStats`, given in solo mode, replace the solo rival's stats; they are named by `countBy`, like in the header.
-  function render(charts, players, ownPlayerId, hidden, bestCounts, soloStats, countBy) {
+  function render(charts, players, ownPlayerId, hiddenIds, bestCounts, soloStats, countBy) {
     const rivalStats = {};
     for (const chart of charts) {
       for (const rival of chart.rivals) {
@@ -120,7 +120,7 @@ export function createRivalList(container, onChange) {
     container.innerHTML = (rivals.length
       ?  rivals.map((rival)  => {
         const me = rival.playerId === ownPlayerId;
-        const on = me  ||  ! hidden.has(rival.playerId);
+        const on = me  ||  ! hiddenIds.has(rival.playerId);
         const solo = rival.playerId === soloRival;
         return rivalListItem(rival, players[rival.playerId], {
           me,

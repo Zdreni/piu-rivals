@@ -9,11 +9,11 @@ export function PlayerSelect({ players, value, onChange, label }: {
   onChange: (playerId: string | null) => void;
   label: string;
 }) {
-  const sorted = [...players].sort((a, b)  =>  playerLabel(a).localeCompare(playerLabel(b)));
+  const sortedPlayers = [...players].sort((a, b)  =>  playerLabel(a).localeCompare(playerLabel(b)));
   return (
     <select value={value  ??  ''} onChange={(event)  =>  onChange(event.target.value  ||  null)} aria-label={label}>
       <option value="">— none —</option>
-      {sorted.map((player)  =>  <option key={player.id} value={player.id}>{playerLabel(player)}</option>)}
+      {sortedPlayers.map((p)  =>  <option key={p.id} value={p.id}>{playerLabel(p)}</option>)}
     </select>
   );
 }

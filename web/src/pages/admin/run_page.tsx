@@ -93,12 +93,12 @@ export function RunPage() {
   const players = details.data?.players  ??  [];
   // The worker takes the players in order: the first playersDone are finished, the next one is current.
   const current = Math.min(run.playersDone, players.length);
-  const hidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < current
+  const isHidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < current
     ?  ! allBeforeShown  &&  index < current - PLAYERS_AROUND
     :  ! allAfterShown  &&  index > current + PLAYERS_AROUND);
 
-  const shownPlayers = players.filter((player, index)  =>  ! hidden(player, index));
-  const hiddenBefore = players.filter((player, index)  =>  index < current  &&  hidden(player, index)).length;
+  const shownPlayers = players.filter((p, index)  =>  ! isHidden(p, index));
+  const hiddenBefore = players.filter((p, index)  =>  index < current  &&  isHidden(p, index)).length;
   const hiddenAfter = players.length - shownPlayers.length - hiddenBefore;
   const showButton = (count: number, label: string, onClick: () => void)  =>  count > 0  &&  (
     <button type="button" className="secondary small-button" onClick={onClick}>
@@ -163,7 +163,7 @@ export function RunPage() {
           <h2>Players</h2>
           {showButton(hiddenBefore, 'previous', ()  =>  setAllBeforeShown(true))}
           <ul className="run-players">
-            {shownPlayers.map((player)  =>  <RunPlayer key={player.id} player={player} errors={playerErrors(player.id)} />)}
+            {shownPlayers.map((p)  =>  <RunPlayer key={p.id} player={p} errors={playerErrors(p.id)} />)}
           </ul>
           {showButton(hiddenAfter, 'next', ()  =>  setAllAfterShown(true))}
         </>

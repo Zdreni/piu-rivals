@@ -1,5 +1,5 @@
 import {
-  byTargetWeight, daysSince, loadCharts, loadPlayers, loadPreferences, targetWeight, withRivals,
+  byTargetWeight, daysSince, loadCharts, loadPlayers, loadPreferences, targetWeight, withRivalsOrNull,
 } from '../storage.js';
 import { chartResultsStyles, createChartResults } from './rivals/chart_results.js';
 import { chartTier, levelStats, resultCounts, tierCounts } from './rivals/common.js';
@@ -100,33 +100,33 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
       await Promise.all([loadCharts(), loadPlayers(), loadPreferences()]);
 
     const { hiddenRivals, tryCooldown, npMinimalRivals } = preferences;
-    const hidden = new Set(hiddenRivals);
+    const hiddenIds = new Set(hiddenRivals);
     // A solo rival is compared alone, whatever the stored selection says.
     const solo = rivalList.soloRival();
-    const included = (playerId)  =>  (solo  ?  playerId === solo  :  ! hidden.has(playerId));
+    const isIncluded = (playerId)  =>  (solo  ?  playerId === solo  :  ! hiddenIds.has(playerId));
 
     // Lost charts tried within the try cooldown stay hidden until it passes; unknown dates never hide.
-    const coolingDown = (chart)  => {
+    const isCoolingDown = (chart)  => {
       const days = daysSince(chart.myDates.lastTryDate);
       return chartTier(chart) === 'rivals-win'  &&  days !== null  &&  days < tryCooldown;
     };
 
     const shownCharts = allCharts
-      .map((chart)  =>  withRivals(chart, (rival)  =>  included(rival.playerId)))
+      .map((c)  =>  withRivalsOrNull(c, (r)  =>  isIncluded(r.playerId)))
       .filter(Boolean)
       // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((chart)  =>  ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
+      .filter((c)  =>  ! c.unplayed  ||  c.rivals.length >= npMinimalRivals);
 
-    const charts = shownCharts.filter((chart)  =>  ! coolingDown(chart));
-    const coolingCharts = shownCharts.filter(coolingDown);
+    const charts = shownCharts.filter((c)  =>  ! isCoolingDown(c));
+    const coolingCharts = shownCharts.filter(isCoolingDown);
 
     // Charts a rival beats you on only by the uncapped score, so the score cap turns the loss into a draw.
     const isCapLoss = (chart)  =>  chartTier(chart) !== 'rivals-win'
-      &&  chart.rivals.some((rival)  =>  rival.realDelta !== null  &&  rival.realDelta < 0);
+      &&  chart.rivals.some((r)  =>  r.realDelta !== null  &&  r.realDelta < 0);
 
     const capLosses = charts
       .filter(isCapLoss)
-      .map((chart)  =>  ({ ...chart, weight: targetWeight(chart.rivals.map((rival)  =>  rival.realDelta)) }));
+      .map((c)  =>  ({ ...c, weight: targetWeight(c.rivals.map((r)  =>  r.realDelta)) }));
 
     const levels = sortedLevels(shownCharts);
     if (! levels.includes(state.selectedLevel)) {
@@ -138,10 +138,10 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     const totals = (countBy === 'charts'  ?  tierCounts(charts)  :  resultCounts(charts));
     header.render(players[ownPlayerId], totals, preferences);
     // In solo mode the solo rival's stats are the header's, with all the settings applied.
-    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, (solo  ?  totals  :  null), countBy);
+    rivalList.render(allCharts, players, ownPlayerId, hiddenIds, bestCounts, (solo  ?  totals  :  null), countBy);
 
     // The level bars count score-cap losses as hidden losses rather than wins.
-    const barCharts = charts.filter((chart)  =>  ! isCapLoss(chart));
+    const barCharts = charts.filter((c)  =>  ! isCapLoss(c));
     const hiddenCharts = [...coolingCharts, ...capLosses];
     chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
 

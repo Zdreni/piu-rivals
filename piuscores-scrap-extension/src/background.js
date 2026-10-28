@@ -83,8 +83,8 @@ async function knownPlayers() {
 // from playersDone on are the ones not finished yet.
 async function activeRunFor(playerId) {
   const { runs } = await api('GET', '/admin/scrape-runs?state=current');
-  return runs.find((run)  =>  ACTIVE_STATUSES.includes(run.status)
-    &&  (run.playerIds?.slice(run.playersDone).includes(playerId)  ||  run.currentPlayer?.id === playerId))  ??  null;
+  return runs.find((r)  =>  ACTIVE_STATUSES.includes(r.status)
+    &&  (r.playerIds?.slice(r.playersDone).includes(playerId)  ||  r.currentPlayer?.id === playerId))  ??  null;
 }
 
 

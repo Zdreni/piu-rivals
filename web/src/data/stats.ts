@@ -124,4 +124,4 @@ function compareLevels(a: string, b: string) {
 }
 
 
-export const sortedLevels = (charts: ChartRow[])  =>  [...new Set(charts.map((chart)  =>  chart.chart))].sort(compareLevels);
+export const sortedLevels = (charts: ChartRow[])  =>  [...new Set(charts.map((c)  =>  c.chart))].sort(compareLevels);

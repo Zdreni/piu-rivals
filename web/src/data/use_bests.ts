@@ -87,16 +87,16 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
     changed();
   }
 
-  const known = playerIds.filter((playerId)  =>  store.since.has(playerId));
-  const fresh = playerIds.filter((playerId)  =>  ! store.since.has(playerId));
+  const knownPlayerIds = playerIds.filter((playerId)  =>  store.since.has(playerId));
+  const freshPlayerIds = playerIds.filter((playerId)  =>  ! store.since.has(playerId));
   const stale: string[] = [];
   // A chunk asks from its earliest sync; rows the others had already come again, which is harmless.
-  for (const chunk of chunks(known)) {
+  for (const chunk of chunks(knownPlayerIds)) {
     stale.push(...await download(store, chunk, chunk.map((playerId)  =>  store.since.get(playerId)!).sort()[0]));
     changed();
   }
 
-  for (const chunk of chunks(fresh)) {
+  for (const chunk of chunks(freshPlayerIds)) {
     await download(store, chunk);
     changed();
   }
@@ -119,14 +119,14 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
 
 export function useBests(playerIds: string[]): Bests {
   const store = useRef<Store>({ charts: new Map(), bests: new Map(), since: new Map(), fromCache: new Set() });
-  const wanted = useRef(playerIds);
+  const wantedPlayerIds = useRef(playerIds);
   const running = useRef<Promise<void> | null>(null);
   const again = useRef(false);
   const [version, setVersion] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = [...playerIds].sort().join(',');
-  wanted.current = playerIds;
+  wantedPlayerIds.current = playerIds;
 
   // One sync at a time; a sync asked for meanwhile runs once the current one is done, for the players wanted then.
   const sync = useCallback(async ()  => {
@@ -140,7 +140,7 @@ export function useBests(playerIds: string[]): Bests {
       do {
         again.current = false;
         try {
-          await syncPlayers(store.current, wanted.current, ()  =>  setVersion((v)  =>  v + 1));
+          await syncPlayers(store.current, wantedPlayerIds.current, ()  =>  setVersion((v)  =>  v + 1));
           setError(null);
         } catch (e) {
           setError(errorText(e));
