@@ -96,6 +96,8 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 
 .intro { max-width: 36rem; margin: 3rem auto; text-align: center; }
 .sign-in { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 1.5rem; }
+/* Google's iframe is light; with the page's dark scheme the browser would paint it an opaque white backdrop. */
+.google-button { color-scheme: light; }
 .signed-in-as { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 2.5rem; }
 .signed-in-as span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .signed-in-as button { flex-shrink: 0; }

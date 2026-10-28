@@ -75,7 +75,7 @@ export function GoogleButton() {
 
   return (
     <div className="sign-in">
-      <div ref={element} aria-busy={busy} />
+      <div ref={element} className="google-button" aria-busy={busy} />
       {busy  &&  <p className="muted">Signing in…</p>}
       {error  &&  <p className="error" role="alert">{error}</p>}
     </div>
