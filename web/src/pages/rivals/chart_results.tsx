@@ -80,6 +80,10 @@ const IN_PLACE_MARGIN_PX = 16;
 // .card-overlay).
 const transformFrom = (from: DOMRect, to: DOMRect) =>
   `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
+// The clip that shows only the part of a card laid out at `to` that is over `from` (with .card-overlay's corners).
+const clipFrom = (from: DOMRect, to: DOMRect) =>
+  `inset(${Math.max(0, from.top - to.top)}px ${Math.max(0, to.right - from.right)}px ${Math.max(0, to.bottom - from.bottom)}px ${Math.max(0, from.left - to.left)}px round 8px)`;
+const CLIP_NONE = 'inset(0 round 8px)';
 
 // Where each card and group title in `container` is, by its data-flip key.
 const flipRects = (container: HTMLElement | null) =>
@@ -390,10 +394,16 @@ export function ChartResults({
     if (REDUCED_MOTION.matches)
       return;
 
-    card.animate([{ transform: transformFrom(from, card.getBoundingClientRect()) }, { transform: 'none' }],
-      { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' });
-    // Faded in from its card, which stays under it, as it leaves it.
-    card.animate([{ opacity: 0 }, { opacity: 1, offset: .4 }, { opacity: 1 }], { duration: GROW_MS });
+    // Wider than phones, where it's over its card, it unrolls out of it; on phones it's faded in from its card, which
+    // stays under it, as it leaves it.
+    if (! phone) {
+      card.animate([{ clipPath: clipFrom(from, card.getBoundingClientRect()) }, { clipPath: CLIP_NONE }],
+        { duration: GROW_MS, easing: 'ease-out' });
+    } else {
+      card.animate([{ transform: transformFrom(from, card.getBoundingClientRect()) }, { transform: 'none' }],
+        { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+      card.animate([{ opacity: 0 }, { opacity: 1, offset: .4 }, { opacity: 1 }], { duration: GROW_MS });
+    }
     overlay.animate({ backgroundColor: [BACKDROP_CLEAR, getComputedStyle(overlay).backgroundColor] }, { duration: GROW_MS });
   }, [bigId]);
 
@@ -419,7 +429,9 @@ export function ChartResults({
     // Measured where it's laid out, even if it's still growing.
     card.getAnimations().forEach((animation) => animation.cancel());
     overlay.getAnimations().forEach((animation) => animation.cancel());
-    card.animate([{ transform: 'none' }, { transform: transformFrom(from, card.getBoundingClientRect()) }],
+    // Wider than phones it rolls back up into its card.
+    const to = card.getBoundingClientRect();
+    card.animate(phone ? [{ transform: 'none' }, { transform: transformFrom(from, to) }] : [{ clipPath: CLIP_NONE }, { clipPath: clipFrom(from, to) }],
       { duration: SHRINK_MS, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' });
     // Faded out into its card once it's nearly there.
     card.animate([{ opacity: 1 }, { opacity: 1, offset: .3 }, { opacity: 0 }], { duration: SHRINK_MS, fill: 'forwards' });
