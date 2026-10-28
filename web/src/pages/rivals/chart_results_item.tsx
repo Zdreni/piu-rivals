@@ -57,7 +57,14 @@ function ResultDetails({ unrolled, judgments, date, score }: {
   );
 }
 
+const CHART_TYPES: Record<string, [string, string]> = { S: ['single', 'Single'], D: ['double', 'Double'] };
 
+// A chart's label, e.g. "D24", as a ball of its type's colour with its level in it.
+function ChartBall({ chart }: { chart: string }) {
+  const [, type = '', level = chart] = /^(\D*?)\s*(\d+)$/.exec(chart)  ??  [];
+  const [className, name] = CHART_TYPES[type]  ??  ['other', type];
+  return <span className={`chart-label ${className}`} title={`${name} ${level}`}>{level}</span>;
+}
 
 
 // A card's header: the track's short name and the chart. A click unrolls it: the track's full name across the card,
@@ -102,7 +109,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
       onClick={onToggle}>
       <div className="chart-card-title">
         <span className="track" title={chart.trackTitle}>{unrolled  ||  maximized ? chart.trackTitle : chart.track}</span>
-        <span className="chart-label">{chart.chart}</span>
+        <ChartBall chart={chart.chart} />
         {maximized  &&  (
           <button className="card-close" type="button" aria-label="Close" title="Close" onClick={press(() => onClose?.())}>
             <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" /></svg>
@@ -154,7 +161,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
                   </span>
                 </span>
               )}
-            {! maximized  &&  left === null  &&  <span className="chart-label">{chart.chart}</span>}
+            {! maximized  &&  left === null  &&  <ChartBall chart={chart.chart} />}
           </div>
         </div>
       )}

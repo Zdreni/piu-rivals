@@ -341,7 +341,20 @@
 .rivals .chart-card-box { overflow: hidden; background: #1A2820; border-top: 1px solid #2B4034; border-radius: 0 0 6px 6px; }
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
-.rivals .chart-label { flex-shrink: 0; font-weight: 700; font-size: 17px; }
+/* The chart's level in a ball of its type's colour (see ChartBall), not growing the line it's on: a dark core glowing
+   out to a rim of the colour, in a silver ring, with a lit top. */
+.rivals .chart-label { --ball: #9AB3A3; --ball-deep: #4A5A50; --ball-core: #2C3631;
+                       --ring: #E8F0EA; --ring-mid: #7E8C83;
+                       flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+                       margin: -4px 0; border: 2px solid transparent; border-radius: 50%; box-sizing: border-box; color: #FFF;
+                       font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums;
+                       text-shadow: 0 0 2px #000, 0 0 3px rgba(0, 0, 0, .6), 0 1px 1px #000;
+                       background: radial-gradient(ellipse 70% 45% at 50% 18%, rgba(255, 255, 255, .35), transparent) padding-box,
+                                   radial-gradient(circle, var(--ball-core) 35%, var(--ball-deep) 70%, var(--ball) 92%) padding-box,
+                                   linear-gradient(160deg, var(--ring), var(--ring-mid) 50%, var(--ring)) border-box;
+                       box-shadow: 0 0 2.5px var(--ball-deep); }
+.rivals .chart-label.single { --ball: #FF6A45; --ball-deep: #A3200A; --ball-core: #5A150A; --ring: #FFD2B0; --ring-mid: #A8653F; }
+.rivals .chart-label.double { --ball: #4FEA6E; --ball-deep: #138A33; --ball-core: #0D4D20; --ring: #C5F5CF; --ring-mid: #559762; }
 /* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
    tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it.
    A snoozed chart's header always has that line, with its Wake button, and keeps its chart beside the track. */
@@ -562,7 +575,7 @@
   .rivals .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
   .rivals .chart-card-title { gap: 6px; }
   .rivals .snooze-button { height: 40px; }
-  .rivals .chart-card-head .track, .rivals .chart-label { font-size: 16px; }
+  .rivals .chart-card-head .track { font-size: 16px; }
   /* The score column fits the score, so the name gets the rest. */
   .rivals .chart-card-results { grid-template-columns: minmax(0, 1fr) auto auto; }
   .rivals .result .delta { padding-left: 14px; }
@@ -595,7 +608,7 @@
 .rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; }
 .rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; }
 .rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
-.rivals.card-overlay:not(.in-place) .chart-card-head .track, .rivals.card-overlay:not(.in-place) .chart-label { font-size: 18px; }
+.rivals.card-overlay:not(.in-place) .chart-card-head .track { font-size: 18px; }
 .rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
                       margin: -6px -6px -6px 0; color: #9AB3A3; cursor: pointer; }
 .rivals .card-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
