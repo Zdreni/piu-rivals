@@ -61,9 +61,9 @@ function openDatabase(): Promise<IDBDatabase> {
     };
 
     const timer = setTimeout(()  =>  fail(new Error('IndexedDB took too long to open')), OPEN_TIMEOUT_MS);
-    const open = indexedDB.open(DB_NAME, DB_VERSION);
-    open.onupgradeneeded = ()  => {
-      const db = open.result;
+    const openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+    openRequest.onupgradeneeded = ()  => {
+      const db = openRequest.result;
       for (const name of [...db.objectStoreNames])
         db.deleteObjectStore(name);
 
@@ -72,10 +72,10 @@ function openDatabase(): Promise<IDBDatabase> {
       db.createObjectStore('syncs', { keyPath: 'playerId' });
     };
 
-    open.onsuccess = ()  => {
+    openRequest.onsuccess = ()  => {
       clearTimeout(timer);
 
-      const db = open.result;
+      const db = openRequest.result;
       // Opened after the page gave up on it: closed, so it doesn't hold up other tabs.
       if (settled) {
         db.close();
@@ -88,12 +88,12 @@ function openDatabase(): Promise<IDBDatabase> {
       resolve(db);
     };
 
-    open.onerror = ()  => {
+    openRequest.onerror = ()  => {
       clearTimeout(timer);
-      fail(open.error);
+      fail(openRequest.error);
     };
 
-    open.onblocked = ()  =>  fail(new Error('IndexedDB is blocked by another tab'));
+    openRequest.onblocked = ()  =>  fail(new Error('IndexedDB is blocked by another tab'));
   });
 }
 
@@ -145,14 +145,14 @@ const noCache: BestsCache = {
   clear: async ()  =>  {},
 };
 
-let opened: Promise<BestsCache> | null = null;
+let openedCache: Promise<BestsCache> | null = null;
 
 
 export function openBestsCache(): Promise<BestsCache> {
-  opened  ??=  openDatabase().then(indexedDbCache, (error)  => {
+  openedCache  ??=  openDatabase().then(indexedDbCache, (error)  => {
     console.warn('[piu-rivals] Scores are not cached between visits:', error);
     return noCache;
   });
 
-  return opened;
+  return openedCache;
 }

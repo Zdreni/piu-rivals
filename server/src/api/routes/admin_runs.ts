@@ -107,8 +107,8 @@ async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<numb
   if (! ids.length)
     return [];
 
-  const stored = await db.selectFrom('players').select(['id', 'piuscores_guid', playerName().as('name')]).where('id', 'in', ids).execute();
-  const players = new Map(stored.map((p)  =>  [p.id, p]));
+  const storedPlayers = await db.selectFrom('players').select(['id', 'piuscores_guid', playerName().as('name')]).where('id', 'in', ids).execute();
+  const players = new Map(storedPlayers.map((p)  =>  [p.id, p]));
   const active = (ACTIVE_STATUSES as readonly string[]).includes(row.status);
 
   const stateOf = (id: number, index: number): ScrapeRunPlayerState  => {
@@ -177,11 +177,11 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
     const userId = sessionUser(request).id;
     let playerIds: number[] | null = null;
     if (kind !== 'all') {
-      const parsed = (players  ??  []).map(parsePlayerId);
-      if (! parsed.length  ||  parsed.includes(null))
+      const parsedGuids = (players  ??  []).map(parsePlayerId);
+      if (! parsedGuids.length  ||  parsedGuids.includes(null))
         throw new HttpError(400, 'players must be player GUIDs or piuscores player links');
 
-      const guids = [...new Set(parsed as string[])];
+      const guids = [...new Set(parsedGuids as string[])];
       if (kind === 'register') {
         // Registered players are stored right away, so a run that doesn't get to them (cancelled,
         // interrupted) still leaves them for the next "all" run, which takes never scraped players first.

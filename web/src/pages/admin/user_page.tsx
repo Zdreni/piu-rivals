@@ -15,9 +15,9 @@ function NameInput({ user, onSave }: { user: AdminUser; onSave: (displayName: st
   useEffect(()  =>  setName(user.displayName  ??  ''), [user.displayName]);
 
   const save = ()  => {
-    const trimmed = name.trim();
-    if (trimmed !== (user.displayName  ??  ''))
-      onSave(trimmed  ||  null);
+    const trimmedName = name.trim();
+    if (trimmedName !== (user.displayName  ??  ''))
+      onSave(trimmedName  ||  null);
   };
 
   return (
@@ -44,7 +44,7 @@ function NameInput({ user, onSave }: { user: AdminUser; onSave: (displayName: st
 // that aren't set follow the user's scores, which only their own page works out.
 function Settings({ data }: { data: AdminUserResponse }) {
   const { scoreCap, npMinimalRivals, countBy, minLevel, maxLevel } = parsePreferences(data.preferences);
-  const auto = <span className="muted">auto</span>;
+  const autoLabel = <span className="muted">auto</span>;
   return (
     <dl className="facts">
       <dt>Score cap</dt><dd>{scoreCap >= MAX_SCORE_CAP  ?  'No cap'  :  formatNumber(scoreCap)}</dd>
@@ -52,8 +52,8 @@ function Settings({ data }: { data: AdminUserResponse }) {
       <dt>Level range</dt>
       <dd>
         {(minLevel === null  &&  maxLevel === null)
-          ?  auto
-          :  <>{minLevel  ??  auto}..{maxLevel === null  ?  auto  :  maxLevel >= MAX_LEVEL  ?  `${MAX_LEVEL}+`  :  maxLevel}</>}
+          ?  autoLabel
+          :  <>{minLevel  ??  autoLabel}..{maxLevel === null  ?  autoLabel  :  maxLevel >= MAX_LEVEL  ?  `${MAX_LEVEL}+`  :  maxLevel}</>}
       </dd>
       <dt>Count by</dt><dd>{countBy}</dd>
       <dt>Snoozed charts</dt><dd>{data.snoozes}</dd>

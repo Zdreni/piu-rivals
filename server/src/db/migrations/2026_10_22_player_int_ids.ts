@@ -101,11 +101,11 @@ async function convertRunPlayerLists(db: Db, direction: Direction) {
     SELECT id, player_ids FROM scrape_runs WHERE player_ids IS NOT NULL`.execute(db);
 
   for (const run of runs.rows) {
-    const converted = (direction === TO_ID
+    const convertedPlayerIds = (direction === TO_ID
       ?  run.player_ids.map((guid)  =>  lookup.get(String(guid))  ??  0)
       :  run.player_ids.map((id)  =>  lookup.get(String(id))).filter((guid)  =>  guid !== undefined));
 
-    await sql`UPDATE scrape_runs SET player_ids = ${JSON.stringify(converted)} WHERE id = ${run.id}`.execute(db);
+    await sql`UPDATE scrape_runs SET player_ids = ${JSON.stringify(convertedPlayerIds)} WHERE id = ${run.id}`.execute(db);
   }
 }
 

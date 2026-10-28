@@ -83,7 +83,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, [data.ready, data.version, me.id, preferences.minLevel, preferences.maxLevel, minLevel, maxLevel]);
 
   const [ui, setUi] = useState<UiState>(readUiState);
-  const [focused, setFocused] = useState<string | null>(null);
+  const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
   // in stays shown while it slides out. On phones, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
@@ -96,9 +96,9 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   const changeUi = useCallback((changes: Partial<UiState>)  => {
     setUi((current)  => {
-      const next = { ...current, ...changes };
-      saveUiState(next);
-      return next;
+      const nextUi = { ...current, ...changes };
+      saveUiState(nextUi);
+      return nextUi;
     });
   }, []);
 
@@ -164,7 +164,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   };
 
   const focus = (playerId: string | null)  => {
-    setFocused(playerId);
+    setFocusedPlayerId(playerId);
     if (soloRivalId !== playerId)
       setSoloRivalId(null);
   };
@@ -246,8 +246,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           me={me}
           rivals={rivals}
           bests={data.bests}
-          focused={focused}
-          solo={soloRivalId}
+          focusedPlayerId={focusedPlayerId}
+          soloRivalId={soloRivalId}
           // In solo mode the solo rival's stats are the header's, with all the settings applied.
           soloStats={(soloRivalId  ?  totals  :  null)}
           myStats={myStats}

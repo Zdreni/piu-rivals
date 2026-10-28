@@ -62,10 +62,10 @@ function playerText(run, runPlayer) {
   const others = run.playersTotal - 1;
   switch (runPlayer.state) {
     case 'waiting': {
-      const ahead = runPlayer.index - run.playersDone;
-      return ['Queued for scraping', (run.status === 'queued'  ||  ahead <= 0)
+      const playersAhead = runPlayer.index - run.playersDone;
+      return ['Queued for scraping', (run.status === 'queued'  ||  playersAhead <= 0)
         ?  'Waiting for the scrape worker…'
-        :  `${ahead} player${(ahead === 1  ?  ''  :  's')} ahead in the run…`];
+        :  `${playersAhead} player${(playersAhead === 1  ?  ''  :  's')} ahead in the run…`];
     }
     case 'running':
       return ['Scraping', solo  ?  `${counts(run)} so far…`  :  `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run…`];
@@ -110,8 +110,8 @@ function describe(view) {
   }
 
   if (view.state === 'known') {
-    const scraped = view.player.lastScrapedAt;
-    return { kind: 'known', title: 'In piu-rivals', detail: (scraped  ?  `Last scraped ${ago(scraped)}`  :  'Not scraped yet'), button };
+    const lastScrapedAt = view.player.lastScrapedAt;
+    return { kind: 'known', title: 'In piu-rivals', detail: (lastScrapedAt  ?  `Last scraped ${ago(lastScrapedAt)}`  :  'Not scraped yet'), button };
   }
 
   return { kind: 'unknown', title: 'Not in piu-rivals', detail: `${view.name  ||  'This player'} isn't stored yet.`, button };

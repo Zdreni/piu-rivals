@@ -69,7 +69,7 @@ const badge = createBadge({ onRegister: register });
 let shownPlayerId = null;
 let status = null;
 // The run that last scraped the player, once the player is finished in it: { run, runPlayer }.
-let finished = null;
+let finishedRun = null;
 let pollTimer = null;
 
 
@@ -79,17 +79,17 @@ function render() {
     return;
   }
 
-  badge.show({ ...status, finished, name: pagePlayerName() });
+  badge.show({ ...status, finished: finishedRun, name: pagePlayerName() });
 }
 
 
 async function refresh() {
   const playerId = shownPlayerId;
-  const next = await send({ type: 'status', playerId });
+  const nextStatus = await send({ type: 'status', playerId });
   if (playerId !== shownPlayerId)
     return;
 
-  status = next;
+  status = nextStatus;
   render();
   if (status.run)
     watchRun(status.run.id);
@@ -159,7 +159,7 @@ function watchRun(runId) {
       return;
     }
 
-    finished = { run, runPlayer };
+    finishedRun = { run, runPlayer };
     markLinksLogged();
     await refresh();
   }, RUN_POLL_MS);
@@ -173,7 +173,7 @@ async function register() {
     return;
 
   if (result.run) {
-    finished = null;
+    finishedRun = null;
     status = { ...status, run: result.run, runPlayer: result.runPlayer };
     watchRun(result.run.id);
   } else {
@@ -195,7 +195,7 @@ function showPage() {
 
   shownPlayerId = playerId;
   status = null;
-  finished = null;
+  finishedRun = null;
   clearTimeout(pollTimer);
   if (! playerId) {
     badge.hide();

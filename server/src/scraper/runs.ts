@@ -151,9 +151,9 @@ export async function takePlayer(db: Db, runId: number, index: number): Promise<
 
     const playerId = run.player_ids?.[index];
     if (run.cancel_requested  ||  playerId === undefined) {
-      const finished = (run.cancel_requested  ?  'cancelled'  :  'done');
-      await finishRun(trx, runId, finished);
-      return { finished };
+      const finishedStatus = (run.cancel_requested  ?  'cancelled'  :  'done');
+      await finishRun(trx, runId, finishedStatus);
+      return { finished: finishedStatus };
     }
 
     // Null for a player deleted while waiting.
@@ -186,13 +186,13 @@ export async function executeRun(db: Db, run: ScrapeRun) {
   try {
     browser = await SessionsBrowser.launch();
     for (let index = 0; ; index++) {
-      const next = await takePlayer(db, run.id, index);
-      if ('finished' in next) {
-        status = next.finished;
+      const nextStep = await takePlayer(db, run.id, index);
+      if ('finished' in nextStep) {
+        status = nextStep.finished;
         break;
       }
 
-      const { playerId } = next;
+      const { playerId } = nextStep;
       try {
         // A player deleted while waiting is skipped.
         const player = await loadPlayer(db, playerId);

@@ -122,12 +122,12 @@ export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePan
           <span />
           <span className={`level-head${headOn('D')}`}>Doubles</span>
           {nums.map((num)  => {
-            const single = find('S', num), double = find('D', num);
-            const on = selectedLevel !== null  &&  (selectedLevel === single  ||  selectedLevel === double);
+            const singleLevel = find('S', num), doubleLevel = find('D', num);
+            const on = selectedLevel !== null  &&  (selectedLevel === singleLevel  ||  selectedLevel === doubleLevel);
             return [
-              <LevelBar key={`S${num}`} level={single} side="single" selected={single === selectedLevel} {...bar} />,
+              <LevelBar key={`S${num}`} level={singleLevel} side="single" selected={singleLevel === selectedLevel} {...bar} />,
               <span key={num} className={`level-num${(on  ?  ' on'  :  '')}`}>{num}</span>,
-              <LevelBar key={`D${num}`} level={double} side="double" selected={double === selectedLevel} {...bar} />,
+              <LevelBar key={`D${num}`} level={doubleLevel} side="double" selected={doubleLevel === selectedLevel} {...bar} />,
             ];
           })}
           {otherLevels.map((level)  =>  (

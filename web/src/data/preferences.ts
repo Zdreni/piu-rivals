@@ -56,9 +56,9 @@ export function autoLevels(playedLevels: number[]): LevelRange {
     counts.set(level, (counts.get(level)  ??  0) + 1);
 
   const levels = [...counts.keys()].sort((a, b)  =>  a - b);
-  const lowest = levels[0]!, highest = levels[levels.length - 1]!;
-  const min = levels.find((level)  =>  counts.get(level)! >= AUTO_MIN_LEVEL_CHARTS)  ??  lowest;
-  return { minLevel: clampLevel(min), maxLevel: clampLevel(highest + 1) };
+  const lowestLevel = levels[0]!, highestLevel = levels[levels.length - 1]!;
+  const min = levels.find((level)  =>  counts.get(level)! >= AUTO_MIN_LEVEL_CHARTS)  ??  lowestLevel;
+  return { minLevel: clampLevel(min), maxLevel: clampLevel(highestLevel + 1) };
 }
 
 

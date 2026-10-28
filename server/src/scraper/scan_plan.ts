@@ -91,8 +91,8 @@ export function stepCard(checkpoint: Checkpoint, card: SessionCard, date: number
 
 // `collected` are the cards above the stop point, newest first. `stop` is the step that ended the
 // paging, or null when the history ran out of pages.
-export function planScan(checkpoint: Checkpoint, collected: SessionCard[], stop: CardStep | null): ScanPlan {
-  const oldestFirst = [...collected].reverse();
+export function planScan(checkpoint: Checkpoint, collectedCards: SessionCard[], stop: CardStep | null): ScanPlan {
+  const oldestFirst = [...collectedCards].reverse();
   if (stop?.kind === 'latest-found'  ||  ! checkpoint.latest)
     return { grown: null, fresh: oldestFirst };
 
@@ -103,15 +103,15 @@ export function planScan(checkpoint: Checkpoint, collected: SessionCard[], stop:
   // and the latest one. When the latest one was a Phoenix session, a newer Phoenix 2 session is
   // taken as grown: its plays get the previous Phoenix 2 session's number, which only matters for
   // telling re-imported tries apart. With no Phoenix 2 card, the oldest card is the grown one.
-  const latest = checkpoint.latest;
+  const latestSession = checkpoint.latest;
   const reachedHistoryStart = stop?.kind !== 'anchor-found';
   if (reachedHistoryStart  &&  checkpoint.anchor)
-    throw new Error(`Neither the latest scanned session ("${describe(latest)}") nor the one `
+    throw new Error(`Neither the latest scanned session ("${describe(latestSession)}") nor the one `
       + `before it ("${describe(checkpoint.anchor)}") is in the Sessions history; the player needs a rescan`);
 
   const index = Math.max(0, oldestFirst.findIndex((c)  =>  c.mix === 'Phoenix 2'));
   if (! oldestFirst.length)
-    throw new Error(`The latest scanned session ("${describe(latest)}") is missing from the `
+    throw new Error(`The latest scanned session ("${describe(latestSession)}") is missing from the `
       + 'Sessions history; the player needs a rescan');
 
   return { grown: oldestFirst[index]!, fresh: oldestFirst.slice(index + 1) };

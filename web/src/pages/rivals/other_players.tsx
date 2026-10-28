@@ -110,10 +110,10 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
   onAdd: (player: PlayerSummary) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [shownAbove, setShownAbove] = useState(SHOWN_ABOVE);
   const [shownBelow, setShownBelow] = useState(SHOWN_BELOW);
-  const openStats = useOtherStats((open !== me.id  ?  open  :  null), me.id, myBests);
+  const openStats = useOtherStats((openPlayerId !== me.id  ?  openPlayerId  :  null), me.id, myBests);
 
   const words = query.trim().toLowerCase();
   const otherPlayers: (PlayerSummary | ListedPlayer)[] = [players?.find((p)  =>  p.id === me.id)  ??  me,
@@ -124,8 +124,8 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
 
   const meAt = otherPlayers.findIndex((p)  =>  p.id === me.id);
-  const first = (words  ?  0  :  Math.max(0, meAt - shownAbove));
-  const last = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + shownBelow));
+  const fromIndex = (words  ?  0  :  Math.max(0, meAt - shownAbove));
+  const toIndex = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + shownBelow));
 
   return (
     <>
@@ -145,14 +145,14 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
         {players  &&  otherPlayers.length === 1  &&  (
           <div className="muted rival-hint">{words  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
         )}
-        {first > 0  &&  (
+        {fromIndex > 0  &&  (
           <button className="show-others top" type="button" onClick={()  =>  setShownAbove(shownAbove + SHOW_STEP)}>
-            ...{first} more...
+            ...{fromIndex} more...
           </button>
         )}
-        {otherPlayers.slice(first, last).map((player)  => {
+        {otherPlayers.slice(fromIndex, toIndex).map((player)  => {
           const isMe = player.id === me.id;
-          const isOpen = player.id === open;
+          const isOpen = player.id === openPlayerId;
           const name = displayName(player.name  ??  player.id);
           const classes = ['rival', 'other', isMe  ?  'me'  :  '', isOpen  ?  'focused'  :  ''];
 
@@ -163,9 +163,9 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
               return;
 
             if (! isOpen)
-              setOpen(player.id);
+              setOpenPlayerId(player.id);
             else if (target.closest('.rival-toggle'))
-              setOpen(null);
+              setOpenPlayerId(null);
           };
 
           return (
@@ -209,9 +209,9 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
             </div>
           );
         })}
-        {last < otherPlayers.length  &&  (
+        {toIndex < otherPlayers.length  &&  (
           <button className="show-others" type="button" onClick={()  =>  setShownBelow(shownBelow + SHOW_STEP)}>
-            ...{otherPlayers.length - last} more...
+            ...{otherPlayers.length - toIndex} more...
           </button>
         )}
       </div>

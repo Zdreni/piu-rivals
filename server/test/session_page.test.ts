@@ -47,9 +47,9 @@ test('reads the open session header without the import tag', ()  => {
 test('matches the open session with its card', ()  => {
   const html = fixture('sessions_single');
   const { cards } = parseSessionsPage(html);
-  const open = parseOpenSession(html);
-  assert.deepEqual(openSessionMismatches(open, cards[0]!), []);
-  assert.equal(openSessionMismatches(open, cards[1]!).length, 1);
+  const openSession = parseOpenSession(html);
+  assert.deepEqual(openSessionMismatches(openSession, cards[0]!), []);
+  assert.equal(openSessionMismatches(openSession, cards[1]!).length, 1);
   assert.equal(sameSessionTime('Sun 11 Oct · 7:43 PM', 'Phoenix 2 · 10/11/2026 7:43 PM'), true);
   assert.equal(sameSessionTime('Sun 11 Oct · 7:43 PM', 'Phoenix 2 · 10/11/2026 7:44 PM'), false);
 });

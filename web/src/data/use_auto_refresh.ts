@@ -7,15 +7,15 @@ const RETURN_REFRESH_MS = 60 * 1000;
 
 
 export function useAutoRefresh(refresh: () => void) {
-  const latest = useRef(refresh);
-  latest.current = refresh;
+  const latestRefresh = useRef(refresh);
+  latestRefresh.current = refresh;
 
   useEffect(()  => {
-    let last = Date.now();
+    let lastRefreshAt = Date.now();
 
     const run = ()  => {
-      last = Date.now();
-      latest.current();
+      lastRefreshAt = Date.now();
+      latestRefresh.current();
     };
 
     const timer = setInterval(()  => {
@@ -24,7 +24,7 @@ export function useAutoRefresh(refresh: () => void) {
     }, REFRESH_MS);
 
     const onVisibility = ()  => {
-      if (document.visibilityState === 'visible'  &&  Date.now() - last > RETURN_REFRESH_MS)
+      if (document.visibilityState === 'visible'  &&  Date.now() - lastRefreshAt > RETURN_REFRESH_MS)
         run();
     };
 

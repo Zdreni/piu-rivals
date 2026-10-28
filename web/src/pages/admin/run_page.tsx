@@ -92,13 +92,13 @@ export function RunPage() {
 
   const players = details.data?.players  ??  [];
   // The worker takes the players in order: the first playersDone are finished, the next one is current.
-  const current = Math.min(run.playersDone, players.length);
-  const isHidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < current
-    ?  ! allBeforeShown  &&  index < current - PLAYERS_AROUND
-    :  ! allAfterShown  &&  index > current + PLAYERS_AROUND);
+  const currentIndex = Math.min(run.playersDone, players.length);
+  const isHidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < currentIndex
+    ?  ! allBeforeShown  &&  index < currentIndex - PLAYERS_AROUND
+    :  ! allAfterShown  &&  index > currentIndex + PLAYERS_AROUND);
 
   const shownPlayers = players.filter((p, index)  =>  ! isHidden(p, index));
-  const hiddenBefore = players.filter((p, index)  =>  index < current  &&  isHidden(p, index)).length;
+  const hiddenBefore = players.filter((p, index)  =>  index < currentIndex  &&  isHidden(p, index)).length;
   const hiddenAfter = players.length - shownPlayers.length - hiddenBefore;
   const showButton = (count: number, label: string, onClick: () => void)  =>  count > 0  &&  (
     <button type="button" className="secondary small-button" onClick={onClick}>

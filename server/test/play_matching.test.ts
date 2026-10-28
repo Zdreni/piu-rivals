@@ -8,16 +8,16 @@ const attempt = (chartId: number, score: number, miss = 0): TryStats  =>  ({
 
 
 test('a grown session adds only the tries not stored from it before', ()  => {
-  const stored = [attempt(1, 990000), attempt(2, 950000)];
-  const scanned = [attempt(1, 990000), attempt(2, 950000), attempt(2, 960000), attempt(3, 900000)];
-  assert.deepEqual(newTries(stored, scanned), [attempt(2, 960000), attempt(3, 900000)]);
+  const storedTries = [attempt(1, 990000), attempt(2, 950000)];
+  const scannedTries = [attempt(1, 990000), attempt(2, 950000), attempt(2, 960000), attempt(3, 900000)];
+  assert.deepEqual(newTries(storedTries, scannedTries), [attempt(2, 960000), attempt(3, 900000)]);
 });
 
 
 test('identical tries are counted', ()  => {
-  const perfect = attempt(1, 1000000);
-  assert.deepEqual(newTries([perfect, perfect], [perfect, perfect, perfect]), [perfect]);
-  assert.deepEqual(newTries([perfect], [perfect]), []);
+  const perfectTry = attempt(1, 1000000);
+  assert.deepEqual(newTries([perfectTry, perfectTry], [perfectTry, perfectTry, perfectTry]), [perfectTry]);
+  assert.deepEqual(newTries([perfectTry], [perfectTry]), []);
 });
 
 

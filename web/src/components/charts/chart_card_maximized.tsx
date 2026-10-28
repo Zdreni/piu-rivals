@@ -54,8 +54,8 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
   onClose: () => void;
   onSnooze: (days: SnoozeDays | null) => void;
 }) {
-  const [unrolled, setUnrolled] = useState<string | null>(null);
-  const [shown, setShown] = useState({ folded: MAXIMIZED_BELOW, higher: 0 });
+  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
+  const [shownRows, setShownRows] = useState({ folded: MAXIMIZED_BELOW, higher: 0 });
   const phone = usePhone();
   const overlayRef = useRef<HTMLDivElement>(null);
   // Set while it shrinks back, so it isn't closed twice.
@@ -65,7 +65,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
 
   // The maximized card, and where its card in the grid is, which it grows from and shrinks back to: on phones the
   // whole card, wider only its results' box, as wide as it's drawn, from the header's top down.
-  const growing = ()  => {
+  const measureGrowth = ()  => {
     const overlay = overlayRef.current;
     const card = overlay?.firstElementChild as HTMLElement | null | undefined;
     const from = source();
@@ -73,12 +73,12 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
     if (! overlay  ||  ! card  ||  ! from  ||  ! box)
       return null;
 
-    const whole = from.getBoundingClientRect();
-    return { overlay, card, from: (phone  ?  whole  :  new DOMRect(box.left, whole.top, box.width, box.bottom - whole.top)) };
+    const cardRect = from.getBoundingClientRect();
+    return { overlay, card, from: (phone  ?  cardRect  :  new DOMRect(box.left, cardRect.top, box.width, box.bottom - cardRect.top)) };
   };
 
   useLayoutEffect(()  => {
-    const grow = growing();
+    const grow = measureGrowth();
     if (! grow)
       return;
 
@@ -87,8 +87,8 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
       overlay.style.setProperty('--card-left', `${from.left}px`);
       overlay.style.setProperty('--card-width', `${from.width}px`);
 
-      const top = Math.min(from.top, window.innerHeight - IN_PLACE_MARGIN_PX - card.offsetHeight);
-      overlay.style.setProperty('--card-top', `${Math.max(IN_PLACE_MARGIN_PX, top)}px`);
+      const cardTop = Math.min(from.top, window.innerHeight - IN_PLACE_MARGIN_PX - card.offsetHeight);
+      overlay.style.setProperty('--card-top', `${Math.max(IN_PLACE_MARGIN_PX, cardTop)}px`);
     }
 
     if (REDUCED_MOTION.matches)
@@ -114,15 +114,15 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
     if (shrinking.current)
       return;
 
-    const done = ()  => {
+    const finish = ()  => {
       shrinking.current = false;
       onClose();
       then?.();
     };
 
-    const grow = (REDUCED_MOTION.matches  ?  null  :  growing());
+    const grow = (REDUCED_MOTION.matches  ?  null  :  measureGrowth());
     if (! grow) {
-      done();
+      finish();
       return;
     }
 
@@ -140,7 +140,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
     // Faded out into its card once it's nearly there.
     card.animate([{ opacity: 1 }, { opacity: 1, offset: .3 }, { opacity: 0 }], { duration: SHRINK_MS, fill: 'forwards' });
     overlay.animate({ backgroundColor: [getComputedStyle(overlay).backgroundColor, BACKDROP_CLEAR] }, { duration: SHRINK_MS, fill: 'forwards' })
-      .finished.then(done, done);
+      .finished.then(finish, finish);
   };
 
   useEffect(()  => {
@@ -187,8 +187,8 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
           fold: (markTies  ?  ['win']  :  ['win', 'tie']),
           keep: (chart.mine === null  ?  { top: 0, bottom: MAXIMIZED_ABOVE + MAXIMIZED_BELOW }  :  { top: MAXIMIZED_ABOVE, bottom: 1 }),
         }}
-        shown={shown}
-        onShow={setShown}
+        shownRows={shownRows}
+        onShow={setShownRows}
         markTies={markTies}
         scoreCap={scoreCap}
         canSnooze={canSnooze}
@@ -196,8 +196,8 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
         menuOpen={false}
         leaving={false}
         maximized
-        unrolled={unrolled}
-        onUnroll={setUnrolled}
+        unrolledRowId={unrolledRowId}
+        onUnroll={setUnrolledRowId}
         onMenu={()  =>  {}}
         onSnooze={(days)  =>  close.current(()  =>  onSnooze(days))}
         onWake={()  =>  close.current(()  =>  onSnooze(null))}

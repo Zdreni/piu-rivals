@@ -9,7 +9,7 @@ import { type Counts, NO_COUNTS, realCounts, STAT_WORDS } from '../../data/stats
 import type { RivalTab } from './ui_state.ts';
 
 
-const listed = (player: PlayerSummary): ListedPlayer  =>  ({
+const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
   playerId: player.id,
   fullName: player.name  ??  player.id,
   name: displayName(player.name  ??  player.id),
@@ -22,15 +22,15 @@ const listed = (player: PlayerSummary): ListedPlayer  =>  ({
 // Each rival shows how many of their charts you lose / haven't played / win, judged on the real scores, with none
 // of the settings applied. `soloStats`, given in solo mode, replace the solo rival's stats; they are named by
 // `countBy`. Your own row shows `myStats`, your totals against the compared rivals, counted both ways.
-export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
+export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, soloRivalId, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
   onRemove, onAdd }: {
   tab: RivalTab;
   charts: ChartRow[];
   me: PlayerSummary;
   rivals: Rival[];
   bests: Map<string, PlayerBests>;
-  focused: string | null;
-  solo: string | null;
+  focusedPlayerId: string | null;
+  soloRivalId: string | null;
   soloStats: Counts | null;
   myStats: Record<CountBy, Counts>;
   countBy: CountBy;
@@ -46,7 +46,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
   const rivalStats = useMemo(()  =>  realCounts(charts), [charts]);
 
   // You and your rivals by PUMBILITY (highest first); those without one follow alphabetically.
-  const players = [me, ...rivals].map(listed).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
+  const players = [me, ...rivals].map(toListedPlayer).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
     ||  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
   const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
@@ -62,14 +62,14 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
 
     row.scrollIntoView({ block: 'nearest' });
 
-    const unrolled = (event: Event)  => {
+    const scrollWhenUnrolled = (event: Event)  => {
       if (event.target === row.querySelector('.rival-more'))
         row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     };
 
-    row.addEventListener('transitionend', unrolled);
-    return ()  =>  row.removeEventListener('transitionend', unrolled);
-  }, [focused, tab]);
+    row.addEventListener('transitionend', scrollWhenUnrolled);
+    return ()  =>  row.removeEventListener('transitionend', scrollWhenUnrolled);
+  }, [focusedPlayerId, tab]);
 
   const add = (player: PlayerSummary)  => {
     onAdd(player);
@@ -97,7 +97,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
           <div className="rival-scroll" ref={container}>
             {players.map((player)  => {
               const isMe = player.playerId === me.id;
-              const isSolo = player.playerId === solo;
+              const isSolo = player.playerId === soloRivalId;
               const playerBests = [...bests.get(player.playerId)?.values()  ??  []];
               return (
                 <RivalListItem
@@ -106,12 +106,12 @@ export function RivalList({ tab, charts, me, rivals, bests, focused, solo, soloS
                   me={isMe}
                   on={isMe  ||  ! hiddenIds.has(player.playerId)}
                   solo={isSolo}
-                  faded={!! solo  &&  ! isMe  &&  ! isSolo}
-                  focused={player.playerId === focused}
+                  faded={!! soloRivalId  &&  ! isMe  &&  ! isSolo}
+                  focused={player.playerId === focusedPlayerId}
                   stats={(isSolo  &&  soloStats)  ||  rivalStats.get(player.playerId)  ||  NO_COUNTS}
                   statsWords={STAT_WORDS[(isSolo  &&  soloStats)  ?  countBy  :  'results']}
                   totals={(isMe  ?  myStats  :  null)}
-                  ties={!! solo}
+                  ties={!! soloRivalId}
                   best={playerBests.length}
                   scores={playerBests.reduce((acc, best)  =>  acc + best.tries, 0)}
                   onFocus={()  =>  onFocus(player.playerId)}

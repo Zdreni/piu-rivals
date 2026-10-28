@@ -29,14 +29,14 @@ export function useTabsFit(bar: RefObject<HTMLElement | null>, deps: unknown[]):
       element.classList.remove('stacked', 'short-words');
       element.classList.add('measuring');
 
-      let next: TabsFit = 'line';
+      let nextFit: TabsFit = 'line';
       if (overflows()) {
         element.classList.add('stacked');
-        next = (overflows()  ?  'short'  :  'stacked');
+        nextFit = (overflows()  ?  'short'  :  'stacked');
       }
 
       element.className = was;
-      setFit(next);
+      setFit(nextFit);
     };
 
     // Stacking changes the bar's height only, so only its width is watched.

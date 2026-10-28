@@ -109,9 +109,9 @@ after(async ()  => {
 
 
 test('the first sign-in becomes admin; unknown emails are refused', { skip }, async ()  => {
-  const first = await login('admin@example.com');
-  assert.equal(first.status, 200);
-  assert.equal(first.body.user.isAdmin, true);
+  const adminLogin = await login('admin@example.com');
+  assert.equal(adminLogin.status, 200);
+  assert.equal(adminLogin.body.user.isAdmin, true);
   assert.equal((await login('stranger@example.com')).status, 403);
   assert.equal((await login('not-an-email')).status, 401);
 });
@@ -133,8 +133,8 @@ test('admins manage users; a player belongs to one user', { skip }, async ()  =>
 
   const users = (await call('GET', '/admin/users', { as: 'admin@example.com' })).body.users;
   const admin = users.find((u: { email: string })  =>  u.email === 'admin@example.com');
-  const own = await call('PATCH', `/admin/users/${admin.id}`, { as: 'admin@example.com', body: { isAdmin: false } });
-  assert.equal(own.status, 409);
+  const selfDemotion = await call('PATCH', `/admin/users/${admin.id}`, { as: 'admin@example.com', body: { isAdmin: false } });
+  assert.equal(selfDemotion.status, 409);
   assert.equal((await call('DELETE', `/admin/users/${admin.id}`, { as: 'admin@example.com' })).status, 409);
 });
 
@@ -186,21 +186,21 @@ test('rivals are added, hidden and removed one by one', { skip }, async ()  => {
   assert.equal((await call('POST', '/me/rivals', { as, body: { playerId: ME } })).status, 409);
   assert.equal((await call('POST', '/me/rivals', { as, body: { playerId: '44444444-4444-4444-8444-444444444444' } })).status, 404);
 
-  const added = await call<RivalsResponse>('POST', '/me/rivals', { as, body: { playerId: OTHER.toUpperCase() } });
-  assert.equal(added.status, 200);
-  assert.deepEqual(added.body.rivals.map((r)  =>  [r.id, r.hidden]).sort(), [[RIVAL, false], [OTHER, false]]);
+  const afterAdd = await call<RivalsResponse>('POST', '/me/rivals', { as, body: { playerId: OTHER.toUpperCase() } });
+  assert.equal(afterAdd.status, 200);
+  assert.deepEqual(afterAdd.body.rivals.map((r)  =>  [r.id, r.hidden]).sort(), [[RIVAL, false], [OTHER, false]]);
 
-  const hidden = await call<RivalsResponse>('PATCH', `/me/rivals/${OTHER}`, { as, body: { hidden: true } });
-  assert.equal(hidden.body.rivals.find((r)  =>  r.id === OTHER)?.hidden, true);
+  const afterHide = await call<RivalsResponse>('PATCH', `/me/rivals/${OTHER}`, { as, body: { hidden: true } });
+  assert.equal(afterHide.body.rivals.find((r)  =>  r.id === OTHER)?.hidden, true);
   assert.equal((await call('PATCH', `/me/rivals/${OTHER}`, { as, body: { hidden: true } })).status, 200);
   assert.equal((await call('PATCH', `/me/rivals/${ME}`, { as, body: { hidden: true } })).status, 404);
 
   // Replacing the list keeps the hidden setting of rivals that stay.
-  const replaced = await call<RivalsResponse>('PUT', '/me/rivals', { as, body: { playerIds: [OTHER, RIVAL] } });
-  assert.equal(replaced.body.rivals.find((r)  =>  r.id === OTHER)?.hidden, true);
+  const afterReplace = await call<RivalsResponse>('PUT', '/me/rivals', { as, body: { playerIds: [OTHER, RIVAL] } });
+  assert.equal(afterReplace.body.rivals.find((r)  =>  r.id === OTHER)?.hidden, true);
 
-  const removed = await call<RivalsResponse>('DELETE', `/me/rivals/${OTHER}`, { as });
-  assert.deepEqual(removed.body.rivals.map((r)  =>  r.id), [RIVAL]);
+  const afterRemove = await call<RivalsResponse>('DELETE', `/me/rivals/${OTHER}`, { as });
+  assert.deepEqual(afterRemove.body.rivals.map((r)  =>  r.id), [RIVAL]);
 });
 
 
@@ -208,11 +208,11 @@ test('changing preferences keeps the others; null removes one', { skip }, async 
   const as = 'player@example.com';
   await call('PUT', '/me/preferences', { as, body: { preferences: { scoreCap: 999000, countBy: 'charts' } } });
 
-  const changed = await call<PreferencesResponse>('PATCH', '/me/preferences', {
+  const afterChange = await call<PreferencesResponse>('PATCH', '/me/preferences', {
     as, body: { changes: { npMinimalRivals: 2, countBy: null } },
   });
 
-  assert.deepEqual(changed.body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
+  assert.deepEqual(afterChange.body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
   assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.preferences, { scoreCap: 999000, npMinimalRivals: 2 });
   await call('PUT', '/me/preferences', { as, body: { preferences: { scoreCap: 999000 } } });
 });
@@ -226,14 +226,14 @@ test('charts are snoozed for a fixed time and woken; expired snoozes are left ou
     call<ChartPreferencesResponse>('PATCH', `/me/chart-preferences/${chartId}`, { as, body: { snoozeDays } });
 
   const before = Date.now();
-  const snoozed = await snooze(alpha!, 3);
-  assert.equal(snoozed.status, 200);
-  assert.deepEqual(snoozed.body.chartPreferences.map((pref)  =>  pref.chartId), [alpha]);
+  const afterSnooze = await snooze(alpha!, 3);
+  assert.equal(afterSnooze.status, 200);
+  assert.deepEqual(afterSnooze.body.chartPreferences.map((pref)  =>  pref.chartId), [alpha]);
 
   // 3 days are 2 days and 12 hours.
-  const hours = (Date.parse(snoozed.body.chartPreferences[0]!.snoozedUntil!) - before) / 3600_000;
+  const hours = (Date.parse(afterSnooze.body.chartPreferences[0]!.snoozedUntil!) - before) / 3600_000;
   assert.ok(Math.abs(hours - 60) < 0.1, `snoozed for ${hours}h`);
-  assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.chartPreferences, snoozed.body.chartPreferences);
+  assert.deepEqual((await call<MeResponse>('GET', '/me', { as })).body.chartPreferences, afterSnooze.body.chartPreferences);
 
   for (const snoozeDays of [366, 1.5])
     assert.equal((await snooze(alpha!, snoozeDays)).status, 400, `snoozeDays ${snoozeDays}`);
@@ -268,17 +268,17 @@ test('best results come with their chart and try details, and since returns only
   assert.equal(rivalAlpha.perfect, 900);
   assert.equal(rivalAlpha.bestPlayedOn, '2026-10-01');
 
-  const unchanged = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });
-  assert.equal(unchanged.body.bests.length, 0);
+  const unchangedBests = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });
+  assert.equal(unchangedBests.body.bests.length, 0);
   // Counts cover every best result, not only the changed ones.
-  assert.deepEqual(unchanged.body.counts, { [ME]: 2, [RIVAL]: 1 });
+  assert.deepEqual(unchangedBests.body.counts, { [ME]: 2, [RIVAL]: 1 });
 
   await scrapedSession(ME, 'Tue 2', '2026-10-02', [play('Alpha', 905000)]);
 
-  const changed = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });
-  assert.equal(changed.body.bests.length, 1);
-  assert.equal(changed.body.bests[0]!.score, 905000);
-  assert.equal(changed.body.bests[0]!.lastPlayedOn, '2026-10-02');
+  const changedBests = await call<BestsResponse>('GET', `/bests?players=${ME},${RIVAL}&since=${all.body.serverTime}`, { as: 'player@example.com' });
+  assert.equal(changedBests.body.bests.length, 1);
+  assert.equal(changedBests.body.bests[0]!.score, 905000);
+  assert.equal(changedBests.body.bests[0]!.lastPlayedOn, '2026-10-02');
 });
 
 
@@ -297,9 +297,9 @@ test('admins give tracks short names that no other track uses as a name', { skip
   assert.equal((await patch(alpha!.id, ' A ')).body.track.shortTitle, 'A');
 
   // The renamed track's charts come again, though no best result changed.
-  const renamed = (await bests(serverTime)).body;
-  assert.deepEqual(renamed.charts.map((c)  =>  [c.songTitle, c.songShortTitle]), [['Alpha', 'A']]);
-  assert.equal(renamed.bests.length, 0);
+  const afterRename = (await bests(serverTime)).body;
+  assert.deepEqual(afterRename.charts.map((c)  =>  [c.songTitle, c.songShortTitle]), [['Alpha', 'A']]);
+  assert.equal(afterRename.bests.length, 0);
 
   assert.equal((await patch(beta!.id, 'alpha')).status, 409);
   assert.equal((await patch(beta!.id, 'a')).status, 409);
@@ -319,17 +319,17 @@ test('admins give players a display name, shown instead of the scraped one', { s
   await savePlayerInfo(db, namedId!, 'Other', null);
 
   const rename = (displayName: string | null)  =>  call('PATCH', `/admin/players/${NAMED}`, { as, body: { displayName } });
-  const listed = async ()  =>
+  const findListedPlayer = async ()  =>
     (await call<AdminPlayersResponse>('GET', '/admin/players', { as })).body.players.find((p)  =>  p.id === NAMED)!;
 
   assert.equal((await rename(' Someone ')).body.player.name, 'Someone');
-  assert.deepEqual([(await listed()).name, (await listed()).scrapedName], ['Someone', 'Other']);
+  assert.deepEqual([(await findListedPlayer()).name, (await findListedPlayer()).scrapedName], ['Someone', 'Other']);
 
   // Empty, or the scraped name, follows the scraped name.
   assert.equal((await rename('')).body.player.name, 'Other');
   await rename('Other');
   await savePlayerInfo(db, namedId!, 'Renamed', null);
-  assert.equal((await listed()).name, 'Renamed');
+  assert.equal((await findListedPlayer()).name, 'Renamed');
 
   assert.equal((await call('PATCH', '/admin/players/66666666-6666-4666-8666-666666666666', { as, body: { displayName: 'X' } })).status, 404);
   assert.equal((await call('PATCH', `/admin/players/${NAMED}`, { as: 'player@example.com', body: { displayName: 'X' } })).status, 403);
@@ -351,9 +351,9 @@ test('admins queue and cancel scrape runs', { skip }, async ()  => {
     as: 'admin@example.com', body: { kind: 'selected', players: ['66666666-6666-4666-8666-666666666666'] },
   })).status, 404);
 
-  const cancelled = await call<ScrapeRunResponse>('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' });
-  assert.equal(cancelled.body.run.status, 'cancelled');
-  assert.deepEqual(cancelled.body.players.map((p)  =>  p.state), ['skipped']);
+  const afterCancel = await call<ScrapeRunResponse>('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' });
+  assert.equal(afterCancel.body.run.status, 'cancelled');
+  assert.deepEqual(afterCancel.body.players.map((p)  =>  p.state), ['skipped']);
   assert.equal((await call('POST', `/admin/scrape-runs/${run.body.run.id}/cancel`, { as: 'admin@example.com' })).status, 409);
 });
 
@@ -368,32 +368,32 @@ test('the run list has current runs in queue order and previous ones newest firs
     return response.body;
   };
 
-  const queued = [await queue(), await queue()];
-  const finished = [await queue(), await queue()];
-  for (const id of finished)
+  const queuedRunIds = [await queue(), await queue()];
+  const finishedRunIds = [await queue(), await queue()];
+  for (const id of finishedRunIds)
     await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
 
-  const current = await list('?state=current');
-  assert.deepEqual(current.runs.map((r)  =>  r.id), queued);
-  assert.equal(current.hasMore, false);
+  const currentRuns = await list('?state=current');
+  assert.deepEqual(currentRuns.runs.map((r)  =>  r.id), queuedRunIds);
+  assert.equal(currentRuns.hasMore, false);
 
   const page = await list('?state=previous&limit=2');
-  assert.deepEqual(page.runs.map((r)  =>  r.id), [finished[1], finished[0]]);
+  assert.deepEqual(page.runs.map((r)  =>  r.id), [finishedRunIds[1], finishedRunIds[0]]);
   assert.equal(page.hasMore, true);
 
   const all = await list('?state=previous');
   assert.equal(all.hasMore, false);
   assert.equal(page.total, all.runs.length);
-  assert.equal(current.total, queued.length);
+  assert.equal(currentRuns.total, queuedRunIds.length);
   assert.equal(all.runs.every((r)  =>  r.status === 'cancelled'), true);
   assert.equal((await call('GET', '/admin/scrape-runs', { as })).status, 400);
 
-  const run = (await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${queued[1]}`, { as })).body;
-  assert.equal(run.previousRunId, queued[0]);
-  assert.equal(run.nextRunId, finished[0]);
-  assert.equal((await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${finished[1]}`, { as })).body.nextRunId, null);
+  const run = (await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${queuedRunIds[1]}`, { as })).body;
+  assert.equal(run.previousRunId, queuedRunIds[0]);
+  assert.equal(run.nextRunId, finishedRunIds[0]);
+  assert.equal((await call<ScrapeRunResponse>('GET', `/admin/scrape-runs/${finishedRunIds[1]}`, { as })).body.nextRunId, null);
 
-  for (const id of queued)
+  for (const id of queuedRunIds)
     await call('POST', `/admin/scrape-runs/${id}/cancel`, { as });
 });
 
@@ -409,16 +409,16 @@ test('added players join an active run, which takes them while it runs', { skip 
     return response.body;
   };
 
-  const first = await add(NEW_1);
-  const runId = first.run.id;
+  const firstAdd = await add(NEW_1);
+  const runId = firstAdd.run.id;
   // A registered player is stored right away, with only their GUID, before the run gets to them.
-  const stored = await db.selectFrom('players').select(['name', 'last_scraped_at']).where('piuscores_guid', '=', NEW_1).executeTakeFirst();
-  assert.deepEqual(stored, { name: null, last_scraped_at: null });
+  const storedPlayer = await db.selectFrom('players').select(['name', 'last_scraped_at']).where('piuscores_guid', '=', NEW_1).executeTakeFirst();
+  assert.deepEqual(storedPlayer, { name: null, last_scraped_at: null });
 
-  const joined = await add(NEW_2);
-  assert.equal(joined.run.id, runId);
-  assert.deepEqual(joined.players.map((p)  =>  p.id), [NEW_1, NEW_2]);
-  assert.equal(joined.run.playersTotal, 2);
+  const secondAdd = await add(NEW_2);
+  assert.equal(secondAdd.run.id, runId);
+  assert.deepEqual(secondAdd.players.map((p)  =>  p.id), [NEW_1, NEW_2]);
+  assert.equal(secondAdd.run.playersTotal, 2);
   // A player still waiting isn't added twice; a stored player selected for scraping joins too.
   assert.equal((await add(NEW_1)).players.length, 2);
   assert.deepEqual((await add(RIVAL, 'selected')).players.map((p)  =>  p.id), [NEW_1, NEW_2, RIVAL]);
@@ -432,10 +432,10 @@ test('added players join an active run, which takes them while it runs', { skip 
   assert.deepEqual(await takePlayer(db, runId, 4), { finished: 'done' });
 
   // The run is finished, so the next player gets a new one.
-  const next = await add(NEW_1);
-  assert.notEqual(next.run.id, runId);
-  assert.deepEqual(next.players.map((p)  =>  p.id), [NEW_1]);
-  await call('POST', `/admin/scrape-runs/${next.run.id}/cancel`, { as });
+  const nextAdd = await add(NEW_1);
+  assert.notEqual(nextAdd.run.id, runId);
+  assert.deepEqual(nextAdd.players.map((p)  =>  p.id), [NEW_1]);
+  await call('POST', `/admin/scrape-runs/${nextAdd.run.id}/cancel`, { as });
 });
 
 

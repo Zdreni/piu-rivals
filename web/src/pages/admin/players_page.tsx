@@ -31,11 +31,11 @@ function NameInput({ player, onSave }: { player: AdminPlayer; onSave: (displayNa
   useEffect(()  =>  setName(player.name  ??  ''), [player.name]);
 
   const save = ()  => {
-    const trimmed = name.trim();
-    if (trimmed !== (player.name  ??  ''))
-      onSave(trimmed  ||  null);
+    const trimmedName = name.trim();
+    if (trimmedName !== (player.name  ??  ''))
+      onSave(trimmedName  ||  null);
     else
-      setName(trimmed);
+      setName(trimmedName);
   };
 
   return (
@@ -92,7 +92,7 @@ function RegisterForm({ onError }: { onError: (error: string | null) => void }) 
 export function PlayersPage() {
   const navigate = useNavigate();
   const players = useLoad(()  =>  api<AdminPlayersResponse>('GET', '/admin/players'), []);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort<SortColumn>>({ column: 'name', descending: false });
 
@@ -114,8 +114,8 @@ export function PlayersPage() {
 
     try {
       await api('DELETE', `/admin/players/${player.id}`);
-      selected.delete(player.id);
-      setSelected(new Set(selected));
+      selectedPlayerIds.delete(player.id);
+      setSelectedPlayerIds(new Set(selectedPlayerIds));
       setError(null);
       await players.reload();
     } catch (e) {
@@ -135,13 +135,13 @@ export function PlayersPage() {
   };
 
   const toggle = (playerId: string)  => {
-    const next = new Set(selected);
-    if (next.has(playerId))
-      next.delete(playerId);
+    const nextSelectedIds = new Set(selectedPlayerIds);
+    if (nextSelectedIds.has(playerId))
+      nextSelectedIds.delete(playerId);
     else
-      next.add(playerId);
+      nextSelectedIds.add(playerId);
 
-    setSelected(next);
+    setSelectedPlayerIds(nextSelectedIds);
   };
 
   const sortedPlayers = useMemo(()  => {
@@ -150,7 +150,7 @@ export function PlayersPage() {
     return [...players.data?.players  ??  []].sort((a, b)  =>  sign * compare[sort.column](a, b)  ||  compare.name(a, b));
   }, [players.data, sort]);
 
-  const chosen = [...selected];
+  const chosenPlayerIds = [...selectedPlayerIds];
   const sortProps = { sort, onSort: setSort };
   return (
     <section>
@@ -168,10 +168,10 @@ export function PlayersPage() {
       {(error  ??  players.error)  &&  <p className="error" role="alert">{error  ??  players.error}</p>}
 
       <div className="title-row">
-        <span className="muted">{sortedPlayers.length} player{sortedPlayers.length === 1  ?  ''  :  's'}{chosen.length  ?  `, ${chosen.length} selected`  :  ''}</span>
+        <span className="muted">{sortedPlayers.length} player{sortedPlayers.length === 1  ?  ''  :  's'}{chosenPlayerIds.length  ?  `, ${chosenPlayerIds.length} selected`  :  ''}</span>
         <div className="buttons">
-          <button type="button" disabled={! chosen.length} onClick={()  =>  void startRun('selected', chosen)}>Scrape selected</button>
-          <button type="button" className="secondary" disabled={! chosen.length} onClick={()  =>  void startRun('rescan', chosen)}>
+          <button type="button" disabled={! chosenPlayerIds.length} onClick={()  =>  void startRun('selected', chosenPlayerIds)}>Scrape selected</button>
+          <button type="button" className="secondary" disabled={! chosenPlayerIds.length} onClick={()  =>  void startRun('rescan', chosenPlayerIds)}>
             Rescan selected
           </button>
         </div>
@@ -185,8 +185,8 @@ export function PlayersPage() {
                 <input
                   type="checkbox"
                   aria-label="Select all"
-                  checked={sortedPlayers.length > 0  &&  chosen.length === sortedPlayers.length}
-                  onChange={(event)  =>  setSelected(new Set((event.target.checked  ?  sortedPlayers.map((p)  =>  p.id)  :  [])))}
+                  checked={sortedPlayers.length > 0  &&  chosenPlayerIds.length === sortedPlayers.length}
+                  onChange={(event)  =>  setSelectedPlayerIds(new Set((event.target.checked  ?  sortedPlayers.map((p)  =>  p.id)  :  [])))}
                 />
               </th>
               <SortHeader column="dbId" label="ID" className="number" {...sortProps} />
@@ -207,7 +207,7 @@ export function PlayersPage() {
                 <td>
                   <input
                     type="checkbox"
-                    checked={selected.has(player.id)}
+                    checked={selectedPlayerIds.has(player.id)}
                     onChange={()  =>  toggle(player.id)}
                     aria-label={`Select ${playerLabel(player)}`}
                   />

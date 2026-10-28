@@ -2,7 +2,7 @@ import type { PlayerSummary } from '@piu-rivals/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
-import { ChartCard, NONE_SHOWN, type Shown, tabFolding, useKeeps } from '../../components/charts/chart_card.tsx';
+import { ChartCard, NONE_SHOWN, type ShownRows, tabFolding, useKeeps } from '../../components/charts/chart_card.tsx';
 import { ChartCardsGrid } from '../../components/charts/chart_cards_grid.tsx';
 import { buildCharts, type ChartRow } from '../../data/model.ts';
 import { MAX_LEVEL, MIN_LEVEL } from '../../data/preferences.ts';
@@ -32,11 +32,11 @@ function HistoryView({ me }: { me: PlayerSummary }) {
   const playerIds = useMemo(()  =>  [me.id, ...shownRivals.map((r)  =>  r.id)], [me.id, shownRivals]);
   const data = useBests(playerIds);
   const keep = useKeeps();
-  const [shown, setShown] = useState(PAGE_CHARTS);
+  const [shownChartCount, setShownChartCount] = useState(PAGE_CHARTS);
   // By chart, how many of its folded scores were shown (see ChartCard).
-  const [shownScores, setShownScores] = useState<Map<number, Shown>>(new Map());
+  const [shownRowsByChart, setShownRowsByChart] = useState<Map<number, ShownRows>>(new Map());
   // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
-  const [unrolled, setUnrolled] = useState<string | null>(null);
+  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -52,7 +52,7 @@ function HistoryView({ me }: { me: PlayerSummary }) {
   );
 
   const days = new Map<string | null, ChartRow[]>();
-  for (const chart of bests.slice(0, shown))
+  for (const chart of bests.slice(0, shownChartCount))
     days.set(chart.myDate, [...days.get(chart.myDate)  ??  [], chart]);
 
   const card = (chart: ChartRow)  =>  (
@@ -61,8 +61,8 @@ function HistoryView({ me }: { me: PlayerSummary }) {
       chart={chart}
       myName={me.name  ??  'You'}
       folding={tabFolding(chartTier(chart), keep)}
-      shown={shownScores.get(chart.id)  ??  NONE_SHOWN}
-      onShow={(more)  =>  setShownScores(new Map(shownScores).set(chart.id, more))}
+      shownRows={shownRowsByChart.get(chart.id)  ??  NONE_SHOWN}
+      onShow={(more)  =>  setShownRowsByChart(new Map(shownRowsByChart).set(chart.id, more))}
       markTies={false}
       showGain
       scoreCap={scoreCap}
@@ -70,8 +70,8 @@ function HistoryView({ me }: { me: PlayerSummary }) {
       now={0}
       menuOpen={false}
       leaving={false}
-      unrolled={(unrolled?.startsWith(`${chart.id} `)  ?  unrolled.slice(`${chart.id} `.length)  :  null)}
-      onUnroll={(playerId)  =>  setUnrolled((playerId === null  ?  null  :  `${chart.id} ${playerId}`))}
+      unrolledRowId={(unrolledRowId?.startsWith(`${chart.id} `)  ?  unrolledRowId.slice(`${chart.id} `.length)  :  null)}
+      onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chart.id} ${playerId}`))}
       onMenu={()  =>  {}}
       onSnooze={()  =>  {}}
       onWake={()  =>  {}}
@@ -85,12 +85,12 @@ function HistoryView({ me }: { me: PlayerSummary }) {
     <div className="rivals history">
       <StatusBar status={status} />
       <ChartCardsGrid
-        empty={(bests.length  ?  null  :  data.ready  ?  'No scores of yours yet. They show up once you are scraped.'  :  'Loading scores…')}
+        emptyMessage={(bests.length  ?  null  :  data.ready  ?  'No scores of yours yet. They show up once you are scraped.'  :  'Loading scores…')}
         groups={[...days].map(([day, charts])  =>  ({ key: day  ??  '', title: `${dayTitle(day)} · ${charts.length}`, className: 'day', charts }))}
         card={card}
-        footer={bests.length > shown  &&  (
-          <button className="show-more-charts" type="button" onClick={()  =>  setShown(shown + PAGE_CHARTS)}>
-            Show more · {bests.length - shown} left
+        footer={bests.length > shownChartCount  &&  (
+          <button className="show-more-charts" type="button" onClick={()  =>  setShownChartCount(shownChartCount + PAGE_CHARTS)}>
+            Show more · {bests.length - shownChartCount} left
           </button>
         )}
       />

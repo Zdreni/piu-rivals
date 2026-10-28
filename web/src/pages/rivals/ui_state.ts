@@ -17,15 +17,15 @@ const DEFAULT_STATE: UiState = { selectedLevel: null, selectedTab: 'rivals-win',
 
 export function readUiState(): UiState {
   try {
-    const raw = localStorage.getItem(UI_STATE_KEY);
-    if (! raw)
+    const rawState = localStorage.getItem(UI_STATE_KEY);
+    if (! rawState)
       return DEFAULT_STATE;
 
-    const saved = JSON.parse(raw);
+    const savedState = JSON.parse(rawState);
     return {
-      selectedLevel: (typeof saved.selectedLevel === 'string'  ?  saved.selectedLevel  :  null),
-      selectedTab: TABS.find((id)  =>  id === saved.selectedTab)  ??  DEFAULT_STATE.selectedTab,
-      rivalTab: (saved.rivalTab === 'others'  ?  'others'  :  'mine'),
+      selectedLevel: (typeof savedState.selectedLevel === 'string'  ?  savedState.selectedLevel  :  null),
+      selectedTab: TABS.find((id)  =>  id === savedState.selectedTab)  ??  DEFAULT_STATE.selectedTab,
+      rivalTab: (savedState.rivalTab === 'others'  ?  'others'  :  'mine'),
     };
   } catch {
     return DEFAULT_STATE;

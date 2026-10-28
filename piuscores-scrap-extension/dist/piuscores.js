@@ -156,8 +156,8 @@
     const others = run.playersTotal - 1;
     switch (runPlayer.state) {
       case "waiting": {
-        const ahead = runPlayer.index - run.playersDone;
-        return ["Queued for scraping", run.status === "queued" || ahead <= 0 ? "Waiting for the scrape worker\u2026" : `${ahead} player${ahead === 1 ? "" : "s"} ahead in the run\u2026`];
+        const playersAhead = runPlayer.index - run.playersDone;
+        return ["Queued for scraping", run.status === "queued" || playersAhead <= 0 ? "Waiting for the scrape worker\u2026" : `${playersAhead} player${playersAhead === 1 ? "" : "s"} ahead in the run\u2026`];
       }
       case "running":
         return ["Scraping", solo ? `${counts(run)} so far\u2026` : `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run\u2026`];
@@ -187,8 +187,8 @@
       return { kind: failed ? "error" : "known", title, detail, button };
     }
     if (view.state === "known") {
-      const scraped = view.player.lastScrapedAt;
-      return { kind: "known", title: "In piu-rivals", detail: scraped ? `Last scraped ${ago(scraped)}` : "Not scraped yet", button };
+      const lastScrapedAt = view.player.lastScrapedAt;
+      return { kind: "known", title: "In piu-rivals", detail: lastScrapedAt ? `Last scraped ${ago(lastScrapedAt)}` : "Not scraped yet", button };
     }
     return { kind: "unknown", title: "Not in piu-rivals", detail: `${view.name || "This player"} isn't stored yet.`, button };
   }
@@ -270,21 +270,21 @@
   var badge = createBadge({ onRegister: register });
   var shownPlayerId = null;
   var status = null;
-  var finished = null;
+  var finishedRun = null;
   var pollTimer = null;
   function render() {
     if (status.state === "signed-out" || status.state === "not-admin") {
       badge.hide();
       return;
     }
-    badge.show({ ...status, finished, name: pagePlayerName() });
+    badge.show({ ...status, finished: finishedRun, name: pagePlayerName() });
   }
   async function refresh() {
     const playerId = shownPlayerId;
-    const next = await send({ type: "status", playerId });
+    const nextStatus = await send({ type: "status", playerId });
     if (playerId !== shownPlayerId)
       return;
-    status = next;
+    status = nextStatus;
     render();
     if (status.run)
       watchRun(status.run.id);
@@ -329,7 +329,7 @@
         watchRun(runId);
         return;
       }
-      finished = { run, runPlayer };
+      finishedRun = { run, runPlayer };
       markLinksLogged();
       await refresh();
     }, RUN_POLL_MS);
@@ -340,7 +340,7 @@
     if (playerId !== shownPlayerId)
       return;
     if (result.run) {
-      finished = null;
+      finishedRun = null;
       status = { ...status, run: result.run, runPlayer: result.runPlayer };
       watchRun(result.run.id);
     } else {
@@ -357,7 +357,7 @@
     }
     shownPlayerId = playerId;
     status = null;
-    finished = null;
+    finishedRun = null;
     clearTimeout(pollTimer);
     if (!playerId) {
       badge.hide();

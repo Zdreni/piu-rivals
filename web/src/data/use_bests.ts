@@ -74,14 +74,14 @@ async function download(store: Store, playerIds: string[], since?: string) {
 
 // `changed` runs whenever new rows were merged, so cached rows show while the server is asked.
 async function syncPlayers(store: Store, playerIds: string[], changed: () => void) {
-  const uncached = playerIds.filter((playerId)  =>  ! store.fromCache.has(playerId));
-  if (uncached.length) {
-    const cached = await (await openBestsCache()).load(uncached);
-    merge(store, cached.charts, cached.bests);
-    for (const { playerId, since } of cached.marks)
+  const uncachedPlayerIds = playerIds.filter((playerId)  =>  ! store.fromCache.has(playerId));
+  if (uncachedPlayerIds.length) {
+    const cachedData = await (await openBestsCache()).load(uncachedPlayerIds);
+    merge(store, cachedData.charts, cachedData.bests);
+    for (const { playerId, since } of cachedData.marks)
       store.since.set(playerId, since);
 
-    for (const playerId of uncached)
+    for (const playerId of uncachedPlayerIds)
       store.fromCache.add(playerId);
 
     changed();
@@ -89,10 +89,10 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
 
   const knownPlayerIds = playerIds.filter((playerId)  =>  store.since.has(playerId));
   const freshPlayerIds = playerIds.filter((playerId)  =>  ! store.since.has(playerId));
-  const stale: string[] = [];
+  const stalePlayerIds: string[] = [];
   // A chunk asks from its earliest sync; rows the others had already come again, which is harmless.
   for (const chunk of chunks(knownPlayerIds)) {
-    stale.push(...await download(store, chunk, chunk.map((playerId)  =>  store.since.get(playerId)!).sort()[0]));
+    stalePlayerIds.push(...await download(store, chunk, chunk.map((playerId)  =>  store.since.get(playerId)!).sort()[0]));
     changed();
   }
 
@@ -101,16 +101,16 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
     changed();
   }
 
-  if (! stale.length)
+  if (! stalePlayerIds.length)
     return;
 
-  for (const playerId of stale) {
+  for (const playerId of stalePlayerIds) {
     store.bests.delete(playerId);
     store.since.delete(playerId);
   }
 
-  await (await openBestsCache()).clear(stale).catch((error)  =>  console.warn('[piu-rivals] Unable to clear cached scores:', error));
-  for (const chunk of chunks(stale)) {
+  await (await openBestsCache()).clear(stalePlayerIds).catch((error)  =>  console.warn('[piu-rivals] Unable to clear cached scores:', error));
+  for (const chunk of chunks(stalePlayerIds)) {
     await download(store, chunk);
     changed();
   }
@@ -120,7 +120,7 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
 export function useBests(playerIds: string[]): Bests {
   const store = useRef<Store>({ charts: new Map(), bests: new Map(), since: new Map(), fromCache: new Set() });
   const wantedPlayerIds = useRef(playerIds);
-  const running = useRef<Promise<void> | null>(null);
+  const runningSync = useRef<Promise<void> | null>(null);
   const again = useRef(false);
   const [version, setVersion] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -130,13 +130,13 @@ export function useBests(playerIds: string[]): Bests {
 
   // One sync at a time; a sync asked for meanwhile runs once the current one is done, for the players wanted then.
   const sync = useCallback(async ()  => {
-    if (running.current) {
+    if (runningSync.current) {
       again.current = true;
-      return running.current;
+      return runningSync.current;
     }
 
     setSyncing(true);
-    running.current = (async ()  => {
+    runningSync.current = (async ()  => {
       do {
         again.current = false;
         try {
@@ -149,9 +149,9 @@ export function useBests(playerIds: string[]): Bests {
     })();
 
     try {
-      await running.current;
+      await runningSync.current;
     } finally {
-      running.current = null;
+      runningSync.current = null;
       setSyncing(false);
     }
   }, []);

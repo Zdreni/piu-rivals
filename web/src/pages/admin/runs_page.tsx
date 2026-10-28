@@ -77,10 +77,10 @@ export function RunsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: RunsTab = (searchParams.get('tab') === 'previous'  ?  'previous'  :  'current');
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const current = useLoad(()  =>  api<ScrapeRunsResponse>('GET', '/admin/scrape-runs?state=current'), []);
-  const previous = useLoad(()  =>  api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?state=previous&limit=${limit}`), [limit]);
+  const currentRuns = useLoad(()  =>  api<ScrapeRunsResponse>('GET', '/admin/scrape-runs?state=current'), []);
+  const previousRuns = useLoad(()  =>  api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?state=previous&limit=${limit}`), [limit]);
   const [error, setError] = useState<string | null>(null);
-  const active = !! current.data?.runs.length;
+  const active = !! currentRuns.data?.runs.length;
 
   // Refreshes both lists while a run is queued or running: finished runs move from Current to Previous.
   useEffect(()  => {
@@ -88,15 +88,15 @@ export function RunsPage() {
       return;
 
     const timer = setInterval(()  => {
-      void current.reload();
-      void previous.reload();
+      void currentRuns.reload();
+      void previousRuns.reload();
     }, POLL_MS);
 
     return ()  =>  clearInterval(timer);
-  }, [active, current.reload, previous.reload]);
+  }, [active, currentRuns.reload, previousRuns.reload]);
 
   // A running "all" run shows over a queued one; either disables the button.
-  const allRuns = current.data?.runs.filter((r)  =>  r.kind === 'all')  ??  [];
+  const allRuns = currentRuns.data?.runs.filter((r)  =>  r.kind === 'all')  ??  [];
   const runningAll = allRuns.find((r)  =>  r.status === 'running');
   const queuedAll = allRuns.find((r)  =>  r.status === 'queued');
   const scrapeAllLabel = (runningAll
@@ -112,7 +112,7 @@ export function RunsPage() {
     }
   };
 
-  const shownRuns = (tab === 'current'  ?  current  :  previous);
+  const shownRuns = (tab === 'current'  ?  currentRuns  :  previousRuns);
   const tabButton = (id: RunsTab, label: string, count?: number)  =>  (
     <button type="button" role="tab" aria-selected={tab === id} onClick={()  =>  setSearchParams((id === 'previous'  ?  { tab: id }  :  {}))}>
       {label}{count !== undefined  &&  <span className="tab-count"> {count}</span>}
@@ -125,7 +125,7 @@ export function RunsPage() {
         <h1>Scraping</h1>
         <div className="scrape-all">
           <button type="button" disabled={!! (runningAll  ||  queuedAll)} onClick={()  =>  void scrapeAll()}>{scrapeAllLabel}</button>
-          {current.data  &&  <div className="muted small">{runningAll  ?  'Previous'  :  'Last'} run {formatAgo(current.data.lastAllRunAt)}</div>}
+          {currentRuns.data  &&  <div className="muted small">{runningAll  ?  'Previous'  :  'Last'} run {formatAgo(currentRuns.data.lastAllRunAt)}</div>}
         </div>
       </div>
       <p className="muted">
@@ -135,8 +135,8 @@ export function RunsPage() {
       {(error  ??  shownRuns.error)  &&  <p className="error" role="alert">{error  ??  shownRuns.error}</p>}
 
       <div className="page-tabs" role="tablist" aria-label="Scraping">
-        {tabButton('current', 'Current', current.data?.runs.length)}
-        {tabButton('previous', 'Previous', previous.data?.total)}
+        {tabButton('current', 'Current', currentRuns.data?.runs.length)}
+        {tabButton('previous', 'Previous', previousRuns.data?.total)}
       </div>
 
       <div role="tabpanel">
@@ -145,7 +145,7 @@ export function RunsPage() {
         {shownRuns.data  &&  ! shownRuns.data.runs.length  &&  (
           <p className="muted">{tab === 'current'  ?  'Nothing is queued or running.'  :  'No finished runs yet.'}</p>
         )}
-        {tab === 'previous'  &&  previous.data?.hasMore  &&  (
+        {tab === 'previous'  &&  previousRuns.data?.hasMore  &&  (
           <p><button type="button" className="secondary" onClick={()  =>  setLimit(limit + PAGE_SIZE)}>Show older runs</button></p>
         )}
       </div>

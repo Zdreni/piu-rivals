@@ -23,11 +23,11 @@ function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortT
   useEffect(()  =>  setValue(track.shortTitle), [track.shortTitle]);
 
   const save = async ()  => {
-    const trimmed = value.trim();
-    if (trimmed === track.shortTitle)
+    const trimmedTitle = value.trim();
+    if (trimmedTitle === track.shortTitle)
       return;
 
-    if (await onSave(trimmed)  &&  ! trimmed)
+    if (await onSave(trimmedTitle)  &&  ! trimmedTitle)
       setValue(track.title);
   };
 

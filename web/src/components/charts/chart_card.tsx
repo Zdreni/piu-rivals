@@ -49,12 +49,12 @@ export const tabFolding = (tab: TabId, keep: Keeps): Folding  =>  (tab === 'hidd
   });
 
 // How many of a card's folded rivals, and of its scores above the lowest ones, were shown.
-export interface Shown {
+export interface ShownRows {
   folded: number;
   higher: number;
 }
 
-export const NONE_SHOWN: Shown = { folded: 0, higher: 0 };
+export const NONE_SHOWN: ShownRows = { folded: 0, higher: 0 };
 
 // Each click on a fold button lists this many more of its scores.
 const SHOW_STEP = 10;
@@ -96,27 +96,27 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
   onSnooze: (days: SnoozeDays) => void;
   onWake: () => void;
 }) {
-  const left = (chart.snoozedUntil === null  ?  null  :  timeLeft(chart.snoozedUntil - now));
-  const more = left !== null  ||  ((unrolled  ||  maximized)  &&  canSnooze);
+  const snoozeTimeLeft = (chart.snoozedUntil === null  ?  null  :  timeLeft(chart.snoozedUntil - now));
+  const more = snoozeTimeLeft !== null  ||  ((unrolled  ||  maximized)  &&  canSnooze);
   // The length picked in the menu, lit while the card fades out.
-  const [picked, setPicked] = useState<SnoozeDays | null>(null);
+  const [pickedDays, setPickedDays] = useState<SnoozeDays | null>(null);
   const press = (action: () => void)  =>  (event: MouseEvent)  => {
     event.stopPropagation();
     action();
   };
 
   const toggleMenu = press(()  => {
-    setPicked(null);
+    setPickedDays(null);
     onMenu();
   });
 
   const pick = (days: SnoozeDays)  =>  press(()  => {
-    setPicked(days);
+    setPickedDays(days);
     onSnooze(days);
   });
 
   return (
-    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(left !== null  ?  ' snoozed'  :  '')}`}
+    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(snoozeTimeLeft !== null  ?  ' snoozed'  :  '')}`}
       onClick={onToggle}>
       <div className="chart-card-title">
         <span className="track" title={chart.trackTitle}>{(unrolled  ||  maximized)  ?  chart.trackTitle  :  chart.track}</span>
@@ -127,10 +127,10 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
           </button>
         )}
       </div>
-      {(left !== null  ||  canSnooze)  &&  (
+      {(snoozeTimeLeft !== null  ||  canSnooze)  &&  (
         <div className="chart-card-more">
           <div>
-            {(left === null  &&  maximized)
+            {(snoozeTimeLeft === null  &&  maximized)
               ?  (
                 <span className="snooze snooze-panel">
                   <span className="snooze-title">Snooze chart to Hidden</span>
@@ -143,7 +143,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
                   </span>
                 </span>
               )
-              :  left === null
+              :  snoozeTimeLeft === null
               ?  (
                 <span className="snooze">
                   <span className="snooze-anchor">
@@ -154,7 +154,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
                     {menuOpen  &&  (
                       <span className="snooze-menu" role="menu">
                         {SNOOZE_DAYS.map((days)  =>  (
-                          <button key={days} className={(picked === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
+                          <button key={days} className={(pickedDays === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
                             onClick={pick(days)}>
                             {days === 1  ?  '1 day'  :  `${days} days`}
                           </button>
@@ -166,13 +166,13 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
               )
               :  (
                 <span className="snooze snooze-panel wake">
-                  <span className="snooze-title">Chart snoozed for {left}</span>
+                  <span className="snooze-title">Chart snoozed for {snoozeTimeLeft}</span>
                   <span className="snooze-lengths">
                     <button type="button" title="Show this chart again now" onClick={press(onWake)}>Wake now</button>
                   </span>
                 </span>
               )}
-            {! maximized  &&  left === null  &&  <ChartBall chart={chart.chart} />}
+            {! maximized  &&  snoozeTimeLeft === null  &&  <ChartBall chart={chart.chart} />}
           </div>
         </div>
       )}
@@ -185,10 +185,10 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
 // them beats you. Ties get the tie colour only with `markTies`.
 // Drawn rather than typed: font arrows sit at different heights in every font, while these span the digits exactly.
 const arrow = (d: string)  =>  <svg className="fold-arrow" viewBox="0 0 6 9" aria-hidden="true"><path d={d} /></svg>;
-const up = arrow('M3 8.5V.5M.5 3L3 .5 5.5 3');
-const down = arrow('M3 .5v8M.5 6L3 8.5 5.5 6');
+const upArrow = arrow('M3 8.5V.5M.5 3L3 .5 5.5 3');
+const downArrow = arrow('M3 .5v8M.5 6L3 8.5 5.5 6');
 const FOLD_TONES: [Stat, string, ReactNode][] = [
-  ['lose', 'neg', up], ['hidden', 'neg muted', up], ['unplayed', 'blue', ''], ['win', 'pos', down], ['tie', 'tie', '='],
+  ['lose', 'neg', upArrow], ['hidden', 'neg muted', upArrow], ['unplayed', 'blue', ''], ['win', 'pos', downArrow], ['tie', 'tie', '='],
 ];
 
 
@@ -202,13 +202,13 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 
 // One chart's card: the track and chart in its header, then you and its rivals by score (see ResultItem).
 // Rivals whose result is one of `folding.fold` (e.g. won), when 2 or more, are folded into a "N more..." button;
-// `shown.folded` of them, highest first, are listed anyway. With `folding.keep`, only its `top` highest and `bottom`
+// `shownRows.folded` of them, highest first, are listed anyway. With `folding.keep`, only its `top` highest and `bottom`
 // lowest of the other scores are listed, the ones between (when 2 or more) folded into a "N more..." button;
-// `shown.higher` of them, highest first, are listed above the button anyway. Each click on a button calls `onShow`
+// `shownRows.higher` of them, highest first, are listed above the button anyway. Each click on a button calls `onShow`
 // with SHOW_STEP more of its scores shown. `folding` also colours and dims the rows (see ResultItem), and `markTies`
 // colours the diffs of true ties. `showGain` puts how much your best score rose over your previous one, if it did, in
 // your row's diff column.
-// A click on a row calls `onUnroll`, and the `unrolled` row (a rival's id, or "me" for yours) unrolls. A click on the
+// A click on a row calls `onUnroll`, and the `unrolledRowId` row (a rival's id, or "me" for yours) unrolls. A click on the
 // header unrolls it ("head"), with the snooze button when `canSnooze`, whose menu (`menuOpen`, toggled by `onMenu`)
 // calls `onSnooze`; `now` counts down a snoozed chart's time left. While the menu is open, the card is dimmed;
 // `leaving`, it fades out. Wake calls `onWake`.
@@ -216,13 +216,13 @@ function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: numb
 // `maximized` card has its header unrolled for good, with a close button calling `onClose`; a click on the header
 // calls it too.
 export function ChartCard({
-  chart, myName, folding, shown, markTies, showGain = false, scoreCap, canSnooze, now, menuOpen, leaving, maximized = false,
-  onShow, unrolled, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
+  chart, myName, folding, shownRows, markTies, showGain = false, scoreCap, canSnooze, now, menuOpen, leaving, maximized = false,
+  onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
 }: {
   chart: ChartRow;
   myName: string;
   folding: Folding;
-  shown: Shown;
+  shownRows: ShownRows;
   markTies: boolean;
   showGain?: boolean;
   scoreCap: number;
@@ -231,8 +231,8 @@ export function ChartCard({
   menuOpen: boolean;
   leaving: boolean;
   maximized?: boolean;
-  onShow: (shown: Shown) => void;
-  unrolled: string | null;
+  onShow: (shownRows: ShownRows) => void;
+  unrolledRowId: string | null;
   onUnroll: (playerId: string | null) => void;
   onMenu: () => void;
   onSnooze: (days: SnoozeDays) => void;
@@ -251,33 +251,33 @@ export function ChartCard({
   const isFolded = (entry: Entry)  =>  ! entry.me  &&  fold.includes(resultStat(entry));
   // A single folded or higher score is shown rather than folded.
   const foldableEntries = allEntries.filter(isFolded);
-  const lower = foldableEntries.length - shown.folded;
-  const folded = (lower >= 2  ?  lower  :  0);
-  const hiddenBelow = foldableEntries.slice(foldableEntries.length - folded);
+  const unshownBelowCount = foldableEntries.length - shownRows.folded;
+  const foldedBelowCount = (unshownBelowCount >= 2  ?  unshownBelowCount  :  0);
+  const hiddenBelow = foldableEntries.slice(foldableEntries.length - foldedBelowCount);
   const keptEntries = allEntries.filter((e)  =>  ! isFolded(e));
-  const firstHidden = (keep?.top  ??  0) + shown.higher;
-  const higher = (keep === null  ?  0  :  keptEntries.length - firstHidden - keep.bottom);
-  const above = (higher >= 2  ?  higher  :  0);
+  const firstHidden = (keep?.top  ??  0) + shownRows.higher;
+  const unshownAboveCount = (keep === null  ?  0  :  keptEntries.length - firstHidden - keep.bottom);
+  const foldedAboveCount = (unshownAboveCount >= 2  ?  unshownAboveCount  :  0);
   // The rivals you don't fold are the top of the list, so the ones after the shown highest are hidden.
-  const hiddenAbove = keptEntries.slice(firstHidden, firstHidden + above);
+  const hiddenAbove = keptEntries.slice(firstHidden, firstHidden + foldedAboveCount);
   const hiddenEntries = new Set([...hiddenAbove, ...hiddenBelow]);
   const shownEntries = allEntries.filter((e)  =>  ! hiddenEntries.has(e));
 
-  const toggler = (id: string)  =>  ()  =>  onUnroll((unrolled === id  ?  null  :  id));
+  const toggler = (id: string)  =>  ()  =>  onUnroll((unrolledRowId === id  ?  null  :  id));
 
   // One node per score, so the "more" button for the higher ones goes in by its place in `shownEntries`.
   const rows: ReactNode[] = shownEntries.map((entry)  => {
     const id = (entry.me  ?  ME  :  entry.playerId);
     return (
-      <ResultItem key={id} chart={chart} entry={entry} myName={myName} unrolled={unrolled === id} colorByRealDiff={folding.colorByRealDiff}
+      <ResultItem key={id} chart={chart} entry={entry} myName={myName} unrolled={unrolledRowId === id} colorByRealDiff={folding.colorByRealDiff}
         dimWon={folding.dimWon} markTies={markTies} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
     );
   });
 
-  if (above > 0) {
+  if (foldedAboveCount > 0) {
     rows.splice(firstHidden, 0, (
-      <button key="higher" className="show-others top" type="button" onClick={()  =>  onShow({ ...shown, higher: shown.higher + SHOW_STEP })}>
-        ...<FoldCount entries={hiddenAbove} count={above} markTies={markTies} /> more...
+      <button key="higher" className="show-others top" type="button" onClick={()  =>  onShow({ ...shownRows, higher: shownRows.higher + SHOW_STEP })}>
+        ...<FoldCount entries={hiddenAbove} count={foldedAboveCount} markTies={markTies} /> more...
       </button>
     ));
   }
@@ -294,15 +294,15 @@ export function ChartCard({
         event.stopPropagation();
         onMaximize();
       })}>
-      <CardHead chart={chart} unrolled={unrolled === HEAD} canSnooze={canSnooze} now={now} menuOpen={menuOpen} maximized={maximized}
+      <CardHead chart={chart} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze} now={now} menuOpen={menuOpen} maximized={maximized}
         onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
       <div className="chart-card-body">
         <div className="chart-card-box">
           {/* Without your score there are no diffs, so their columns are dropped. */}
           <div className={`chart-card-results${(chart.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>
-          {folded > 0  &&  (
-            <button className="show-others" type="button" onClick={()  =>  onShow({ ...shown, folded: shown.folded + SHOW_STEP })}>
-              ...<FoldCount entries={hiddenBelow} count={folded} markTies={markTies} /> more...
+          {foldedBelowCount > 0  &&  (
+            <button className="show-others" type="button" onClick={()  =>  onShow({ ...shownRows, folded: shownRows.folded + SHOW_STEP })}>
+              ...<FoldCount entries={hiddenBelow} count={foldedBelowCount} markTies={markTies} /> more...
             </button>
           )}
         </div>

@@ -124,19 +124,19 @@ export class SessionsBrowser {
     // The "Plays" tally counts every row of the list, stage breaks too, so the session is read only
     // once that many rows are shown; the button may go away before they all render. Without a
     // tally, the button going away is all there is to wait for.
-    const total = parseOpenSession(await this.openSessionHtml())?.playsTotal  ??  null;
+    const playsTotal = parseOpenSession(await this.openSessionHtml())?.playsTotal  ??  null;
     const showAll = this.page.locator('[data-testid="session-show-all-plays"]');
     if (await showAll.count())
       await showAll.click();
 
     const rows = this.page.locator('[data-testid="session-all-plays"] [data-testid="session-score-row"]');
-    let shown = 0;
+    let shownRows = 0;
 
     await waitFor(async ()  => {
-      shown = await rows.count();
-      return (total === null  ?  await showAll.count() === 0  :  shown >= total);
-    }, `${(total === null  ?  'all'  :  `all ${total}`)} plays of "${card.title}" (${card.timestamp}) to load`).catch((error)  => {
-      throw new Error(`${error.message}: ${shown} shown`);
+      shownRows = await rows.count();
+      return (playsTotal === null  ?  await showAll.count() === 0  :  shownRows >= playsTotal);
+    }, `${(playsTotal === null  ?  'all'  :  `all ${playsTotal}`)} plays of "${card.title}" (${card.timestamp}) to load`).catch((error)  => {
+      throw new Error(`${error.message}: ${shownRows} shown`);
     });
 
     return { html: await this.page.content(), card };

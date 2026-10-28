@@ -1,6 +1,6 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChartCard, NONE_SHOWN, type Shown, tabFolding, useKeeps } from '../../components/charts/chart_card.tsx';
+import { ChartCard, NONE_SHOWN, type ShownRows, tabFolding, useKeeps } from '../../components/charts/chart_card.tsx';
 import { ChartCardsGrid, type ChartCardsGroup } from '../../components/charts/chart_cards_grid.tsx';
 import { ChartCardMaximized } from '../../components/charts/chart_card_maximized.tsx';
 import { REDUCED_MOTION } from '../../components/media.ts';
@@ -15,7 +15,7 @@ export interface HiddenGroup {
 }
 
 
-const capitalized = (word: string)  =>  word[0]!.toUpperCase() + word.slice(1);
+const capitalize = (word: string)  =>  word[0]!.toUpperCase() + word.slice(1);
 // Tab words on phones.
 const SHORT_WORDS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
 
@@ -58,17 +58,17 @@ export function SelectedLevelCharts({
   onSnooze: (chartId: number, days: SnoozeDays | null) => void;
 }) {
   // By chart, how many of its folded scores were shown (see ChartCard).
-  const [shown, setShown] = useState<Map<number, Shown>>(new Map());
+  const [shownRowsByChart, setShownRowsByChart] = useState<Map<number, ShownRows>>(new Map());
   // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
-  const [unrolled, setUnrolled] = useState<string | null>(null);
+  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
   // The chart whose snooze menu is open. Another level starts without it.
   const [menu, setMenu] = useState<number | null>(null);
   // The card fading out before its chart is snoozed or woken.
-  const [leaving, setLeaving] = useState<number | null>(null);
+  const [leavingChartId, setLeavingChartId] = useState<number | null>(null);
   // The tab a chart just went into, snoozed or woken, which splashes (see .tab-flash); `n` restarts the splash.
   const [flash, setFlash] = useState<{ tab: TabId; n: number } | null>(null);
   // The chart whose card is maximized.
-  const [maximized, setMaximized] = useState<number | null>(null);
+  const [maximizedChartId, setMaximizedChartId] = useState<number | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   // Where the cards and group titles were before a card left, so they move from there into their new places.
   const movedFrom = useRef<Map<string, DOMRect> | null>(null);
@@ -80,12 +80,12 @@ export function SelectedLevelCharts({
 
     movedFrom.current = null;
     for (const el of bodyRef.current?.querySelectorAll<HTMLElement>('[data-flip]')  ??  []) {
-      const old = from.get(el.dataset.flip!);
-      if (! old)
+      const oldRect = from.get(el.dataset.flip!);
+      if (! oldRect)
         continue;
 
-      const now = el.getBoundingClientRect();
-      const dx = old.left - now.left, dy = old.top - now.top;
+      const newRect = el.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left, dy = oldRect.top - newRect.top;
       if (dx  ||  dy)
         el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: MOVE_MS, easing: 'ease' });
     }
@@ -98,8 +98,8 @@ export function SelectedLevelCharts({
       if (! REDUCED_MOTION.matches)
         movedFrom.current = flipRects(bodyRef.current);
 
-      setLeaving(null);
-      setUnrolled(null);
+      setLeavingChartId(null);
+      setUnrolledRowId(null);
       setMenu(null);
       onSnooze(chartId, days);
 
@@ -107,7 +107,7 @@ export function SelectedLevelCharts({
       const chart = [...levelCharts, ...hiddenGroups.flatMap(({ charts })  =>  charts)].find(({ id })  =>  id === chartId);
       const into = (days !== null  ?  'hidden'  :  chart  &&  chartTier({ ...chart, snoozedUntil: null }, ties));
       if (into)
-        setFlash((last)  =>  ({ tab: into, n: (last?.n  ??  0) + 1 }));
+        setFlash((previousFlash)  =>  ({ tab: into, n: (previousFlash?.n  ??  0) + 1 }));
     };
 
     if (REDUCED_MOTION.matches) {
@@ -115,7 +115,7 @@ export function SelectedLevelCharts({
       return;
     }
 
-    setLeaving(chartId);
+    setLeavingChartId(chartId);
     window.setTimeout(send, LEAVE_MS);
   };
 
@@ -179,23 +179,23 @@ export function SelectedLevelCharts({
       chart={chart}
       myName={myName}
       folding={folding}
-      shown={shown.get(chart.id)  ??  NONE_SHOWN}
-      onShow={(more)  =>  setShown(new Map(shown).set(chart.id, more))}
+      shownRows={shownRowsByChart.get(chart.id)  ??  NONE_SHOWN}
+      onShow={(more)  =>  setShownRowsByChart(new Map(shownRowsByChart).set(chart.id, more))}
       markTies={ties}
       scoreCap={scoreCap}
       now={now}
-      unrolled={(unrolled?.startsWith(`${chart.id} `)  ?  unrolled.slice(`${chart.id} `.length)  :  null)}
-      onUnroll={(playerId)  =>  setUnrolled((playerId === null  ?  null  :  `${chart.id} ${playerId}`))}
+      unrolledRowId={(unrolledRowId?.startsWith(`${chart.id} `)  ?  unrolledRowId.slice(`${chart.id} `.length)  :  null)}
+      onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chart.id} ${playerId}`))}
       canSnooze={canSnooze}
       menuOpen={menu === chart.id}
       onMenu={()  =>  setMenu((menu === chart.id  ?  null  :  chart.id))}
       onSnooze={(days)  =>  leave(chart.id, days)}
       // A wake needs no undo: the card goes back to its tab at once.
-      leaving={leaving === chart.id}
+      leaving={leavingChartId === chart.id}
       onWake={()  =>  leave(chart.id, null)}
       onMaximize={()  => {
         setMenu(null);
-        setMaximized(chart.id);
+        setMaximizedChartId(chart.id);
       }}
     />
   );
@@ -211,12 +211,12 @@ export function SelectedLevelCharts({
   }
 
   // A card stays maximized only while its chart is listed in the open tab.
-  const big = listedGroups.flatMap(({ charts })  =>  charts).find((c)  =>  c.id === maximized);
+  const maximizedChart = listedGroups.flatMap(({ charts })  =>  charts).find((c)  =>  c.id === maximizedChartId);
 
   useEffect(()  => {
-    if (maximized !== null  &&  ! big)
-      setMaximized(null);
-  }, [maximized, big]);
+    if (maximizedChartId !== null  &&  ! maximizedChart)
+      setMaximizedChartId(null);
+  }, [maximizedChartId, maximizedChart]);
 
   return (
     <div className="score-content">
@@ -224,8 +224,8 @@ export function SelectedLevelCharts({
         {tabs.map((id)  =>  (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={()  =>  onSelectTab(id)}>
             {/* On phones, and wherever stacked tabs don't fit their words, the longer words are shortened, e.g. "Non-matched" to "NP". */}
-            <span className="tab-word">{capitalized(tabWord(id))}</span>
-            <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalized(tabWord(id))}</span>
+            <span className="tab-word">{capitalize(tabWord(id))}</span>
+            <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalize(tabWord(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
             {flash?.tab === id  &&  <span key={flash.n} className="tab-flash" aria-hidden="true" onAnimationEnd={()  =>  setFlash(null)} />}
           </button>
@@ -234,25 +234,25 @@ export function SelectedLevelCharts({
       <ChartCardsGrid
         ref={bodyRef}
         role="tabpanel"
-        empty={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${STAT_WORDS.charts[TIER_STAT[tab]]} charts at this level.`  :  null)}
+        emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${STAT_WORDS.charts[TIER_STAT[tab]]} charts at this level.`  :  null)}
         // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
         narrow={tab === 'not-played'}
         groups={listedGroups}
         card={card}
       />
-      {big  &&  (
+      {maximizedChart  &&  (
         <ChartCardMaximized
-          key={big.id}
-          chart={big}
+          key={maximizedChart.id}
+          chart={maximizedChart}
           myName={myName}
           folding={folding}
           markTies={ties}
           scoreCap={scoreCap}
           canSnooze={canSnooze}
           now={now}
-          source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${big.id}"]`)  ??  null}
-          onClose={()  =>  setMaximized(null)}
-          onSnooze={(days)  =>  leave(big.id, days)}
+          source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximizedChart.id}"]`)  ??  null}
+          onClose={()  =>  setMaximizedChartId(null)}
+          onSnooze={(days)  =>  leave(maximizedChart.id, days)}
         />
       )}
     </div>

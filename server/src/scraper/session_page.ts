@@ -211,7 +211,7 @@ export function parseSessionPlays(html: string): SessionPlays {
   const $ = cheerio.load(html);
   const rows = $('[data-testid="session-all-plays"] [data-testid="session-score-row"]').toArray();
   const plays: ParsedPlay[] = [];
-  let unreadable = 0;
+  let unreadableCount = 0;
 
   for (const element of rows) {
     const row = $(element);
@@ -227,7 +227,7 @@ export function parseSessionPlays(html: string): SessionPlays {
     const songTitle = clean(row.find('[data-testid="session-row-chart"]').first().text());
     const songImage = row.find('img').toArray().map((img)  =>  imageName($(img).attr('src'), 'songs')).find(Boolean);
     if (! chart  ||  ! songTitle) {
-      unreadable++;
+      unreadableCount++;
       continue;
     }
 
@@ -255,5 +255,5 @@ export function parseSessionPlays(html: string): SessionPlays {
     });
   }
 
-  return { plays, rows: rows.length, unreadable };
+  return { plays, rows: rows.length, unreadable: unreadableCount };
 }

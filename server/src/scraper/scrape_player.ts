@@ -47,8 +47,8 @@ export async function scrapePlayer(
   // The open session shows PUMBILITY as of that session, so it is current only for the newest one,
   // which is open when the page loads. A Phoenix session shows Phoenix's PUMBILITY, so it's read
   // only when the newest session is Phoenix 2.
-  const newest = (page.hasNewerPage  ?  undefined  :  page.cards[0]);
-  const newestOpen = !! newest?.isOpen  &&  newest.mix === 'Phoenix 2';
+  const newestCard = (page.hasNewerPage  ?  undefined  :  page.cards[0]);
+  const newestOpen = !! newestCard?.isOpen  &&  newestCard.mix === 'Phoenix 2';
   const pumbility = (newestOpen  ?  await browser.readOpenPumbility()  :  null);
   await sink.savePlayerInfo(page.playerName, pumbility);
 
@@ -57,7 +57,7 @@ export async function scrapePlayer(
     return result;
 
   // Page back through the history until a stored session or the end of Phoenix 2 history is reached.
-  const collected: SessionCard[] = [];
+  const collectedCards: SessionCard[] = [];
   const pageOf = new Map<SessionCard, number>();
   let pageIndex = 0;
   let stop: CardStep | null = null;
@@ -70,7 +70,7 @@ export async function scrapePlayer(
         break;
       }
 
-      collected.push(card);
+      collectedCards.push(card);
       pageOf.set(card, pageIndex);
     }
 
@@ -85,33 +85,33 @@ export async function scrapePlayer(
     pageIndex++;
   }
 
-  const plan = planScan(checkpoint, collected, stop);
+  const plan = planScan(checkpoint, collectedCards, stop);
   const queue = [
     ...(plan.grown  ?  [{ card: plan.grown, grown: true }]  :  []),
     ...plan.fresh.map((card)  =>  ({ card, grown: false })),
   ];
 
-  const total = queue.filter(({ card })  =>  card.mix === 'Phoenix 2').length;
-  for (const { card: found, grown } of queue) {
-    if (found.mix !== 'Phoenix 2') {
-      await sink.skipSession({ card: found, grown });
+  const sessionsTotal = queue.filter(({ card })  =>  card.mix === 'Phoenix 2').length;
+  for (const { card: queuedCard, grown } of queue) {
+    if (queuedCard.mix !== 'Phoenix 2') {
+      await sink.skipSession({ card: queuedCard, grown });
       continue;
     }
 
-    while (pageIndex > pageOf.get(found)!) {
+    while (pageIndex > pageOf.get(queuedCard)!) {
       await browser.goToPage('newer');
       pageIndex--;
     }
 
     // The checkpoint keeps the card as it reads when opened, so it has the session's current length.
-    const { html, card } = await browser.openSession(found);
-    const open = parseOpenSession(html);
+    const { html, card } = await browser.openSession(queuedCard);
+    const openSession = parseOpenSession(html);
     const { plays } = parseSessionPlays(html);
-    const stored = await sink.storeSession({ card, date: open?.date  ??  null, plays, grown });
+    const sessionResult = await sink.storeSession({ card, date: openSession?.date  ??  null, plays, grown });
     result.sessions++;
-    result.playsAdded += stored.playsAdded;
-    result.bestsImproved += stored.bestsImproved;
-    await onSession({ ...stored, card, grown, index: result.sessions - 1, total });
+    result.playsAdded += sessionResult.playsAdded;
+    result.bestsImproved += sessionResult.bestsImproved;
+    await onSession({ ...sessionResult, card, grown, index: result.sessions - 1, total: sessionsTotal });
   }
 
   return result;

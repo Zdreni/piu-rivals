@@ -37,7 +37,7 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
   const serverRivalsListener = useRef(onServerRivals);
   serverRivalsListener.current = onServerRivals;
   // Preference changes not sent yet; only one request is on its way at a time, so they arrive in order.
-  const unsent = useRef<Partial<Preferences>>({});
+  const unsentPreferences = useRef<Partial<Preferences>>({});
   const sending = useRef(false);
   const rivalRequests = useRef(0);
   const chartRequests = useRef(0);
@@ -46,12 +46,12 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
   const snoozes = useMemo(()  =>  new Map((chartPreferences  ??  []).flatMap(({ chartId, snoozedUntil })  =>
     (snoozedUntil  ?  [[chartId, Date.parse(snoozedUntil)] as const]  :  []))), [chartPreferences]);
 
-  const busy = ()  =>  sending.current  ||  rivalRequests.current > 0  ||  chartRequests.current > 0  ||  Object.keys(unsent.current).length > 0;
+  const busy = ()  =>  sending.current  ||  rivalRequests.current > 0  ||  chartRequests.current > 0  ||  Object.keys(unsentPreferences.current).length > 0;
 
   const load = useCallback(async ()  => {
-    const fresh = await api<MeResponse>('GET', '/me');
-    updateMe(()  =>  fresh);
-    serverRivalsListener.current?.(fresh.rivals);
+    const freshMe = await api<MeResponse>('GET', '/me');
+    updateMe(()  =>  freshMe);
+    serverRivalsListener.current?.(freshMe.rivals);
   }, [updateMe]);
 
   const refresh = useCallback(async ()  => {
@@ -59,11 +59,11 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
       return;
 
     try {
-      const fresh = await api<MeResponse>('GET', '/me');
+      const freshMe = await api<MeResponse>('GET', '/me');
       // A change made while loading is newer than what came back.
       if (! busy()) {
-        updateMe(()  =>  fresh);
-        serverRivalsListener.current?.(fresh.rivals);
+        updateMe(()  =>  freshMe);
+        serverRivalsListener.current?.(freshMe.rivals);
       }
     } catch {
       // A background refresh; the next one tries again.
@@ -76,17 +76,17 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
   }, [load]);
 
   const sendPreferences = useCallback(async ()  => {
-    if (sending.current  ||  ! Object.keys(unsent.current).length)
+    if (sending.current  ||  ! Object.keys(unsentPreferences.current).length)
       return;
 
-    const changes = unsent.current;
-    unsent.current = {};
+    const changes = unsentPreferences.current;
+    unsentPreferences.current = {};
     sending.current = true;
     try {
       await api('PATCH', '/me/preferences', { changes });
       setError(null);
     } catch (e) {
-      unsent.current = {};
+      unsentPreferences.current = {};
       await failed(e);
     } finally {
       sending.current = false;
@@ -97,7 +97,7 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
 
   const changePreferences = useCallback((changes: Partial<Preferences>)  => {
     updateMe((current)  =>  ({ ...current, preferences: { ...current.preferences, ...changes } }));
-    Object.assign(unsent.current, changes);
+    Object.assign(unsentPreferences.current, changes);
     void sendPreferences();
   }, [updateMe, sendPreferences]);
 

@@ -97,8 +97,8 @@ export function buildCharts(
   levels: LevelRange,
   ownCharts = false,
 ): ChartRow[] {
-  const own = bests.get(ownPlayerId);
-  const chartIds = new Set<number>((ownCharts  ?  own?.keys()  :  []));
+  const ownBests = bests.get(ownPlayerId);
+  const chartIds = new Set<number>((ownCharts  ?  ownBests?.keys()  :  []));
   for (const rival of rivals) {
     for (const chartId of bests.get(rival.id)?.keys()  ??  [])
       chartIds.add(chartId);
@@ -110,7 +110,7 @@ export function buildCharts(
     if (! chart  ||  ! levelInRange(chart.level, levels))
       continue;
 
-    const myBest = own?.get(chartId);
+    const myBest = ownBests?.get(chartId);
     const mine = myBest?.score  ??  null;
     const rivalResults = rivals.flatMap((rival): RivalResult[]  => {
       const best = bests.get(rival.id)?.get(chartId);

@@ -135,9 +135,9 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
     .execute()).map((row)  =>  [row.chart_id, row]));
 
   const changedBests = freshBests.filter((row)  => {
-    const old = storedBests.get(row.chart_id);
-    return ! old  ||  Number(old.play_id) !== Number(row.play_id)  ||  old.last_played_on !== row.last_played_on
-      ||  old.tries !== Number(row.tries);
+    const oldBest = storedBests.get(row.chart_id);
+    return ! oldBest  ||  Number(oldBest.play_id) !== Number(row.play_id)  ||  oldBest.last_played_on !== row.last_played_on
+      ||  oldBest.tries !== Number(row.tries);
   });
 
   for (const row of changedBests) {
@@ -177,12 +177,12 @@ export async function storeSession(db: Db, options: {
 
     const sessionNo = (grown  ?  player.last_session_no  :  player.last_session_no + 1);
     const ids = await chartIds(trx, plays);
-    const scanned = plays.map((p)  =>  ({
+    const scannedPlays = plays.map((p)  =>  ({
       ...p,
       chartId: ids.get(chartKey(p.songKey, p.chartType, p.level))!,
     }));
 
-    let toInsert = scanned;
+    let toInsert = scannedPlays;
     if (grown) {
       const storedPlays = await trx.selectFrom('plays')
         .select(['chart_id as chartId', 'score', 'passed', 'perfect', 'great', 'good', 'bad', 'miss', 'max_combo as maxCombo'])
@@ -190,7 +190,7 @@ export async function storeSession(db: Db, options: {
         .where('session_no', '=', sessionNo)
         .execute();
 
-      toInsert = newTries(storedPlays.map((t)  =>  ({ ...t, passed: !! t.passed })), scanned);
+      toInsert = newTries(storedPlays.map((t)  =>  ({ ...t, passed: !! t.passed })), scannedPlays);
     }
 
     if (toInsert.length) {
@@ -237,12 +237,12 @@ export async function skipSession(db: Db, options: { playerId: number; card: Ses
 
 // A grown session stays the latest one; a new one becomes it, and the previous latest the anchor.
 async function moveCheckpoint(trx: Trx, player: Player, card: SessionCard, grown: boolean, sessionNo: number) {
-  const latest = { last_session_title: card.title, last_session_timestamp: card.timestamp };
+  const latestSessionColumns = { last_session_title: card.title, last_session_timestamp: card.timestamp };
   await trx.updateTable('players')
     .set((grown
-      ?  latest
+      ?  latestSessionColumns
       :  {
-        ...latest,
+        ...latestSessionColumns,
         last_session_no: sessionNo,
         anchor_session_title: player.last_session_title,
         anchor_session_timestamp: player.last_session_timestamp,

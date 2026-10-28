@@ -16,6 +16,12 @@ from its `data-testid` values and CSS classes stay in selectors only.
 Name a collection after the entity it holds (`hiddenPlayers`, `soloRivals`, `newCharts`),
 not with an adjective alone such as `hidden`.
 
+Avoid naming other variables and parameters with a single adjective too: say what the value is
+(`soloRivalId`, not `solo`, for the id of the rival compared alone). An adjective alone is fine
+when it describes a noun in the name of its function or method, as `hidden` does in
+`setRivalHidden(playerId, hidden)`. Booleans are fine too: there the adjective is what the value
+says (`busy`, `selected`).
+
 When a lambda is passed to `map`, `filter`, `some` or a similar method of such a collection,
 its parameter may be a one or two letter name for the entity instead of the full word:
 `p` for a player, `r` for a rival, `t` for a track, `c` or `ch` for a chart.
