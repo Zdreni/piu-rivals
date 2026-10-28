@@ -55,7 +55,7 @@ test('matches the open session with its card', ()  => {
 });
 
 
-test('reads plays with grade and judgments, skipping stage breaks', ()  => {
+test('reads plays with grade and result stats, skipping stage breaks', ()  => {
   const { plays, rows, unreadable } = parseSessionPlays(fixture('sessions_single'));
   assert.equal(rows, 10);
   assert.equal(unreadable, 0);
@@ -80,7 +80,7 @@ test('reads plays with grade and judgments, skipping stage breaks', ()  => {
 });
 
 
-test('reads plates, and plays imported without judgments', ()  => {
+test('reads plates, and plays imported without result stats', ()  => {
   const { plays } = parseSessionPlays(fixture('sessions_plates'));
   assert.equal(plays.length, 92);
   assert.ok(plays.some((p)  =>  p.plate === 'pg'));

@@ -235,7 +235,7 @@ export function parseSessionPlays(html: string): SessionPlays {
     // A broken play's grade image is the grade's with a "_broken" suffix, e.g. "aa_broken".
     const gradeImage = stack.map((src)  =>  imageName(src, 'letters')).find(Boolean)  ??  null;
     const strip = row.find('[data-testid="judgement-strip"]').first();
-    const judgment = (name: string)  =>  parseNumber(strip.find(`.judg-${name}`).first().text());
+    const resultStat = (name: string)  =>  parseNumber(strip.find(`.judg-${name}`).first().text());
 
     plays.push({
       // Two songs may share a title, but not an image.
@@ -246,11 +246,11 @@ export function parseSessionPlays(html: string): SessionPlays {
       grade: gradeImage?.replace(/_broken$/, '')  ??  null,
       passed: ! gradeImage?.endsWith('_broken'),
       plate: stack.map((src)  =>  imageName(src, 'plates')).find(Boolean)  ??  null,
-      perfect: judgment('perfect'),
-      great: judgment('great'),
-      good: judgment('good'),
-      bad: judgment('bad'),
-      miss: judgment('miss'),
+      perfect: resultStat('perfect'),
+      great: resultStat('great'),
+      good: resultStat('good'),
+      bad: resultStat('bad'),
+      miss: resultStat('miss'),
       maxCombo: parseNumber(strip.find('.judg-strip-combo').first().text()),
     });
   }

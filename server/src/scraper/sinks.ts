@@ -35,10 +35,10 @@ export function dryRunSink(): ScrapeSink {
     async storeSession({ card, date, plays }) {
       console.log(`  ${card.timestamp} (${date  ??  'no date'}) ${card.title}: ${plays.length} plays`);
       for (const p of plays) {
-        const judgments = [p.perfect, p.great, p.good, p.bad, p.miss].map((n)  =>  n  ??  '-').join('/');
+        const resultStats = [p.perfect, p.great, p.good, p.bad, p.miss].map((n)  =>  n  ??  '-').join('/');
         console.log(`    ${p.chartType}${p.level} ${p.songTitle}: ${p.score} ${p.grade  ??  ''}${(p.passed  ?  ''  :  ' (broken)')}`
           + `${(p.plate  ?  ` ${p.plate}`  :  '')}`
-          + ` ${judgments} x${p.maxCombo  ??  '-'}`);
+          + ` ${resultStats} x${p.maxCombo  ??  '-'}`);
       }
 
       return { playsAdded: plays.length, bestsImproved: 0 };

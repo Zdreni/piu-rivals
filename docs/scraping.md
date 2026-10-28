@@ -51,7 +51,7 @@ Checkpoints stored before sessions of other mixes were tracked hold the two late
    - **Neither found:** if the player has exactly one stored session (latest but no anchor), that session has grown, and the grown session is found the same way among all the cards read; the sessions above it are new. A player with no stored sessions gets their whole history since Phoenix 2 came out, all of it new. In any other case the checkpoint is broken (see [Failures](#failures-and-rescans)).
 3. **Scan, oldest first.** A session of another mix only moves the checkpoint. Each Phoenix 2 session is opened, all its plays expanded and every play row parsed (see [Parsing a play row](#parsing-a-play-row)), then stored in its own transaction:
    - A **new session** can't contain stored tries. All its tries are inserted with `session_no = last_session_no + 1` and this session's date.
-   - The **grown session** is the previous latest session with re-imported tries. It is compared only with the stored tries of `session_no = last_session_no`, counting identical tries (same chart, score, judgments and max combo). Tries already stored stay as they are, keeping their original date. Only the extra ones are inserted, with the same `session_no` and the grown session's date.
+   - The **grown session** is the previous latest session with re-imported tries. It is compared only with the stored tries of `session_no = last_session_no`, counting identical tries (same chart, score, result stats and max combo). Tries already stored stay as they are, keeping their original date. Only the extra ones are inserted, with the same `session_no` and the grown session's date.
    - Best results are updated for the charts that got new tries.
    - The checkpoint moves: the latest session becomes the anchor (unless this is the grown session, which keeps the anchor), and this session becomes the latest, along with `last_session_no` for a Phoenix 2 session. The checkpoint moves even when the session had nothing worth storing (e.g. only stage breaks).
    - Then the counters on the run are updated.
@@ -79,6 +79,6 @@ From each row of a session's "All plays" list:
 - chart type and level (from the difficulty bubble, e.g. `D24`)
 - score, grade and plate, stored as their image names (e.g. grade `sssplus`, `aplus`; plate `pg`). piuscores doesn't show a plate on every play.
 - `passed`: false for a broken play (the life bar broke, but the play went on to the result screen). piuscores marks these only with a `_broken` grade image (e.g. `aa_broken`), which is stored as grade `aa` and `passed = false`. Broken plays are collected like any other.
-- perfect, great, good, bad and miss counts, and max combo (from the judgment strip). Some older imports have no judgment strip, so these may be empty.
+- perfect, great, good, bad and miss counts, and max combo (from the result stats strip). Some older imports have no result stats strip, so these may be empty.
 
 Rows without a score, like stage breaks, are skipped. All levels are stored. Only Phoenix 2 plays are stored for now; storing Phoenix plays too would need a `mix` column on plays and opening Phoenix sessions, while the checkpoint already covers both mixes. The parser is built and tested against saved rendered pages, kept as test fixtures.

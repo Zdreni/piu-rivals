@@ -4,9 +4,9 @@ import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_
 // The level range when the settings don't apply.
 export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
 
-// The judgment counts of a best score, and its max combo if known; null when its play has no counts (some older
-// imports).
-export interface Judgments {
+// The result stats of a best score: its perfect, great, good, bad and miss counts, and its max combo if known; null
+// when its play has no counts (some older imports).
+export interface ResultStats {
   perfect: number;
   great: number;
   good: number;
@@ -15,7 +15,7 @@ export interface Judgments {
   maxCombo: number | null;
 }
 
-export const judgments = (best: BestResult): Judgments | null  =>
+export const resultStatsOrNull = (best: BestResult): ResultStats | null  =>
   ((best.perfect === null  ||  best.great === null  ||  best.good === null  ||  best.bad === null  ||  best.miss === null)
     ?  null
     :  { perfect: best.perfect, great: best.great, good: best.good, bad: best.bad, miss: best.miss, maxCombo: best.maxCombo });
@@ -28,7 +28,7 @@ export interface RivalResult {
   score: number;
   // The day the best score was set, if known.
   date: string | null;
-  judgments: Judgments | null;
+  resultStats: ResultStats | null;
   // Positive = you're ahead. Null when you have no score. `delta` is capped by the score cap, `realDelta` is not.
   delta: number | null;
   realDelta: number | null;
@@ -42,9 +42,9 @@ export interface ChartRow {
   // Chart type and level, e.g. "D24".
   chart: string;
   mine: number | null;
-  // The day you set your best score, if known, and its judgments.
+  // The day you set your best score, if known, and its result stats.
   myDate: string | null;
-  myJudgments: Judgments | null;
+  myResultStats: ResultStats | null;
   // How much your best score rose over your previous one; null for your first score on the chart.
   myImprovement: number | null;
   // Best score first.
@@ -115,7 +115,7 @@ export function buildCharts(
     const rivalResults = rivals.flatMap((rival): RivalResult[]  => {
       const best = bests.get(rival.id)?.get(chartId);
       return (best
-        ?  [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn, judgments: judgments(best),
+        ?  [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn, resultStats: resultStatsOrNull(best),
           delta: delta(mine, best.score, scoreCap), realDelta: delta(mine, best.score) }]
         :  []);
     }).sort((a, b)  =>  b.score - a.score);
@@ -127,7 +127,7 @@ export function buildCharts(
       chart: `${chart.chartType}${chart.level}`,
       mine,
       myDate: myBest?.bestPlayedOn  ??  null,
-      myJudgments: (myBest  ?  judgments(myBest)  :  null),
+      myResultStats: (myBest  ?  resultStatsOrNull(myBest)  :  null),
       myImprovement: myBest?.improvement  ??  null,
       rivals: rivalResults,
       unplayed: mine === null,

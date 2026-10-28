@@ -20,7 +20,7 @@
 /* A click on a row unrolls it (see ResultItem); an unrolled rival isn't dimmed. */
 .rivals .result { cursor: pointer; }
 .rivals .result.unrolled { opacity: 1; }
-/* Its details: the best score's judgments, then the day it was set at the far right, lined up under the name; they
+/* Its details: the best score's result stats, then the day it was set at the far right, lined up under the name; they
    wrap under each other when there's no room. The details share the results' columns, and pad like their rows, so the
    rival's score, when their row leaves it out (see the narrow results below), is in the diff column, under the diff
    and lined up with your score. They share their row's stripe (see the rows above).
@@ -35,20 +35,20 @@
 .rivals .result-details > div > * { margin: 2px 0 6px; }
 .rivals .result-info { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: space-between;
                        gap: 2px 12px; }
-.rivals .result-judgments, .rivals .result-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rivals .result-stats, .rivals .result-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rivals .result-date { margin-left: auto; }
-/* Judgment counts in the colours of their names in the game, softened with the line's grey; their letters are
+/* Result stats in the colours of their names in the game, softened with the line's grey; their letters are
    smaller, in the line's grey. */
-.rivals .judgment .perfect { color: color-mix(in srgb, #6FD3F2 75%, #9AB3A3); }
-.rivals .judgment .great { color: color-mix(in srgb, #7EDB6C 75%, #9AB3A3); }
-.rivals .judgment .good { color: color-mix(in srgb, #E6D36A 75%, #9AB3A3); }
-.rivals .judgment .bad { color: color-mix(in srgb, #D9AEFF 75%, #9AB3A3); }
-.rivals .judgment .miss { color: color-mix(in srgb, #FF6A55 75%, #9AB3A3); }
-.rivals .judgment-unit { font-size: .8em; }
+.rivals .result-stat .perfect { color: color-mix(in srgb, #6FD3F2 75%, #9AB3A3); }
+.rivals .result-stat .great { color: color-mix(in srgb, #7EDB6C 75%, #9AB3A3); }
+.rivals .result-stat .good { color: color-mix(in srgb, #E6D36A 75%, #9AB3A3); }
+.rivals .result-stat .bad { color: color-mix(in srgb, #D9AEFF 75%, #9AB3A3); }
+.rivals .result-stat .miss { color: color-mix(in srgb, #FF6A55 75%, #9AB3A3); }
+.rivals .result-stat-unit { font-size: .8em; }
 /* The counts sit on a dark rounded patch, like a button without a border. */
-.rivals .result-judgments { padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.28); }
-.rivals .judgment.zero { opacity: .4; }
-.rivals .judgment + .judgment { margin-left: .4em; }
+.rivals .result-stats { padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.28); }
+.rivals .result-stat.zero { opacity: .4; }
+.rivals .result-stat + .result-stat { margin-left: .4em; }
 .rivals .result-details-score { display: none; color: #C9D8CE; font-size: 16px; }
 
 /* In a maximized card on phones, the rows have room for names, scores and diffs, a little bigger than in the cards
@@ -103,10 +103,10 @@
   .rivals .chart-card-results:not(.no-diffs) .result.mine > :nth-child(n+3) { display: none; }
   .rivals .chart-card-results:not(.no-diffs) .result.mine > .num { grid-column: 2 / -1; }
   .rivals .chart-card-results:not(.no-diffs) .result-details-score { display: block; grid-column: -2 / -1; grid-row: 1; }
-  /* With the score in the details, the judgments get a line of their own across the row, and the day goes on the
+  /* With the score in the details, the result stats get a line of their own across the row, and the day goes on the
      score's line, at the right of the names' column. */
   .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) { display: contents; }
-  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-judgments {
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-stats {
       grid-column: 1 / -1; grid-row: 1; justify-self: start; margin: 2px 0 0 2px; }
   .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-date {
       grid-column: 1; grid-row: 2; justify-self: end; margin: 2px 0 6px; padding-right: 12px; }
