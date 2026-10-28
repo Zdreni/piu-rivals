@@ -39,6 +39,17 @@ export function storeToken(token: string | null) {
 }
 
 
+// Takes the session from a "#dev_token=" link printed by `npm run dev-login` in server/.
+export function takeDevToken() {
+  const token = new URLSearchParams(location.hash.slice(1)).get('dev_token');
+  if (! token)
+    return;
+
+  storeToken(token);
+  history.replaceState(history.state, '', location.pathname + location.search);
+}
+
+
 export async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = storedToken();
   let response: Response;

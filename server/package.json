@@ -9,6 +9,7 @@
     "scrape": "tsx src/cli/scrape_player.ts",
     "queue": "tsx src/cli/queue_run.ts",
     "worker": "tsx src/worker.ts",
+    "dev-login": "tsx src/cli/dev_login.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts"
   },

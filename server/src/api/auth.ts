@@ -45,9 +45,9 @@ export function googleTokenVerifier(clientId: string): VerifyGoogleToken {
 
 
 // Creates a login session; only the token's hash is stored.
-export async function createSession(db: Kysely<Database>, userId: number) {
+export async function createSession(db: Kysely<Database>, userId: number, days = config.sessionDays) {
   const token = randomBytes(32).toString('base64url');
-  const expires = new Date(Date.now() + config.sessionDays * 86400000);
+  const expires = new Date(Date.now() + days * 86400000);
   await db.insertInto('auth_sessions')
     .values({ token_hash: hashToken(token), user_id: userId, expires_at: expires.toISOString().slice(0, 23).replace('T', ' ') })
     .execute();
