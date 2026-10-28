@@ -41,7 +41,12 @@ function useClock(ticking: boolean) {
 
 
 function RivalsView({ me }: { me: PlayerSummary }) {
-  const settings = useRivalSettings();
+  // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused and
+  // is one of your rivals.
+  const [soloRivalId, setSoloRivalId] = useState<string | null>(null);
+  // A rival list from the server without the solo rival (removed on another device, or a failed add) ends solo mode.
+  const settings = useRivalSettings((rivals)  =>
+    setSoloRivalId((playerId)  =>  (rivals.some((r)  =>  r.id === playerId)  ?  playerId  :  null)));
   const { rivals, preferences, snoozes } = settings;
   const now = useClock(snoozes.size > 0);
   const { scoreCap, npMinimalRivals } = preferences;
@@ -79,8 +84,6 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   const [ui, setUi] = useState<UiState>(readUiState);
   const [focused, setFocused] = useState<string | null>(null);
-  // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
-  const [solo, setSolo] = useState<string | null>(null);
   // The rivals and the preferences wait off the left edge until the levels' top bar slides one of them in. The last one
   // in stays shown while it slides out. On phones, while one is in, a tap on the levels only slides it out.
   const [sideOpen, setSideOpen] = useState(false);
@@ -162,8 +165,16 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   const focus = (playerId: string | null)  => {
     setFocused(playerId);
-    if (solo !== playerId)
-      setSolo(null);
+    if (soloRivalId !== playerId)
+      setSoloRivalId(null);
+  };
+
+  // Removing the solo rival ends solo mode.
+  const removeRival = (playerId: string)  => {
+    if (soloRivalId === playerId)
+      setSoloRivalId(null);
+
+    settings.removeRival(playerId);
   };
 
   const allCharts = useMemo(
@@ -172,13 +183,12 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     [data.version, data.charts, data.bests, me.id, rivals, scoreCap, minLevel, maxLevel],
   );
 
-  const soloRival = (rivals.some((r)  =>  r.id === solo)  ?  solo  :  null);
   // A solo rival is always counted by results, whatever the setting says.
-  const countBy = (soloRival  ?  'results'  :  preferences.countBy);
+  const countBy = (soloRivalId  ?  'results'  :  preferences.countBy);
   const view = useMemo(()  => {
-    const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
+    const hiddenPlayerIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
     // A solo rival is compared alone, whatever the stored selection says.
-    const isIncluded = (playerId: string)  =>  (soloRival  ?  playerId === soloRival  :  ! hiddenIds.has(playerId));
+    const isIncluded = (playerId: string)  =>  (soloRivalId  ?  playerId === soloRivalId  :  ! hiddenPlayerIds.has(playerId));
     const charts = allCharts
       .map((c)  =>  withRivalsOrNull(c, (r)  =>  isIncluded(r.playerId)))
       .filter((c): c is ChartRow  =>  c !== null)
@@ -197,7 +207,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     const snoozedCharts = charts.filter((c)  =>  c.snoozedUntil !== null)
       .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
     return { charts, capHiddenCharts, snoozedCharts, levels: sortedLevels(charts) };
-  }, [allCharts, rivals, soloRival, npMinimalRivals, snoozes, now]);
+  }, [allCharts, rivals, soloRivalId, npMinimalRivals, snoozes, now]);
 
   const { charts, capHiddenCharts, snoozedCharts, levels } = view;
   const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
@@ -237,24 +247,24 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           rivals={rivals}
           bests={data.bests}
           focused={focused}
-          solo={soloRival}
+          solo={soloRivalId}
           // In solo mode the solo rival's stats are the header's, with all the settings applied.
-          soloStats={(soloRival  ?  totals  :  null)}
+          soloStats={(soloRivalId  ?  totals  :  null)}
           myStats={myStats}
           countBy={countBy}
           onTab={(rivalTab)  =>  changeUi({ rivalTab })}
           onFocus={focus}
-          onSolo={setSolo}
+          onSolo={setSoloRivalId}
           onToggle={(playerId, on)  =>  settings.setRivalHidden(playerId, ! on)}
-          onRemove={settings.removeRival}
+          onRemove={removeRival}
           onAdd={settings.addRival}
         />
-        <PreferencesPanel preferences={preferences} levels={levelRange} solo={!! soloRival} onChange={settings.changePreferences} />
+        <PreferencesPanel preferences={preferences} levels={levelRange} solo={!! soloRivalId} onChange={settings.changePreferences} />
         <ChartsGroups
           charts={charts}
           selectedLevel={selectedLevel}
           countBy={countBy}
-          showTies={!! soloRival}
+          showTies={!! soloRivalId}
           sidePanel={(sideOpen  ?  sidePanel  :  null)}
           onSelect={(level)  =>  changeUi({ selectedLevel: level })}
           onToggleSide={toggleSide}
@@ -271,7 +281,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           myName={me.name  ??  'You'}
           emptyMessage={emptyMessage}
           countBy={countBy}
-          ties={!! soloRival}
+          ties={!! soloRivalId}
           scoreCap={scoreCap}
           now={now}
           onSelectTab={selectTab}
