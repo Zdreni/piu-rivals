@@ -9,11 +9,11 @@ import { playerName, playerSummary, playerSummaryColumns, toIso } from '../mappe
 import { PlayerIdParams } from './params.ts';
 
 
-export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) => {
+export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db })  => {
   app.addHook('preHandler', requireAdmin);
 
 
-  app.get('/admin/players', async (): Promise<AdminPlayersResponse> => {
+  app.get('/admin/players', async (): Promise<AdminPlayersResponse>  => {
     const counts = db.selectFrom('best_results')
       .select(['player_id', sql<number>`COUNT(*)`.as('charts'), sql<number>`SUM(tries)`.as('plays')])
       .groupBy('player_id')
@@ -29,7 +29,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
       .execute();
 
     return {
-      players: rows.map((row) => ({
+      players: rows.map((row)  =>  ({
         ...playerSummary(row),
         dbId: row.db_id,
         scrapedName: row.scraped_name,
@@ -45,7 +45,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
   // The name shown on the site. Empty, or the scraped name, shows the scraped name, following it if it changes.
   app.patch('/admin/players/:id', {
     schema: { params: PlayerIdParams, body: Type.Object({ displayName: Type.Union([Type.String({ maxLength: 100 }), Type.Null()]) }) },
-  }, async (request): Promise<{ player: PlayerSummary }> => {
+  }, async (request): Promise<{ player: PlayerSummary }>  => {
     const guid = request.params.id.toLowerCase();
     const player = await db.selectFrom('players').select('name').where('piuscores_guid', '=', guid).executeTakeFirst();
     if (! player)
@@ -53,7 +53,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
 
     const name = request.body.displayName?.trim()  ||  null;
     await db.updateTable('players')
-      .set({ display_name: name === player.name ? null : name })
+      .set({ display_name: (name === player.name  ?  null  :  name) })
       .where('piuscores_guid', '=', guid)
       .execute();
 
@@ -63,7 +63,7 @@ export const adminPlayerRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app,
 
 
   // Deletes the player with their plays and best results; users and rival lists lose them.
-  app.delete('/admin/players/:id', { schema: { params: PlayerIdParams } }, async (request) => {
+  app.delete('/admin/players/:id', { schema: { params: PlayerIdParams } }, async (request)  => {
     const { numDeletedRows } = await db.deleteFrom('players').where('piuscores_guid', '=', request.params.id.toLowerCase()).executeTakeFirst();
     if (! numDeletedRows)
       throw new HttpError(404, 'Unknown player');

@@ -2,11 +2,11 @@ import type { BestsResponse, Chart, ListedPlayer, PlayerSummary, PlayersResponse
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from '../../api.ts';
 import { formatNumber } from '../../util.ts';
-import { StatWords } from './format.tsx';
-import { buildCharts, DEFAULT_LEVELS, displayName, type PlayerBests } from './model.ts';
-import { MAX_SCORE_CAP } from './preferences.ts';
+import { StatWords } from './stat_words.tsx';
+import { buildCharts, DEFAULT_LEVELS, displayName, type PlayerBests } from '../../data/model.ts';
+import { MAX_SCORE_CAP } from '../../data/preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
-import { type Counts, NO_COUNTS, realCounts } from './stats.ts';
+import { type Counts, NO_COUNTS, realCounts } from '../../data/stats.ts';
 
 // The Others tab lists this many players above you and below you at first; each click on a "more" button lists
 // SHOW_STEP more.
@@ -19,7 +19,7 @@ let playersLoad: Promise<ListedPlayer[]> | null = null;
 
 // All players, loaded once per page load.
 function loadPlayers(): Promise<ListedPlayer[]> {
-  playersLoad  ??=  api<PlayersResponse>('GET', '/players').then(({ players }) => players, (error) => {
+  playersLoad  ??=  api<PlayersResponse>('GET', '/players').then(({ players })  =>  players, (error)  => {
     playersLoad = null;
     throw error;
   });
@@ -33,8 +33,8 @@ export function usePlayers() {
   const [players, setPlayers] = useState<ListedPlayer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPlayers().then(setPlayers, (e) => setError(errorText(e)));
+  useEffect(()  => {
+    loadPlayers().then(setPlayers, (e)  =>  setError(errorText(e)));
   }, []);
 
   return { players, error };
@@ -53,11 +53,11 @@ const otherBestsLoads = new Map<string, Promise<OtherBests>>();
 function loadOtherBests(playerId: string): Promise<OtherBests> {
   let load = otherBestsLoads.get(playerId);
   if (! load) {
-    load = api<BestsResponse>('GET', `/bests?players=${playerId}`).then((response) => ({
-      charts: new Map(response.charts.map((chart) => [chart.id, chart])),
-      bests: new Map(response.bests.map((best) => [best.chartId, best])),
+    load = api<BestsResponse>('GET', `/bests?players=${playerId}`).then((response)  =>  ({
+      charts: new Map(response.charts.map((chart)  =>  [chart.id, chart])),
+      bests: new Map(response.bests.map((best)  =>  [best.chartId, best])),
     }));
-    load.catch(() => otherBestsLoads.delete(playerId));
+    load.catch(()  =>  otherBestsLoads.delete(playerId));
     otherBestsLoads.set(playerId, load);
   }
 
@@ -69,19 +69,19 @@ function loadOtherBests(playerId: string): Promise<OtherBests> {
 function useOtherStats(playerId: string | null, me: string, myBests: PlayerBests | undefined): Counts | string | null {
   const [loaded, setLoaded] = useState<{ playerId: string; data: OtherBests | string } | null>(null);
 
-  useEffect(() => {
+  useEffect(()  => {
     if (! playerId)
       return;
 
     let current = true;
     loadOtherBests(playerId).then(
-      (data) => current  &&  setLoaded({ playerId, data }),
-      (e) => current  &&  setLoaded({ playerId, data: errorText(e) }));
+      (data)  =>  current  &&  setLoaded({ playerId, data }),
+      (e)  =>  current  &&  setLoaded({ playerId, data: errorText(e) }));
 
-    return () => { current = false; };
+    return ()  =>  { current = false; };
   }, [playerId]);
 
-  return useMemo(() => {
+  return useMemo(()  => {
     if (! playerId  ||  loaded?.playerId !== playerId)
       return null;
 
@@ -113,18 +113,19 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
   const [open, setOpen] = useState<string | null>(null);
   const [shownAbove, setShownAbove] = useState(SHOWN_ABOVE);
   const [shownBelow, setShownBelow] = useState(SHOWN_BELOW);
-  const openStats = useOtherStats(open !== me.id ? open : null, me.id, myBests);
+  const openStats = useOtherStats((open !== me.id  ?  open  :  null), me.id, myBests);
 
   const words = query.trim().toLowerCase();
-  const others: (PlayerSummary | ListedPlayer)[] = [players?.find((player) => player.id === me.id)  ??  me,
-    ...(players  ??  []).filter((player) => player.id !== me.id)]
-    .filter((player) => player.id === me.id
+  const others: (PlayerSummary | ListedPlayer)[] = [players?.find((player)  =>  player.id === me.id)  ??  me,
+    ...(players  ??  []).filter((player)  =>  player.id !== me.id)]
+    .filter((player)  =>  player.id === me.id
       ||  (! rivals.has(player.id)  &&  (! words  ||  (player.name  ??  player.id).toLowerCase().includes(words))))
-    .sort((a, b) => (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
+    .sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
-  const meAt = others.findIndex((player) => player.id === me.id);
-  const first = words ? 0 : Math.max(0, meAt - shownAbove);
-  const last = words ? others.length : Math.min(others.length, meAt + 1 + shownBelow);
+
+  const meAt = others.findIndex((player)  =>  player.id === me.id);
+  const first = (words  ?  0  :  Math.max(0, meAt - shownAbove));
+  const last = (words  ?  others.length  :  Math.min(others.length, meAt + 1 + shownBelow));
 
   return (
     <>
@@ -134,28 +135,29 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
           placeholder="Find a player…"
           aria-label="Find a player by name"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => event.key === 'Escape'  &&  setQuery('')}
+          onChange={(event)  =>  setQuery(event.target.value)}
+          onKeyDown={(event)  =>  event.key === 'Escape'  &&  setQuery('')}
         />
       </div>
       <div className="rival-scroll">
         {error  &&  <div className="rival-hint error">{error}</div>}
         {! error  &&  ! players  &&  <div className="muted rival-hint">Loading players…</div>}
         {players  &&  others.length === 1  &&  (
-          <div className="muted rival-hint">{words ? 'No such player. An admin can register them.' : 'No other players.'}</div>
+          <div className="muted rival-hint">{words  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
         )}
         {first > 0  &&  (
-          <button className="show-others top" type="button" onClick={() => setShownAbove(shownAbove + SHOW_STEP)}>
+          <button className="show-others top" type="button" onClick={()  =>  setShownAbove(shownAbove + SHOW_STEP)}>
             ...{first} more...
           </button>
         )}
-        {others.slice(first, last).map((player) => {
+        {others.slice(first, last).map((player)  => {
           const isMe = player.id === me.id;
           const isOpen = player.id === open;
           const name = displayName(player.name  ??  player.id);
-          const classes = ['rival', 'other', isMe ? 'me' : '', isOpen ? 'focused' : ''];
+          const classes = ['rival', 'other', isMe  ?  'me'  :  '', isOpen  ?  'focused'  :  ''];
+
           // Clicking a player unrolls them; clicking the header of the unrolled one rolls it back.
-          const click = (event: MouseEvent) => {
+          const click = (event: MouseEvent)  => {
             const target = event.target as HTMLElement;
             if (target.closest('a, button'))
               return;
@@ -170,9 +172,9 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
             <div key={player.id} className={classes.filter(Boolean).join(' ')} onClick={click}>
               <div className="rival-toggle" title={player.name  ??  player.id}>
                 {isMe
-                  ? <span className="rival-plus-spacer" />
-                  : (
-                    <button className="rival-plus" type="button" aria-label={`Add ${name} to your rivals`} title="Add to your rivals" onClick={() => onAdd(player)}>
+                  ?  <span className="rival-plus-spacer" />
+                  :  (
+                    <button className="rival-plus" type="button" aria-label={`Add ${name} to your rivals`} title="Add to your rivals" onClick={()  =>  onAdd(player)}>
                       +
                     </button>
                   )}
@@ -188,7 +190,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
                         <Count value={player.plays} label="scores" /> · <Count value={player.charts} label="best" />
                       </div>
                       {isOpen  &&  ! isMe  &&  (
-                        <div className="rival-stats" title={typeof openStats === 'string' ? undefined : statsTip}>
+                        <div className="rival-stats" title={(typeof openStats === 'string'  ?  undefined  :  statsTip)}>
                           {openStats === null  &&  'Comparing…'}
                           {typeof openStats === 'string'  &&  <span className="error">{openStats}</span>}
                           {openStats !== null  &&  typeof openStats === 'object'  &&  <StatWords counts={openStats} separator=" · " />}
@@ -208,7 +210,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
           );
         })}
         {last < others.length  &&  (
-          <button className="show-others" type="button" onClick={() => setShownBelow(shownBelow + SHOW_STEP)}>
+          <button className="show-others" type="button" onClick={()  =>  setShownBelow(shownBelow + SHOW_STEP)}>
             ...{others.length - last} more...
           </button>
         )}

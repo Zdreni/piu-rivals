@@ -14,7 +14,7 @@ export async function queueRun(db: Db, kind: ScrapeRunKind, playerIds: number[] 
   const { insertId } = await db.insertInto('scrape_runs')
     .values({
       kind,
-      player_ids: playerIds ? JSON.stringify(playerIds) : null,
+      player_ids: (playerIds  ?  JSON.stringify(playerIds)  :  null),
       players_total: playerIds?.length  ??  0,
       started_by_user_id: userId,
     })
@@ -33,7 +33,7 @@ const JOINABLE_KINDS: readonly ScrapeRunKind[] = ['register', 'selected'];
 // (an "all" run too) isn't added twice. Locks the active runs, like takePlayer, so a run the worker
 // is finishing either takes the players or is seen finished.
 export async function joinOrQueueRun(db: Db, kind: 'register' | 'selected', playerIds: number[], userId: number | null = null) {
-  return db.transaction().execute(async (trx) => {
+  return db.transaction().execute(async (trx)  => {
     const runs = await trx.selectFrom('scrape_runs')
       .select(['id', 'kind', 'player_ids', 'players_done'])
       .where('status', 'in', ['queued', 'running'])
@@ -43,13 +43,13 @@ export async function joinOrQueueRun(db: Db, kind: 'register' | 'selected', play
       .execute();
 
     // A run's players from players_done on are being scraped or still to come.
-    const waitingIn = (run: typeof runs[number]) => (run.player_ids  ??  []).slice(run.players_done);
+    const waitingIn = (run: typeof runs[number])  =>  (run.player_ids  ??  []).slice(run.players_done);
     const waiting = new Set(runs.flatMap(waitingIn));
-    const added = playerIds.filter((id) => ! waiting.has(id));
+    const added = playerIds.filter((id)  =>  ! waiting.has(id));
     if (! added.length)
-      return runs.find((run) => waitingIn(run).some((id) => playerIds.includes(id)))!.id;
+      return runs.find((run)  =>  waitingIn(run).some((id)  =>  playerIds.includes(id)))!.id;
 
-    const target = runs.find((run) => JOINABLE_KINDS.includes(run.kind));
+    const target = runs.find((run)  =>  JOINABLE_KINDS.includes(run.kind));
     if (! target)
       return queueRun(trx, kind, added, userId);
 
@@ -99,15 +99,15 @@ async function allPlayerIds(db: Db): Promise<number[]> {
     .orderBy('last_scraped_at')
     .execute();
 
-  return players.map((p) => p.id);
+  return players.map((p)  =>  p.id);
 }
 
 
-const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const errorMessage = (error: unknown)  =>  (error instanceof Error  ?  error.message  :  String(error));
 
 
 async function recordFailure(db: Db, runId: number, playerId: number | null, error: unknown) {
-  console.error(`Run ${runId}${playerId !== null ? `, player ${playerId}` : ''}:`, error);
+  console.error(`Run ${runId}${(playerId !== null  ?  `, player ${playerId}`  :  '')}:`, error);
   // A player deleted meanwhile takes their failures with them, so there's nothing to keep.
   if (playerId !== null  &&  ! await loadPlayer(db, playerId))
     return;
@@ -123,7 +123,7 @@ type FinishedStatus = 'done' | 'failed' | 'cancelled';
 
 async function countPlayerDone(db: Db, runId: number) {
   await db.updateTable('scrape_runs')
-    .set((eb) => ({ players_done: eb('players_done', '+', 1) }))
+    .set((eb)  =>  ({ players_done: eb('players_done', '+', 1) }))
     .where('id', '=', runId)
     .execute();
 }
@@ -142,7 +142,7 @@ async function finishRun(db: Db, runId: number, status: FinishedStatus) {
 // read again each time, under the run's lock: a player added at the same time is either taken here
 // or sees the run finished and goes to a new run.
 export async function takePlayer(db: Db, runId: number, index: number): Promise<{ playerId: number } | { finished: FinishedStatus }> {
-  return db.transaction().execute(async (trx) => {
+  return db.transaction().execute(async (trx)  => {
     const run = await trx.selectFrom('scrape_runs')
       .select(['player_ids', 'cancel_requested'])
       .where('id', '=', runId)
@@ -151,14 +151,14 @@ export async function takePlayer(db: Db, runId: number, index: number): Promise<
 
     const playerId = run.player_ids?.[index];
     if (run.cancel_requested  ||  playerId === undefined) {
-      const finished = run.cancel_requested ? 'cancelled' : 'done';
+      const finished = (run.cancel_requested  ?  'cancelled'  :  'done');
       await finishRun(trx, runId, finished);
       return { finished };
     }
 
     // Null for a player deleted while waiting.
     await trx.updateTable('scrape_runs')
-      .set({ current_player_id: (eb) => eb.selectFrom('players').select('id').where('id', '=', playerId) })
+      .set({ current_player_id: (eb)  =>  eb.selectFrom('players').select('id').where('id', '=', playerId) })
       .where('id', '=', runId)
       .execute();
 
@@ -180,6 +180,7 @@ export async function executeRun(db: Db, run: ScrapeRun) {
   }
 
   console.log(`Run ${run.id} (${run.kind}) started`);
+
   let browser: SessionsBrowser | null = null;
   let status: FinishedStatus;
   try {
@@ -203,9 +204,9 @@ export async function executeRun(db: Db, run: ScrapeRun) {
         if (run.kind === 'rescan')
           await resetPlayer(db, playerId);
 
-        const result = await scrapePlayer(browser, player.piuscores_guid, databaseSink(db, playerId), async (progress) => {
+        const result = await scrapePlayer(browser, player.piuscores_guid, databaseSink(db, playerId), async (progress)  => {
           await db.updateTable('scrape_runs')
-            .set((eb) => ({
+            .set((eb)  =>  ({
               sessions_added: eb('sessions_added', '+', 1),
               plays_added: eb('plays_added', '+', progress.playsAdded),
               bests_improved: eb('bests_improved', '+', progress.bestsImproved),
@@ -227,7 +228,7 @@ export async function executeRun(db: Db, run: ScrapeRun) {
     await recordFailure(db, run.id, null, error);
     await finishRun(db, run.id, status);
   } finally {
-    await browser?.close().catch(() => {});
+    await browser?.close().catch(()  =>  {});
   }
 
   console.log(`Run ${run.id}: ${status}`);

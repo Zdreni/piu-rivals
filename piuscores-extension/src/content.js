@@ -15,7 +15,7 @@ const scrapOverlay = createScrapOverlay({
   scrapeResults: scrapePlayerSessions,
   readSessionsPage,
   countNewSessions,
-  onNothingToGrab: () => recordSessionsVisit().catch((error) => console.error(TAG, error)),
+  onNothingToGrab: ()  =>  recordSessionsVisit().catch((error)  =>  console.error(TAG, error)),
 });
 
 let timer = null;
@@ -37,30 +37,30 @@ async function run() {
 }
 
 
-chrome.storage.onChanged.addListener((_, area) => {
+chrome.storage.onChanged.addListener((_, area)  => {
   if (area !== 'local')
     return;
 
   if (rivalsWindow.isOpen())
-    rivalsWindow.render().catch((error) => console.error(TAG, error));
+    rivalsWindow.render().catch((error)  =>  console.error(TAG, error));
 
-  scrapOverlay.reload().catch((error) => console.error(TAG, error));
+  scrapOverlay.reload().catch((error)  =>  console.error(TAG, error));
 });
 
 
 // Stored data is migrated before anything reads it.
-let pending = migrateStorage().then(() => {
+let pending = migrateStorage().then(()  => {
   rivalsWindow.initialize();
   return scrapOverlay.reload();
-}).catch((error) => console.error(TAG, error));
+}).catch((error)  =>  console.error(TAG, error));
 
 
-const schedule = () => {
+const schedule = ()  => {
   scrapOverlay.update();
   clearTimeout(timer);
 
-  timer = setTimeout(() => {
-    pending = pending.then(run).catch((error) => console.error(TAG, error));
+  timer = setTimeout(()  => {
+    pending = pending.then(run).catch((error)  =>  console.error(TAG, error));
   }, 500);
 };
 

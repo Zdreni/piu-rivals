@@ -12,7 +12,7 @@ export async function playerIdsByGuid(db: Db, guids: string[]): Promise<Map<stri
     return new Map();
 
   const rows = await db.selectFrom('players').select(['id', 'piuscores_guid']).where('piuscores_guid', 'in', guids).execute();
-  return new Map(rows.map((row) => [row.piuscores_guid, row.id]));
+  return new Map(rows.map((row)  =>  [row.piuscores_guid, row.id]));
 }
 
 
@@ -22,7 +22,7 @@ export async function playerGuidsById(db: Db, ids: number[]): Promise<Map<number
     return new Map();
 
   const rows = await db.selectFrom('players').select(['id', 'piuscores_guid']).where('id', 'in', ids).execute();
-  return new Map(rows.map((row) => [row.id, row.piuscores_guid]));
+  return new Map(rows.map((row)  =>  [row.id, row.piuscores_guid]));
 }
 
 
@@ -33,10 +33,10 @@ export async function ensurePlayers(db: Db, guids: string[], createdByUserId: nu
     return [];
 
   await db.insertInto('players')
-    .values(guids.map((guid) => ({ piuscores_guid: guid, created_by_user_id: createdByUserId })))
+    .values(guids.map((guid)  =>  ({ piuscores_guid: guid, created_by_user_id: createdByUserId })))
     .ignore()
     .execute();
 
   const ids = await playerIdsByGuid(db, guids);
-  return guids.map((guid) => ids.get(guid)!);
+  return guids.map((guid)  =>  ids.get(guid)!);
 }

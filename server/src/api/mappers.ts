@@ -5,9 +5,9 @@ import type { Database } from '../db/schema.ts';
 // Converts database rows to API responses.
 
 // DATETIME strings are UTC, "YYYY-MM-DD HH:MM:SS[.mmm]".
-export const toIso = (value: string) => new Date(`${value.replace(' ', 'T')}Z`).toISOString();
+export const toIso = (value: string)  =>  new Date(`${value.replace(' ', 'T')}Z`).toISOString();
 
-export const toIsoOrNull = (value: string | null) => (value === null ? null : toIso(value));
+export const toIsoOrNull = (value: string | null)  =>  (value === null  ?  null  :  toIso(value));
 
 
 // The API knows players by their piuscores GUID.
@@ -19,7 +19,7 @@ export function playerSummary(row: {
 
 
 // The name the site shows: the one an admin set, or else the scraped one.
-export const playerName = (table: 'players' | 'p' = 'players') =>
+export const playerName = (table: 'players' | 'p' = 'players')  =>
   sql<string | null>`COALESCE(${sql.ref(`${table}.display_name`)}, ${sql.ref(`${table}.name`)})`;
 
 
@@ -38,16 +38,16 @@ export async function loadUsers(db: Kysely<Database>, userIds?: number[]) {
     .orderBy('users.email');
 
   if (userIds)
-    query = query.where('users.id', 'in', userIds.length ? userIds : [-1]);
+    query = query.where('users.id', 'in', (userIds.length  ?  userIds  :  [-1]));
 
   const rows = await query.execute();
-  return rows.map((row) => ({
+  return rows.map((row)  =>  ({
     user: {
       id: row.user_id,
       email: row.email,
       displayName: row.display_name,
       isAdmin: !! row.is_admin,
-      player: row.piuscores_guid ? playerSummary({ ...row, piuscores_guid: row.piuscores_guid }) : null,
+      player: (row.piuscores_guid  ?  playerSummary({ ...row, piuscores_guid: row.piuscores_guid })  :  null),
     } satisfies User,
     createdAt: toIso(row.created_at),
     lastLoginAt: toIsoOrNull(row.last_login_at),
@@ -68,7 +68,7 @@ export async function loadRivals(db: Kysely<Database>, userId: number): Promise<
     .orderBy(playerName())
     .execute();
 
-  return rows.map((row) => ({ ...playerSummary(row), hidden: !! row.hidden }));
+  return rows.map((row)  =>  ({ ...playerSummary(row), hidden: !! row.hidden }));
 }
 
 
@@ -87,5 +87,5 @@ export async function loadChartPreferences(db: Kysely<Database>, userId: number)
     .orderBy('chart_id')
     .execute();
 
-  return rows.map((row) => ({ chartId: row.chart_id, snoozedUntil: row.snoozed_until === null ? null : toIso(row.snoozed_until) }));
+  return rows.map((row)  =>  ({ chartId: row.chart_id, snoozedUntil: (row.snoozed_until === null  ?  null  :  toIso(row.snoozed_until)) }));
 }

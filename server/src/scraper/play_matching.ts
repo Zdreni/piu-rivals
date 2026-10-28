@@ -12,7 +12,7 @@ export interface TryStats {
   maxCombo: number | null;
 }
 
-export const tryKey = (t: TryStats) =>
+export const tryKey = (t: TryStats)  =>
   [t.chartId, t.score, t.passed, t.perfect, t.great, t.good, t.bad, t.miss, t.maxCombo].join('|');
 
 
@@ -24,7 +24,7 @@ export function newTries<T extends TryStats>(stored: TryStats[], scanned: T[]): 
   for (const t of stored)
     remaining.set(tryKey(t), (remaining.get(tryKey(t))  ??  0) + 1);
 
-  return scanned.filter((t) => {
+  return scanned.filter((t)  => {
     const left = remaining.get(tryKey(t))  ??  0;
     if (left === 0)
       return true;

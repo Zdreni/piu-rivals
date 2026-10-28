@@ -6,13 +6,13 @@ import { useLoad } from '../../util.ts';
 
 type SortColumn = 'id' | 'title' | 'length' | 'shortTitle';
 
-const shortTitleLength = (track: AdminTrack) => textLength(track.shortTitle);
+const shortTitleLength = (track: AdminTrack)  =>  textLength(track.shortTitle);
 
 const compare: Record<SortColumn, (a: AdminTrack, b: AdminTrack) => number> = {
-  id: (a, b) => a.id - b.id,
-  title: (a, b) => a.title.localeCompare(b.title),
-  length: (a, b) => shortTitleLength(a) - shortTitleLength(b),
-  shortTitle: (a, b) => a.shortTitle.localeCompare(b.shortTitle),
+  id: (a, b)  =>  a.id - b.id,
+  title: (a, b)  =>  a.title.localeCompare(b.title),
+  length: (a, b)  =>  shortTitleLength(a) - shortTitleLength(b),
+  shortTitle: (a, b)  =>  a.shortTitle.localeCompare(b.shortTitle),
 };
 
 
@@ -20,9 +20,9 @@ const compare: Record<SortColumn, (a: AdminTrack, b: AdminTrack) => number> = {
 // is the name again. A refused one stays in the field, so it can be fixed.
 function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortTitle: string) => Promise<boolean> }) {
   const [value, setValue] = useState(track.shortTitle);
-  useEffect(() => setValue(track.shortTitle), [track.shortTitle]);
+  useEffect(()  =>  setValue(track.shortTitle), [track.shortTitle]);
 
-  const save = async () => {
+  const save = async ()  => {
     const trimmed = value.trim();
     if (trimmed === track.shortTitle)
       return;
@@ -38,9 +38,9 @@ function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortT
       value={value}
       placeholder={track.title}
       aria-label={`Short name of ${track.title}`}
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => void save()}
-      onKeyDown={(event) => {
+      onChange={(event)  =>  setValue(event.target.value)}
+      onBlur={()  =>  void save()}
+      onKeyDown={(event)  => {
         if (event.key === 'Enter')
           event.currentTarget.blur();
         else if (event.key === 'Escape')
@@ -52,29 +52,29 @@ function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortT
 
 
 export function TracksPage() {
-  const tracks = useLoad(() => api<AdminTracksResponse>('GET', '/admin/tracks'), []);
+  const tracks = useLoad(()  =>  api<AdminTracksResponse>('GET', '/admin/tracks'), []);
   const [list, setList] = useState<AdminTrack[]>([]);
   const [sort, setSort] = useState<Sort<SortColumn>>({ column: 'title', descending: false });
   const [filter, setFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setList(tracks.data?.tracks  ??  []), [tracks.data]);
+  useEffect(()  =>  setList(tracks.data?.tracks  ??  []), [tracks.data]);
 
-  const shown = useMemo(() => {
+  const shown = useMemo(()  => {
     const words = filter.trim().toLowerCase();
-    const matching = words
-      ? list.filter((track) => track.title.toLowerCase().includes(words)  ||  track.shortTitle.toLowerCase().includes(words))
-      : list;
+    const matching = (words
+      ?  list.filter((track)  =>  track.title.toLowerCase().includes(words)  ||  track.shortTitle.toLowerCase().includes(words))
+      :  list);
 
-    const sign = sort.descending ? -1 : 1;
+    const sign = (sort.descending  ?  -1  :  1);
     // Ties go by name.
-    return [...matching].sort((a, b) => sign * compare[sort.column](a, b)  ||  compare.title(a, b));
+    return [...matching].sort((a, b)  =>  sign * compare[sort.column](a, b)  ||  compare.title(a, b));
   }, [list, sort, filter]);
 
-  const saveShortTitle = async (track: AdminTrack, shortTitle: string) => {
+  const saveShortTitle = async (track: AdminTrack, shortTitle: string)  => {
     try {
       const { track: saved } = await api<{ track: AdminTrack }>('PATCH', `/admin/tracks/${track.id}`, { shortTitle });
-      setList((old) => old.map((t) => (t.id === saved.id ? saved : t)));
+      setList((old)  =>  old.map((t)  =>  (t.id === saved.id  ?  saved  :  t)));
       setError(null);
       return true;
     } catch (e) {
@@ -98,10 +98,10 @@ export function TracksPage() {
           value={filter}
           placeholder="Filter"
           aria-label="Filter tracks"
-          onChange={(event) => setFilter(event.target.value)}
+          onChange={(event)  =>  setFilter(event.target.value)}
         />
         <span className="muted">
-          {filter.trim() ? `${shown.length} of ${list.length}` : list.length} track{list.length === 1 ? '' : 's'}
+          {filter.trim()  ?  `${shown.length} of ${list.length}`  :  list.length} track{list.length === 1  ?  ''  :  's'}
         </span>
       </div>
 
@@ -119,11 +119,11 @@ export function TracksPage() {
             </tr>
           </thead>
           <tbody>
-            {shown.map((track) => (
+            {shown.map((track)  =>  (
               <tr key={track.id}>
                 <td className="number muted">{track.id}</td>
                 <td title={track.songKey}>{track.title}</td>
-                <td><ShortTitleInput track={track} onSave={(shortTitle) => saveShortTitle(track, shortTitle)} /></td>
+                <td><ShortTitleInput track={track} onSave={(shortTitle)  =>  saveShortTitle(track, shortTitle)} /></td>
                 <td className="number">{shortTitleLength(track)}</td>
               </tr>
             ))}

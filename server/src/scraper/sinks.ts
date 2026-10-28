@@ -14,11 +14,11 @@ export function databaseSink(db: Kysely<Database>, playerId: number): ScrapeSink
       return playerCheckpoint(player);
     },
 
-    savePlayerInfo: (name, pumbility) => savePlayerInfo(db, playerId, name, pumbility),
+    savePlayerInfo: (name, pumbility)  =>  savePlayerInfo(db, playerId, name, pumbility),
 
-    storeSession: (session) => storeSession(db, { playerId, ...session }),
+    storeSession: (session)  =>  storeSession(db, { playerId, ...session }),
 
-    skipSession: (session) => skipSession(db, { playerId, ...session }),
+    skipSession: (session)  =>  skipSession(db, { playerId, ...session }),
   };
 }
 
@@ -26,7 +26,7 @@ export function databaseSink(db: Kysely<Database>, playerId: number): ScrapeSink
 // Stores nothing: every session is new, and each Phoenix 2 one is printed.
 export function dryRunSink(): ScrapeSink {
   return {
-    checkpoint: async () => ({ latest: null, anchor: null }),
+    checkpoint: async ()  =>  ({ latest: null, anchor: null }),
 
     async savePlayerInfo(name, pumbility) {
       console.log(`Player ${name  ??  '(no name)'}, PUMBILITY ${pumbility  ??  'unknown'}`);
@@ -35,15 +35,15 @@ export function dryRunSink(): ScrapeSink {
     async storeSession({ card, date, plays }) {
       console.log(`  ${card.timestamp} (${date  ??  'no date'}) ${card.title}: ${plays.length} plays`);
       for (const p of plays) {
-        const judgments = [p.perfect, p.great, p.good, p.bad, p.miss].map((n) => n  ??  '-').join('/');
-        console.log(`    ${p.chartType}${p.level} ${p.songTitle}: ${p.score} ${p.grade  ??  ''}${p.passed ? '' : ' (broken)'}`
-          + `${p.plate ? ` ${p.plate}` : ''}`
+        const judgments = [p.perfect, p.great, p.good, p.bad, p.miss].map((n)  =>  n  ??  '-').join('/');
+        console.log(`    ${p.chartType}${p.level} ${p.songTitle}: ${p.score} ${p.grade  ??  ''}${(p.passed  ?  ''  :  ' (broken)')}`
+          + `${(p.plate  ?  ` ${p.plate}`  :  '')}`
           + ` ${judgments} x${p.maxCombo  ??  '-'}`);
       }
 
       return { playsAdded: plays.length, bestsImproved: 0 };
     },
 
-    skipSession: async () => {},
+    skipSession: async ()  =>  {},
   };
 }

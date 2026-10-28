@@ -5,8 +5,10 @@ const esbuild = require('esbuild');
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 
+
 async function build() {
   await mkdir(dist, { recursive: true });
+
   const options = {
     entryPoints: [path.join(root, 'src', 'content.js')],
     bundle: true,
@@ -23,7 +25,8 @@ async function build() {
   }
 }
 
-build().catch((error) => {
+
+build().catch((error)  => {
   console.error(error);
   process.exitCode = 1;
 });

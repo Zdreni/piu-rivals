@@ -1,7 +1,7 @@
 import { displayName, isKnownPlayer } from '../storage.js';
 import { buttonStack, uiRoot, useStyles } from './ui_host.js';
 
-const fmt = (n) => (n === null  ||  n === undefined ? '—' : n.toLocaleString('en-US'));
+const fmt = (n)  =>  ((n === null  ||  n === undefined)  ?  '—'  :  n.toLocaleString('en-US'));
 
 // Ordered last, so it stays under the RIVALS button whichever is placed first.
 const scrapOverlayStyles = `
@@ -31,9 +31,9 @@ function scrapLabel(info) {
     return 'No new sessions to grab';
 
   if (! known)
-    return `Add player '${name}'${pumbility === null ? '' : ` PB ${fmt(pumbility)}`} and scrap his results`;
+    return `Add player '${name}'${(pumbility === null  ?  ''  :  ` PB ${fmt(pumbility)}`)} and scrap his results`;
 
-  const sessions = `${count}${more ? '+' : ''} session${count === 1  &&  ! more ? '' : 's'}`;
+  const sessions = `${count}${(more  ?  '+'  :  '')} session${((count === 1  &&  ! more)  ?  ''  :  's')}`;
   return `Grab scores from ${sessions}`;
 }
 
@@ -61,7 +61,7 @@ export function createScrapOverlay({ scrapeResults, readSessionsPage, countNewSe
 
   async function reload() {
     const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
-    stored = { players: players  ||  {}, ownPlayerId: typeof ownPlayerId === 'string' ? ownPlayerId : null };
+    stored = { players: players  ||  {}, ownPlayerId: (typeof ownPlayerId === 'string'  ?  ownPlayerId  :  null) };
     update();
   }
 
@@ -106,12 +106,12 @@ export function createScrapOverlay({ scrapeResults, readSessionsPage, countNewSe
 
     button.disabled = isScraping  ||  finishedPath !== null  ||  ! info  ||  info.count === 0;
 
-    const label = scrapStatus ?? scrapLabel(info);
+    const label = scrapStatus  ??  scrapLabel(info);
     if (button.textContent !== label)
       button.textContent = label;
   }
 
-  button.addEventListener('click', async () => {
+  button.addEventListener('click', async ()  => {
     if (isPlayerProfilePage()) {
       location.assign(`${location.pathname.replace(/\/$/, '')}/Sessions`);
       return;
@@ -120,7 +120,7 @@ export function createScrapOverlay({ scrapeResults, readSessionsPage, countNewSe
     isScraping = true;
     update();
     try {
-      const finished = await scrapeResults((status) => {
+      const finished = await scrapeResults((status)  => {
         scrapStatus = status;
         update();
       });
@@ -134,7 +134,7 @@ export function createScrapOverlay({ scrapeResults, readSessionsPage, countNewSe
       isScraping = false;
       update();
       if (finishedPath === null) {
-        setTimeout(() => {
+        setTimeout(()  => {
           scrapStatus = null;
           update();
         }, 2500);

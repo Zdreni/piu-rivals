@@ -82,11 +82,11 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   const npMinimalRivalsControl = container.querySelector('.np-minimal-rivals');
   const countByControl = container.querySelector('.count-by');
 
-  container.querySelector('.export').addEventListener('click', () => {
-    exportTargets().catch((error) => console.error('[piuscores]', error));
+  container.querySelector('.export').addEventListener('click', ()  => {
+    exportTargets().catch((error)  =>  console.error('[piuscores]', error));
   });
 
-  container.querySelector('.clear-data').addEventListener('click', async () => {
+  container.querySelector('.clear-data').addEventListener('click', async ()  => {
     if (! window.confirm('Clear all PIU Scores data saved by this extension? This cannot be undone.'))
       return;
 
@@ -98,7 +98,7 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
     }
   });
 
-  container.querySelector('.dlg-close').addEventListener('click', () => onClose());
+  container.querySelector('.dlg-close').addEventListener('click', ()  =>  onClose());
 
   async function saveSetting(changes) {
     try {
@@ -111,26 +111,26 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
 
   // `update(preferences, step)` returns the preference changes for a −/+ click.
   function bindStepper(control, update) {
-    control.addEventListener('click', async (event) => {
+    control.addEventListener('click', async (event)  => {
       const button = event.target.closest('button[data-step]');
       if (button)
         await saveSetting(update(await loadPreferences(), Number(button.dataset.step)));
     });
   }
 
-  countByControl.addEventListener('click', async (event) => {
+  countByControl.addEventListener('click', async (event)  => {
     const button = event.target.closest('button[data-count-by]:not(.on)');
     if (button)
       await saveSetting({ countBy: button.dataset.countBy });
   });
 
-  bindStepper(scoreCapControl, ({ scoreCap }, step) =>
+  bindStepper(scoreCapControl, ({ scoreCap }, step)  =>
     ({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) }));
 
-  bindStepper(tryCooldownControl, ({ tryCooldown }, step) =>
+  bindStepper(tryCooldownControl, ({ tryCooldown }, step)  =>
     ({ tryCooldown: stepTryCooldown(tryCooldown, step) }));
 
-  bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step) =>
+  bindStepper(npMinimalRivalsControl, ({ npMinimalRivals }, step)  =>
     ({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) }));
 
   function renderStepper(control, text, value, min, max, isOff) {
@@ -141,22 +141,22 @@ export function createWindowHeader(container, { exportTargets, onChange, onClear
   }
 
   function render(me, totals, { scoreCap, tryCooldown, npMinimalRivals, countBy }) {
-    const text = me?.name ? `Rivals for ${displayName(me.name)}` : 'Rivals';
+    const text = (me?.name  ?  `Rivals for ${displayName(me.name)}`  :  'Rivals');
     title.innerHTML = `${esc(text)}<span class="head-stats"> — ${statWords(totals, ', ', STAT_WORDS[countBy])}</span>`;
 
     renderStepper(scoreCapControl, `${scoreCap / 1000}k`, scoreCap, MIN_SCORE_CAP, MAX_SCORE_CAP, scoreCap >= MAX_SCORE_CAP);
-    scoreCapControl.title = scoreCap >= MAX_SCORE_CAP
-      ? 'No score cap is applied'
-      : `Hide losses or wins on mutual scores ≥ ${scoreCap / 1000}k`;
-    renderStepper(tryCooldownControl, tryCooldown ? `${tryCooldown}d` : 'off', tryCooldown, 0, TRY_COOLDOWN_OPTIONS.at(-1),
+    scoreCapControl.title = (scoreCap >= MAX_SCORE_CAP
+      ?  'No score cap is applied'
+      :  `Hide losses or wins on mutual scores ≥ ${scoreCap / 1000}k`);
+    renderStepper(tryCooldownControl, (tryCooldown  ?  `${tryCooldown}d`  :  'off'), tryCooldown, 0, TRY_COOLDOWN_OPTIONS.at(-1),
       tryCooldown === 0);
-    tryCooldownControl.title = tryCooldown
-      ? `Hide lost charts for ${tryCooldown} ${tryCooldown === 1 ? 'day' : 'days'} after your last try`
-      : 'Show lost charts no matter when you last tried them';
+    tryCooldownControl.title = (tryCooldown
+      ?  `Hide lost charts for ${tryCooldown} ${(tryCooldown === 1  ?  'day'  :  'days')} after your last try`
+      :  'Show lost charts no matter when you last tried them');
     renderStepper(npMinimalRivalsControl, `${npMinimalRivals}`, npMinimalRivals, MIN_NP_RIVALS, MAX_NP_RIVALS,
       npMinimalRivals === MIN_NP_RIVALS);
     npMinimalRivalsControl.title =
-      `Show unplayed charts with ≥ ${npMinimalRivals} rival ${npMinimalRivals === 1 ? 'result' : 'results'}`;
+      `Show unplayed charts with ≥ ${npMinimalRivals} rival ${(npMinimalRivals === 1  ?  'result'  :  'results')}`;
     for (const button of countByControl.querySelectorAll('button')) {
       const on = button.dataset.countBy === countBy;
       button.classList.toggle('on', on);

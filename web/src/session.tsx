@@ -17,9 +17,9 @@ const SessionContext = createContext<Session | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [status, setStatus] = useState<Session['status']>(storedToken() ? 'loading' : 'signed-out');
+  const [status, setStatus] = useState<Session['status']>((storedToken()  ?  'loading'  :  'signed-out'));
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async ()  => {
     if (! storedToken()) {
       setMe(null);
       setStatus('signed-out');
@@ -36,33 +36,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signIn = useCallback(async (idToken: string) => {
+  const signIn = useCallback(async (idToken: string)  => {
     const login = await api<LoginResponse>('POST', '/auth/google', { idToken });
     storeToken(login.token);
     await reload();
   }, [reload]);
 
-  const signOut = useCallback(async () => {
-    await api('POST', '/auth/logout').catch(() => {});
+  const signOut = useCallback(async ()  => {
+    await api('POST', '/auth/logout').catch(()  =>  {});
     storeToken(null);
     setMe(null);
     setStatus('signed-out');
   }, []);
 
-  const updateMe = useCallback((update: (me: MeResponse) => MeResponse) => {
-    setMe((current) => (current ? update(current) : current));
+  const updateMe = useCallback((update: (me: MeResponse) => MeResponse)  => {
+    setMe((current)  =>  (current  ?  update(current)  :  current));
   }, []);
 
-  useEffect(() => {
+  useEffect(()  => {
     void reload();
 
-    const onSignedOut = () => {
+    const onSignedOut = ()  => {
       setMe(null);
       setStatus('signed-out');
     };
 
     window.addEventListener(SIGNED_OUT_EVENT, onSignedOut);
-    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
+    return ()  =>  window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
   }, [reload]);
 
   return (

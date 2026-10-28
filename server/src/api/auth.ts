@@ -26,15 +26,15 @@ declare module 'fastify' {
   }
 }
 
-export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+export const hashToken = (token: string)  =>  createHash('sha256').update(token).digest('hex');
 
 
 export function googleTokenVerifier(clientId: string): VerifyGoogleToken {
   const client = new OAuth2Client(clientId);
-  return async (idToken) => {
+  return async (idToken)  => {
     const payload = await client.verifyIdToken({ idToken, audience: clientId })
-      .then((ticket) => ticket.getPayload())
-      .catch(() => null);
+      .then((ticket)  =>  ticket.getPayload())
+      .catch(()  =>  null);
 
     if (! payload?.email  ||  ! payload.email_verified)
       throw new HttpError(401, 'Invalid Google sign-in');
@@ -58,8 +58,9 @@ export async function createSession(db: Kysely<Database>, userId: number) {
 
 // Reads the "Authorization: Bearer <token>" login session into request.sessionUser.
 export function loadSessionUser(db: Kysely<Database>) {
-  return async (request: FastifyRequest) => {
+  return async (request: FastifyRequest)  => {
     request.sessionUser = null;
+
     const token = request.headers.authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (! token)
       return;

@@ -26,11 +26,11 @@ async function sync() {
   else
     await chrome.storage.local.remove(TOKEN_KEY);
 
-  console.log(`${TAG} ${token ? 'Picked up' : 'Dropped'} the piu-rivals login session`);
+  console.log(`${TAG} ${(token  ?  'Picked up'  :  'Dropped')} the piu-rivals login session`);
 }
 
 
-const syncLogged = () => sync().catch((error) => console.error(TAG, error));
+const syncLogged = ()  =>  sync().catch((error)  =>  console.error(TAG, error));
 
 // Signing in or out in this tab doesn't fire "storage" events, so the session is also checked
 // every few seconds.

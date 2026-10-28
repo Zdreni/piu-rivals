@@ -14,7 +14,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: DependencyList): Loaded
   const [error, setError] = useState<string | null>(null);
   const run = useCallback(load, deps);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async ()  => {
     try {
       setData(await run());
       setError(null);
@@ -23,7 +23,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: DependencyList): Loaded
     }
   }, [run]);
 
-  useEffect(() => {
+  useEffect(()  => {
     void reload();
   }, [reload]);
 
@@ -31,8 +31,8 @@ export function useLoad<T>(load: () => Promise<T>, deps: DependencyList): Loaded
 }
 
 
-export const formatNumber = (value: number | null | undefined) =>
-  (value === null  ||  value === undefined ? '—' : value.toLocaleString('en-US'));
+export const formatNumber = (value: number | null | undefined)  =>
+  ((value === null  ||  value === undefined)  ?  '—'  :  value.toLocaleString('en-US'));
 
 
 // With `withoutYear`, the year shows only for times of an earlier year.
@@ -58,9 +58,9 @@ export function formatDuration(from: string | null | undefined, to: string | nul
 
   const seconds = Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 1000));
   const minutes = Math.floor(seconds / 60);
-  const twoDigits = (n: number) => String(n).padStart(2, '0');
+  const twoDigits = (n: number)  =>  String(n).padStart(2, '0');
   const rest = `${twoDigits(minutes % 60)}m ${twoDigits(seconds % 60)}s`;
-  return minutes < 60 ? `${minutes}m ${twoDigits(seconds % 60)}s` : `${Math.floor(minutes / 60)}h ${rest}`;
+  return (minutes < 60  ?  `${minutes}m ${twoDigits(seconds % 60)}s`  :  `${Math.floor(minutes / 60)}h ${rest}`);
 }
 
 
@@ -83,4 +83,4 @@ export function formatAgo(iso: string | null | undefined): string {
 }
 
 
-export const playerLabel = (player: { id: string; name: string | null }) => player.name  ||  player.id;
+export const playerLabel = (player: { id: string; name: string | null })  =>  player.name  ||  player.id;

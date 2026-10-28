@@ -8,7 +8,7 @@ const db = createDatabase();
 
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
+  process.on(signal, ()  => {
     // A run in progress is marked interrupted on the next start; its stored sessions stay.
     console.log(`Worker stopping (${signal})`);
     process.exit(0);
@@ -24,5 +24,5 @@ while (true) {
   if (run)
     await executeRun(db, run);
   else
-    await new Promise((resolve) => setTimeout(resolve, config.workerPollMs));
+    await new Promise((resolve)  =>  setTimeout(resolve, config.workerPollMs));
 }

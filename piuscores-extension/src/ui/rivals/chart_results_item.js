@@ -20,19 +20,19 @@ export const chartResultsItemStyles = `
 
 
 // Identifies a chart among the results; the "show N others..." button carries it.
-export const chartKey = (chart) => `${chart.track}|${chart.chart}`;
+export const chartKey = (chart)  =>  `${chart.track}|${chart.chart}`;
 
 
 // Score cell tooltip; dates are missing for scores stored before they were tracked.
 // The best score line is dropped when it was set on the last try.
-const datesTitle = ({ bestScoreDate, lastTryDate }) =>
-  bestScoreDate  &&  bestScoreDate === lastTryDate
-    ? `Last try: ${lastTryDate}`
-    : `Best score: ${bestScoreDate  ||  'unknown'}
-Last try: ${lastTryDate  ||  'unknown'}`;
+const datesTitle = ({ bestScoreDate, lastTryDate })  =>
+  ((bestScoreDate  &&  bestScoreDate === lastTryDate)
+    ?  `Last try: ${lastTryDate}`
+    :  `Best score: ${bestScoreDate  ||  'unknown'}
+Last try: ${lastTryDate  ||  'unknown'}`);
 
 
-const rowStart = (i) => (i === 0 ? '<tr class="group alt">' : i % 2 === 0 ? '<tr class="alt">' : '<tr>');
+const rowStart = (i)  =>  (i === 0  ?  '<tr class="group alt">'  :  i % 2 === 0  ?  '<tr class="alt">'  :  '<tr>');
 
 
 // The table rows of one chart: you and its rivals by score, the track and chart spanning them all.
@@ -43,35 +43,35 @@ export function chartResultsItem(chart, myName, { collapseWon, colorByRealDiff, 
   if (chart.mine !== null)
     all.push({ player: 'You', score: chart.mine, me: true, ...chart.myDates });
 
-  all.sort((a, b) => b.score - a.score  ||  (b.me ? 1 : 0) - (a.me ? 1 : 0));
+  all.sort((a, b)  =>  b.score - a.score  ||  (b.me  ?  1  :  0) - (a.me  ?  1  :  0));
 
-  const isWon = (rival) => ! rival.me  &&  rival.delta !== null  &&  rival.delta > 0;
-  const folded = collapseWon ? all.filter(isWon).length : 0;
-  const list = folded ? all.filter((rival) => ! isWon(rival)) : all;
-  const rowCount = list.length + (folded ? 1 : 0);
+  const isWon = (rival)  =>  ! rival.me  &&  rival.delta !== null  &&  rival.delta > 0;
+  const folded = (collapseWon  ?  all.filter(isWon).length  :  0);
+  const list = (folded  ?  all.filter((rival)  =>  ! isWon(rival))  :  all);
+  const rowCount = list.length + (folded  ?  1  :  0);
 
-  const rows = list.map((rival, i) => {
-    const head = i === 0
-      ? `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
+  const rows = list.map((rival, i)  => {
+    const head = (i === 0
+      ?  `<td class="track" rowspan="${rowCount}" title="${esc(chart.track)}">${esc(chart.track)}</td>
          <td rowspan="${rowCount}"><b>${esc(chart.chart)}</b></td>`
-      : '';
+      :  '');
 
     const tr = rowStart(i);
     if (rival.me) {
       return `${tr}${head}<td class="sm mine" title="${esc(myName)}">${esc(displayName(myName))}</td><td class="sm num score mine" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm"></td></tr>`;
     }
 
-    const won = rival.delta !== null  &&  rival.delta > 0 ? ' won' : ' ahead';
+    const won = ((rival.delta !== null  &&  rival.delta > 0)  ?  ' won'  :  ' ahead');
     const playerId = rival.playerId;
-    const name = playerId
-      ? `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
-      : esc(displayName(rival.player));
-    return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, colorByRealDiff ? rival.realDelta : rival.delta, scoreCap)}</td></tr>`;
+    const name = (playerId
+      ?  `<a class="player-link" href="https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}/Sessions">${esc(displayName(rival.player))}</a>`
+      :  esc(displayName(rival.player)));
+    return `${tr}${head}<td class="sm${won}" title="${esc(rival.player)}">${name}</td><td class="sm num score${won}" title="${esc(datesTitle(rival))}">${fmtScore(rival.score)}</td><td class="sm num${won}">${fmtDelta(rival.realDelta, (colorByRealDiff  ?  rival.realDelta  :  rival.delta), scoreCap)}</td></tr>`;
   });
 
   if (folded) {
     rows.push(`${rowStart(list.length)}<td class="sm others" colspan="3"><button class="show-others" type="button" `
-      + `data-expand="${esc(chartKey(chart))}">...show ${folded} other${folded === 1 ? '' : 's'}...</button></td></tr>`);
+      + `data-expand="${esc(chartKey(chart))}">...show ${folded} other${(folded === 1  ?  ''  :  's')}...</button></td></tr>`);
   }
 
   return rows;

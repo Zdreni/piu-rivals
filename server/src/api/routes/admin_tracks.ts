@@ -9,15 +9,15 @@ import { HttpError } from '../errors.ts';
 import { IdParams } from './params.ts';
 
 
-const loadTracks = (db: Kysely<Database>) => db.selectFrom('tracks')
+const loadTracks = (db: Kysely<Database>)  =>  db.selectFrom('tracks')
   .select(['id', 'song_key as songKey', 'title', 'short_title as shortTitle']);
 
 
-export const adminTrackRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) => {
+export const adminTrackRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db })  => {
   app.addHook('preHandler', requireAdmin);
 
 
-  app.get('/admin/tracks', async (): Promise<AdminTracksResponse> => ({
+  app.get('/admin/tracks', async (): Promise<AdminTracksResponse>  =>  ({
     tracks: await loadTracks(db).orderBy('title').execute(),
   }));
 
@@ -26,7 +26,7 @@ export const adminTrackRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, 
   // comparison ignores case and accents, as the column's collation does.
   app.patch('/admin/tracks/:id', {
     schema: { params: IdParams, body: Type.Object({ shortTitle: Type.String({ maxLength: 255 }) }) },
-  }, async (request): Promise<{ track: AdminTrack }> => {
+  }, async (request): Promise<{ track: AdminTrack }>  => {
     const { id } = request.params;
     const track = await loadTracks(db).where('id', '=', id).executeTakeFirst();
     if (! track)
@@ -36,14 +36,14 @@ export const adminTrackRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, 
     const clash = await db.selectFrom('tracks')
       .select(['title', sql<number>`title = ${shortTitle}`.as('sameTitle')])
       .where('id', '!=', id)
-      .where((eb) => eb.or([eb('title', '=', shortTitle), eb('short_title', '=', shortTitle)]))
+      .where((eb)  =>  eb.or([eb('title', '=', shortTitle), eb('short_title', '=', shortTitle)]))
       .orderBy('sameTitle', 'desc')
       .executeTakeFirst();
 
     if (clash) {
-      throw new HttpError(409, Number(clash.sameTitle)
-        ? `"${shortTitle}" is the name of another track`
-        : `"${shortTitle}" is the short name of another track, ${clash.title}`);
+      throw new HttpError(409, (Number(clash.sameTitle)
+        ?  `"${shortTitle}" is the name of another track`
+        :  `"${shortTitle}" is the short name of another track, ${clash.title}`));
     }
 
     if (shortTitle !== track.shortTitle) {

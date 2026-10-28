@@ -22,12 +22,12 @@ function sinceValue(since: string): string {
 }
 
 
-export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) => {
+export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db })  => {
   app.addHook('preHandler', requireUser);
 
 
   // Only players with scraped results, and a name or PUMBILITY, are listed.
-  app.get('/players', async (): Promise<PlayersResponse> => {
+  app.get('/players', async (): Promise<PlayersResponse>  => {
     const counts = db.selectFrom('best_results')
       .select(['player_id', sql<number>`COUNT(*)`.as('charts'), sql<number>`SUM(tries)`.as('plays')])
       .groupBy('player_id')
@@ -36,12 +36,12 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     const rows = await db.selectFrom('players')
       .innerJoin(counts, 'counts.player_id', 'players.id')
       .select([...playerSummaryColumns, 'counts.charts', 'counts.plays'])
-      .where((eb) => eb.or([eb(playerName(), 'is not', null), eb('players.pumbility', 'is not', null)]))
+      .where((eb)  =>  eb.or([eb(playerName(), 'is not', null), eb('players.pumbility', 'is not', null)]))
       .orderBy(playerName())
       .execute();
 
     return {
-      players: rows.map((row) => ({ ...playerSummary(row), plays: Number(row.plays), charts: Number(row.charts) })),
+      players: rows.map((row)  =>  ({ ...playerSummary(row), plays: Number(row.plays), charts: Number(row.charts) })),
     };
   });
 
@@ -51,12 +51,12 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
   // (a rescan, a deleted player) never come as changes; `counts` lets the site notice them.
   app.get('/bests', {
     schema: { querystring: Type.Object({ players: Type.String({ minLength: 1 }), since: Type.Optional(Type.String()) }) },
-  }, async (request): Promise<BestsResponse> => {
-    const guids = [...new Set(request.query.players.split(',').map((id) => id.trim().toLowerCase()))];
-    if (guids.length > MAX_BEST_PLAYERS  ||  ! guids.every((id) => GUID_RE.test(id)))
+  }, async (request): Promise<BestsResponse>  => {
+    const guids = [...new Set(request.query.players.split(',').map((id)  =>  id.trim().toLowerCase()))];
+    if (guids.length > MAX_BEST_PLAYERS  ||  ! guids.every((id)  =>  GUID_RE.test(id)))
       throw new HttpError(400, `players must be up to ${MAX_BEST_PLAYERS} comma-separated player GUIDs`);
 
-    const since = request.query.since ? sinceValue(request.query.since) : null;
+    const since = (request.query.since  ?  sinceValue(request.query.since)  :  null);
     // Read before the query, so a change written meanwhile is picked up next time.
     const { rows: [now] } = await sql<{ now: string }>`SELECT CURRENT_TIMESTAMP(3) AS now`.execute(db);
 
@@ -78,23 +78,23 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     const rows = await query.execute();
     const countRows = await db.selectFrom('best_results as b')
       .innerJoin('players as pl', 'pl.id', 'b.player_id')
-      .select(['pl.piuscores_guid', (eb) => eb.fn.countAll<number>().as('count')])
+      .select(['pl.piuscores_guid', (eb)  =>  eb.fn.countAll<number>().as('count')])
       .where('pl.piuscores_guid', 'in', guids)
       .groupBy('pl.piuscores_guid')
       .execute();
 
-    const counts = Object.fromEntries(guids.map((guid) => [guid, 0]));
+    const counts = Object.fromEntries(guids.map((guid)  =>  [guid, 0]));
     for (const row of countRows)
       counts[row.piuscores_guid] = Number(row.count);
 
     // A renamed track's charts come again, as their best results may not have changed.
-    const renamed = since
-      ? await db.selectFrom('charts as c')
+    const renamed = (since
+      ?  await db.selectFrom('charts as c')
         .innerJoin('tracks as t', 't.id', 'c.track_id')
         .select(['c.id as chart_id', 't.song_key', 't.title', 't.short_title', 'c.chart_type', 'c.level'])
         .where('t.updated_at', '>=', since)
         .execute()
-      : [];
+      :  []);
 
     const charts = new Map<number, Chart>();
     for (const row of [...rows, ...renamed]) {
@@ -107,7 +107,7 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
     return {
       serverTime: toIso(now!.now),
       charts: [...charts.values()],
-      bests: rows.map((row) => ({
+      bests: rows.map((row)  =>  ({
         playerId: row.piuscores_guid,
         chartId: row.chart_id,
         score: row.score,

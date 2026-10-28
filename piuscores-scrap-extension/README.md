@@ -58,4 +58,4 @@ npm install
 npm run build    # or: npm run watch
 ```
 
-Follow the coding rules in [../piuscores-extension/CODING_RULES.md](../piuscores-extension/CODING_RULES.md).
+Follow the coding rules in [../CODING_RULES.md](../CODING_RULES.md).

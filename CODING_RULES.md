@@ -1,13 +1,17 @@
 # Coding rules
 
+For all code in the repository: the site (`web/`), the server, the shared types and both Chrome
+extensions, in JavaScript, TypeScript and TSX alike.
+
 ## Naming
 
-Use underscores, not hyphens, in folder and module names
-(for example `page_scrappers/common.js`).
+Use underscores, not hyphens, in source folder and module names (for example
+`page_scrappers/common.js`, `components/charts/chart_card.tsx`). The package folders at the
+top (`piuscores-extension`, `piuscores-scrap-extension`) keep their names.
 
-Name functions and write comments in the extension's own terms (open session, newest
-session, PUMBILITY), not in the site's markup terms. Words like "ceremony" or "hero" from
-`data-testid` values and CSS classes stay in selectors only.
+Name functions and write comments in the project's own terms (open session, newest session,
+PUMBILITY, rivals), not in the scraped site's markup terms. Words like "ceremony" or "hero"
+from its `data-testid` values and CSS classes stay in selectors only.
 
 ## Module size
 
@@ -30,7 +34,7 @@ level: two blank lines around it at the top level of a file, one inside a functi
 const rivalsWindow = createRivalsWindow(exportTargets, pagePlayerId);
 
 
-chrome.storage.onChanged.addListener((_, area) => {
+chrome.storage.onChanged.addListener((_, area)  => {
   ...
 });
 
@@ -80,9 +84,42 @@ loops, including one-line ones.
 In logical conditions, put one space after the negation operator: `if (! playerId)`,
 not `if (!playerId)`. Double negation gets one space too: `!! value`.
 
-Put two spaces on each side of the logical `&&` and `||` operators: `a  &&  b`, not
+Put two spaces on each side of the logical `&&`, `||` and `??` operators: `a  &&  b`, not
 `a && b`. A continuation line that starts with the operator keeps its indentation and
 gets two spaces after it.
+
+Put two spaces on each side of the `=>` of an arrow function too: `charts.map((chart)  =>  chart.id)`,
+not `charts.map((chart) => chart.id)`. When the line ends with the `{` of the function's body, as
+in a local function or a lambda passed as an argument, there may be one space between `=>` and `{`:
+
+```js
+const leave = (chartId, days)  => {
+  ...
+};
+
+useEffect(()  => {
+  ...
+}, []);
+```
+
+Put two spaces on each side of a ternary's `?` and `:` too: `a  ?  b  :  c`, not `a ? b : c`. A
+continuation line that starts with `?` or `:` keeps its indentation and gets two spaces after it.
+
+Put parentheses around a whole ternary used as a value: assigned to a variable or an object
+property, returned (also as an arrow function's body), passed as an argument or a JSX attribute,
+or put in a template literal. A ternary nested in another one's branch needs none of its own.
+
+A ternary's condition with logical operators (`&&`, `||`, `??`) goes in parentheses too, so it's
+clear where the condition ends: the ternary binds more loosely than they do, so
+`a  &&  b  ?  c  :  d` means `(a  &&  b)  ?  c  :  d`, never `a  &&  (b  ?  c  :  d)`.
+
+```js
+const tone = (delta > 0  ?  'pos'  :  'neg');
+const folding = { keep: (phone  ?  KEEP_PHONE  :  KEEP_DESKTOP) };
+const label = (days)  =>  (days === 1  ?  '1 day'  :  `${days} days`);
+return (left === null  ?  null  :  timeLeft(left));
+<button className={(on  ?  'on'  :  undefined)} title={`${(solo  ?  'Solo'  :  'All')} rivals`}>
+```
 
 ## if / else and loops
 

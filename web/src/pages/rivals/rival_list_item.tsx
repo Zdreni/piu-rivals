@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { formatNumber } from '../../util.ts';
-import { StatWords } from './format.tsx';
-import { type Counts, STAT_WORDS } from './stats.ts';
+import { StatWords } from './stat_words.tsx';
+import { type Counts, STAT_WORDS } from '../../data/stats.ts';
 
 export interface ListedPlayer {
   playerId: string;
@@ -21,7 +21,7 @@ const chartsTip = 'Your charts: inferior if any compared rival beats you, otherw
 
 
 export function Count({ value, label }: { value: number; label: string }) {
-  return <><span className={value === 0 ? 'zero' : undefined}>{formatNumber(value)}</span> {label}</>;
+  return <><span className={(value === 0  ?  'zero'  :  undefined)}>{formatNumber(value)}</span> {label}</>;
 }
 
 
@@ -50,10 +50,10 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
   onRemove: () => void;
 }) {
   const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.playerId)}`;
-  const classes = ['rival', on  ||  solo ? '' : 'off', faded ? 'faded' : '', me ? 'me' : '', focused ? 'focused' : ''];
+  const classes = ['rival', (on  ||  solo)  ?  ''  :  'off', faded  ?  'faded'  :  '', me  ?  'me'  :  '', focused  ?  'focused'  :  ''];
 
   // Clicking a rival focuses it; clicking the header of the focused rival folds it back.
-  const click = (event: MouseEvent) => {
+  const click = (event: MouseEvent)  => {
     const target = event.target as HTMLElement;
     if (target.closest('input, a, label, button'))
       return;
@@ -76,10 +76,10 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
           {! me  &&  (
             <div className="rival-links">
               <label className="rival-link rival-check" title="Compare your scores with this rival's">
-                <input type="checkbox" checked={on} onChange={(event) => onToggle(event.target.checked)} />Enable
+                <input type="checkbox" checked={on} onChange={(event)  =>  onToggle(event.target.checked)} />Enable
               </label>
               <label className="rival-link rival-check rival-solo" title="Compare only you and this rival">
-                <input type="checkbox" checked={solo} onChange={(event) => onSolo(event.target.checked)} />Solo
+                <input type="checkbox" checked={solo} onChange={(event)  =>  onSolo(event.target.checked)} />Solo
               </label>
             </div>
           )}
@@ -88,7 +88,7 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
               <Count value={scores} label="scores" /> · <Count value={best} label="best" />
             </div>
             {! me  &&  (
-              <div className="rival-stats" title={solo ? statsSoloTip : statsTip}>
+              <div className="rival-stats" title={(solo  ?  statsSoloTip  :  statsTip)}>
                 <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
               </div>
             )}

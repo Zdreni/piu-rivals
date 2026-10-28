@@ -1,7 +1,7 @@
 import { text, waitForChange } from './common.js';
 
 
-export const isNewestSessionOpen = () =>
+export const isNewestSessionOpen = ()  =>
   !! document.querySelector('[data-testid="session-card"]')?.classList.contains('sbd-card-now')
   &&  ! findPageButton('newer');
 
@@ -58,7 +58,7 @@ export function currentPhoenix2Sessions() {
 
 
 export function sessionCardSignature() {
-  return JSON.stringify(getSessionCards().map((card) => getPhoenix2CardInfo(card)  ||  text(card)));
+  return JSON.stringify(getSessionCards().map((card)  =>  getPhoenix2CardInfo(card)  ||  text(card)));
 }
 
 
@@ -76,7 +76,7 @@ function parseCardTimestamp(timestamp) {
   const [, day, month, hours, minutes, half] = match;
   return {
     date: `${Number(day)} ${month.toLowerCase()}`,
-    minutes: (Number(hours) % 12 + (half.toUpperCase() === 'P' ? 12 : 0)) * 60 + Number(minutes),
+    minutes: (Number(hours) % 12 + (half.toUpperCase() === 'P'  ?  12  :  0)) * 60 + Number(minutes),
   };
 }
 
@@ -90,14 +90,14 @@ export function findGrownSession(checkpoint, sessions) {
   if (! checkpoint  ||  ! first  ||  findPageButton('newer'))
     return null;
 
-  if (sessions.some(({ info }) => sessionCheckpointMatches(checkpoint, info)))
+  if (sessions.some(({ info })  =>  sessionCheckpointMatches(checkpoint, info)))
     return null;
 
   const was = parseCardTimestamp(checkpoint.timestamp);
   const now = parseCardTimestamp(first.timestamp);
-  return first.title === checkpoint.title  &&  was  &&  now  &&  was.date === now.date  &&  now.minutes > was.minutes
-    ? first
-    : null;
+  return ((first.title === checkpoint.title  &&  was  &&  now  &&  was.date === now.date  &&  now.minutes > was.minutes)
+    ?  first
+    :  null);
 }
 
 
@@ -107,11 +107,11 @@ export function findPageButton(direction) {
     '.mud-pagination button, [aria-label*="page" i] button, button[aria-label*="page" i]',
   )];
 
-  const candidates = controls.length
-    ? controls
-    : [...main.querySelectorAll('button, a[role="button"]')];
+  const candidates = (controls.length
+    ?  controls
+    :  [...main.querySelectorAll('button, a[role="button"]')]);
 
-  const label = (button) => [
+  const label = (button)  =>  [
     button.getAttribute('aria-label'),
     button.getAttribute('title'),
     text(button),
@@ -122,7 +122,7 @@ export function findPageButton(direction) {
     newer: /\bnewer\b|\bprevious page\b|^previous$/,
   };
 
-  return candidates.find((button) => {
+  return candidates.find((button)  => {
     const value = label(button);
     return patterns[direction].test(value)
       &&  ! button.disabled
@@ -137,12 +137,12 @@ export async function clickPageButton(button, direction) {
 
   const before = sessionCardSignature();
   button.click();
-  await waitForChange(() => sessionCardSignature() !== before, `${direction} Sessions page`);
+  await waitForChange(()  =>  sessionCardSignature() !== before, `${direction} Sessions page`);
   return true;
 }
 
 
 export function findCurrentCard(info) {
-  return currentPhoenix2Sessions().sessions.find((item) =>
+  return currentPhoenix2Sessions().sessions.find((item)  =>
     sessionCheckpointMatches(info, item.info))?.card  ||  null;
 }

@@ -1,0 +1,44 @@
+/* The score views' frame (the Rivals and History pages): the window they fill, shared colours, buttons and numbers.
+   Everything is scoped to .rivals. */
+
+/* The view fills the window below the menu bar (see Layout in app.tsx). */
+.app.full { height: 100vh; height: 100dvh; min-height: 560px; display: flex; flex-direction: column; }
+.app.full .main { flex: 1; min-height: 0; max-width: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.app.full .main > p { margin: 1rem; }
+
+.rivals { background: #14201A; flex: 1; min-height: 0;
+          display: flex; flex-direction: column; font: 20px/1.4 Roboto, Arial, sans-serif; color: #EAF5EC; }
+/* No blue flash on what's tapped on phones, e.g. a whole card header for its Snooze button: the view shows its own
+   pressed and selected states. */
+.rivals { -webkit-tap-highlight-color: transparent; }
+.rivals .dlg-main { display: flex; flex: 1; min-height: 0; }
+
+/* The site's own button styles stay out. */
+.rivals button { background: none; color: inherit; border: none; border-radius: 0; padding: 0; font-weight: inherit; }
+.rivals button:disabled { opacity: 1; }
+
+.rivals .pos { color: #4FE33F; }
+.rivals .neg { color: #FF2A00; }
+.rivals .pos.muted { color: #7BA874; }
+.rivals .neg.muted { color: #B86A5C; }
+/* Rivals' leads in the cards are a lighter red, which reads better on the dark cards. */
+.rivals .result .neg:not(.muted) { color: color-mix(in srgb, #FF2A00 70%, #EAF5EC); }
+/* True ties, only told apart in the solo view. */
+.rivals .tie { color: #F2E8B6; }
+
+/* Numbers (see format.tsx). */
+.rivals .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rivals .delta-sign { font-size: .8em; margin-right: .15em; }
+.rivals .tail { font-size: .75em; opacity: .6; }
+.rivals .tail-dim { opacity: .7; }
+
+/* Narrow screens and phones: the page scrolls (see rivals_page.css). */
+@media (max-width: 1000px) {
+  .app.full { height: auto; min-height: 100vh; min-height: 100dvh; }
+  .rivals { flex: none; container-type: inline-size; overflow-x: clip; }
+}
+
+/* Phones: smaller everything. */
+@media (max-width: 600px) {
+  .rivals { font-size: 16px; }
+}

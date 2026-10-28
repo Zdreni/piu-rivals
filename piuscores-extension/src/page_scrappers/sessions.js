@@ -37,16 +37,16 @@ async function saveNewestSessionPumbility(ownPlayerId) {
 async function addNewPlayer(playerId, report) {
   report('Adding player');
   if (isNewestSessionOpen()) {
-    await waitForChange(() => readOpenSessionPumbility() !== null, 'PUMBILITY', 3000)
-      .catch((error) => console.warn(TAG, error.message));
+    await waitForChange(()  =>  readOpenSessionPumbility() !== null, 'PUMBILITY', 3000)
+      .catch((error)  =>  console.warn(TAG, error.message));
   }
 
-  const pumbility = isNewestSessionOpen() ? readOpenSessionPumbility() : null;
+  const pumbility = (isNewestSessionOpen()  ?  readOpenSessionPumbility()  :  null);
   await savePlayerInfo(playerId, pagePlayerName(), pumbility, await syncOwnPlayerId(), 'Sessions page', true);
 }
 
 
-export async function scrapePlayerSessions(report = () => {}) {
+export async function scrapePlayerSessions(report = ()  =>  {}) {
   const playerId = sessionPagePlayerId();
   if (! playerId)
     throw new Error('Grabbing scores is only available on a player Sessions page');
@@ -67,8 +67,8 @@ export async function scrapePlayerSessions(report = () => {}) {
     let checkpointFound = ! checkpoint;
     let reachedOlderMixBoundary = false;
     let grown = null;
-    const countFound = () => pages.reduce((sum, page) => sum + page.length, 0);
-    const reportFound = () => report(`Searching sessions, ${countFound()} found...`);
+    const countFound = ()  =>  pages.reduce((sum, page)  =>  sum + page.length, 0);
+    const reportFound = ()  =>  report(`Searching sessions, ${countFound()} found...`);
 
     if (! checkpoint) {
       let signature = sessionCardSignature();
@@ -76,7 +76,7 @@ export async function scrapePlayerSessions(report = () => {}) {
         seenPages.add(signature);
 
         const page = currentPhoenix2Sessions();
-        pages.push(page.sessions.map(({ info }) => info));
+        pages.push(page.sessions.map(({ info })  =>  info));
         reportFound();
         if (page.reachedOlderMix)
           break;
@@ -160,7 +160,7 @@ export async function scrapePlayerSessions(report = () => {}) {
     if (scrapedSessions)
       await saveNewestSessionPumbility(await syncOwnPlayerId());
 
-    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const plural = (n, word)  =>  `${n} ${word}${(n === 1  ?  ''  :  's')}`;
     report(`Finished scrapping ${plural(scrapedSessions, 'session')} with ${plural(scrapedResults, 'result')}`);
     await recordSessionsVisit();
     return true;
@@ -174,7 +174,7 @@ export async function scrapePlayerSessions(report = () => {}) {
 // set when all of them are new and older pages may hold further new sessions.
 export function countNewSessions(checkpoint) {
   const { sessions, reachedOlderMix } = currentPhoenix2Sessions();
-  const index = checkpoint ? sessions.findIndex(({ info }) => sessionCheckpointMatches(checkpoint, info)) : -1;
+  const index = (checkpoint  ?  sessions.findIndex(({ info })  =>  sessionCheckpointMatches(checkpoint, info))  :  -1);
   if (index >= 0)
     return { count: index, more: false };
 

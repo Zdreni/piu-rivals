@@ -11,19 +11,19 @@ import { databaseSink, dryRunSink } from '../scraper/sinks.ts';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const playerId = parsePlayerId(args.find((arg) => ! arg.startsWith('--'))  ||  '');
+const playerId = parsePlayerId(args.find((arg)  =>  ! arg.startsWith('--'))  ||  '');
 if (! playerId) {
   console.error('Usage: npm run scrape -- <player GUID or piuscores link> [--dry-run]');
   process.exit(1);
 }
 
-const db = dryRun ? null : createDatabase();
+const db = (dryRun  ?  null  :  createDatabase());
 const browser = await SessionsBrowser.launch();
 try {
-  const sink = db ? databaseSink(db, (await ensurePlayers(db, [playerId]))[0]!) : dryRunSink();
-  const result = await scrapePlayer(browser, playerId, sink, (progress) => {
+  const sink = (db  ?  databaseSink(db, (await ensurePlayers(db, [playerId]))[0]!)  :  dryRunSink());
+  const result = await scrapePlayer(browser, playerId, sink, (progress)  => {
     if (db) {
-      console.log(`  ${progress.index + 1}/${progress.total} ${progress.card.timestamp}${progress.grown ? ' (grown)' : ''}: `
+      console.log(`  ${progress.index + 1}/${progress.total} ${progress.card.timestamp}${(progress.grown  ?  ' (grown)'  :  '')}: `
         + `${progress.playsAdded} play(s) added, ${progress.bestsImproved} best(s) improved`);
     }
   });

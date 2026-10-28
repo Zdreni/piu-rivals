@@ -28,19 +28,19 @@ export interface BestsCache {
 }
 
 // Best results are keyed by [playerId, chartId], so one player's are a key range.
-const playerRange = (playerId: string) => IDBKeyRange.bound([playerId, -Infinity], [playerId, Infinity]);
+const playerRange = (playerId: string)  =>  IDBKeyRange.bound([playerId, -Infinity], [playerId, Infinity]);
 
 
-const request = <T>(req: IDBRequest<T>) => new Promise<T>((resolve, reject) => {
-  req.onsuccess = () => resolve(req.result);
-  req.onerror = () => reject(req.error);
+const request = <T>(req: IDBRequest<T>)  =>  new Promise<T>((resolve, reject)  => {
+  req.onsuccess = ()  =>  resolve(req.result);
+  req.onerror = ()  =>  reject(req.error);
 });
 
 
-const transactionDone = (tx: IDBTransaction) => new Promise<void>((resolve, reject) => {
-  tx.oncomplete = () => resolve();
-  tx.onerror = () => reject(tx.error);
-  tx.onabort = () => reject(tx.error  ??  new Error('IndexedDB transaction aborted'));
+const transactionDone = (tx: IDBTransaction)  =>  new Promise<void>((resolve, reject)  => {
+  tx.oncomplete = ()  =>  resolve();
+  tx.onerror = ()  =>  reject(tx.error);
+  tx.onabort = ()  =>  reject(tx.error  ??  new Error('IndexedDB transaction aborted'));
 });
 
 
@@ -50,18 +50,19 @@ const OPEN_TIMEOUT_MS = 3000;
 
 
 function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject)  => {
     let settled = false;
-    const fail = (error: unknown) => {
+
+    const fail = (error: unknown)  => {
       if (! settled) {
         settled = true;
         reject(error);
       }
     };
 
-    const timer = setTimeout(() => fail(new Error('IndexedDB took too long to open')), OPEN_TIMEOUT_MS);
+    const timer = setTimeout(()  =>  fail(new Error('IndexedDB took too long to open')), OPEN_TIMEOUT_MS);
     const open = indexedDB.open(DB_NAME, DB_VERSION);
-    open.onupgradeneeded = () => {
+    open.onupgradeneeded = ()  => {
       const db = open.result;
       for (const name of [...db.objectStoreNames])
         db.deleteObjectStore(name);
@@ -71,8 +72,9 @@ function openDatabase(): Promise<IDBDatabase> {
       db.createObjectStore('syncs', { keyPath: 'playerId' });
     };
 
-    open.onsuccess = () => {
+    open.onsuccess = ()  => {
       clearTimeout(timer);
+
       const db = open.result;
       // Opened after the page gave up on it: closed, so it doesn't hold up other tabs.
       if (settled) {
@@ -81,17 +83,17 @@ function openDatabase(): Promise<IDBDatabase> {
       }
 
       // A tab opening a newer version shouldn't wait for this one.
-      db.onversionchange = () => db.close();
+      db.onversionchange = ()  =>  db.close();
       settled = true;
       resolve(db);
     };
 
-    open.onerror = () => {
+    open.onerror = ()  => {
       clearTimeout(timer);
       fail(open.error);
     };
 
-    open.onblocked = () => fail(new Error('IndexedDB is blocked by another tab'));
+    open.onblocked = ()  =>  fail(new Error('IndexedDB is blocked by another tab'));
   });
 }
 
@@ -102,11 +104,11 @@ function indexedDbCache(db: IDBDatabase): BestsCache {
       const tx = db.transaction(['charts', 'bests', 'syncs'], 'readonly');
       const [charts, bests, marks] = await Promise.all([
         request(tx.objectStore('charts').getAll() as IDBRequest<Chart[]>),
-        Promise.all(playerIds.map((playerId) => request(tx.objectStore('bests').getAll(playerRange(playerId)) as IDBRequest<BestResult[]>))),
-        Promise.all(playerIds.map((playerId) => request(tx.objectStore('syncs').get(playerId) as IDBRequest<SyncMark | undefined>))),
+        Promise.all(playerIds.map((playerId)  =>  request(tx.objectStore('bests').getAll(playerRange(playerId)) as IDBRequest<BestResult[]>))),
+        Promise.all(playerIds.map((playerId)  =>  request(tx.objectStore('syncs').get(playerId) as IDBRequest<SyncMark | undefined>))),
       ]);
 
-      return { charts, bests: bests.flat(), marks: marks.filter((mark) => mark !== undefined) };
+      return { charts, bests: bests.flat(), marks: marks.filter((mark)  =>  mark !== undefined) };
     },
 
     async save({ charts, bests, marks }) {
@@ -138,16 +140,16 @@ function indexedDbCache(db: IDBDatabase): BestsCache {
 
 // Without IndexedDB (private windows, blocked site data) nothing is kept between visits.
 const noCache: BestsCache = {
-  load: async () => ({ charts: [], bests: [], marks: [] }),
-  save: async () => {},
-  clear: async () => {},
+  load: async ()  =>  ({ charts: [], bests: [], marks: [] }),
+  save: async ()  =>  {},
+  clear: async ()  =>  {},
 };
 
 let opened: Promise<BestsCache> | null = null;
 
 
 export function openBestsCache(): Promise<BestsCache> {
-  opened  ??=  openDatabase().then(indexedDbCache, (error) => {
+  opened  ??=  openDatabase().then(indexedDbCache, (error)  => {
     console.warn('[piu-rivals] Scores are not cached between visits:', error);
     return noCache;
   });

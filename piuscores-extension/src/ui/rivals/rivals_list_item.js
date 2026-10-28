@@ -52,10 +52,10 @@ export const rivalListItemStyles = `
   .rival.off .rival-name, .rival.off .rival-pum, .rival.off .rival-visit, .rival.off .rival-scrap { opacity: .45; }
 `;
 
-const scrapCount = (n, label) => `<span${n === 0 ? ' class="zero"' : ''}>${fmt(n)}</span> ${label}`;
+const scrapCount = (n, label)  =>  `<span${(n === 0  ?  ' class="zero"'  :  '')}>${fmt(n)}</span> ${label}`;
 
 
-const scrapLine = (scrapStats, best) =>
+const scrapLine = (scrapStats, best)  =>
   `${scrapCount(scrapStats?.scores  ||  0, 'scores')} · ${scrapCount(best  ||  0, 'best')} · `
   + `${scrapCount(scrapStats?.sessions  ||  0, 'sessions')}`;
 
@@ -96,27 +96,27 @@ function visitBadge(visitedAt, href) {
 // `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader).
 export function rivalListItem({ playerId, name, pumbility }, player, { me, on, solo, faded, focused, stats, statsWords, best }) {
   const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(playerId)}`;
-  const toggle = me
-    ? '<span class="rival-spacer"></span>'
-    : `<input type="checkbox" data-player="${esc(playerId)}"${on ? ' checked' : ''}>`;
+  const toggle = (me
+    ?  '<span class="rival-spacer"></span>'
+    :  `<input type="checkbox" data-player="${esc(playerId)}"${(on  ?  ' checked'  :  '')}>`);
 
-  return `<div class="rival${on  ||  solo ? '' : ' off'}${faded ? ' faded' : ''}${me ? ' me' : ''}${focused ? ' focused' : ''}" data-rival="${esc(playerId)}">`
+  return `<div class="rival${((on  ||  solo)  ?  ''  :  ' off')}${(faded  ?  ' faded'  :  '')}${(me  ?  ' me'  :  '')}${(focused  ?  ' focused'  :  '')}" data-rival="${esc(playerId)}">`
     + `<div class="rival-toggle" title="${esc(name)}">${toggle}`
     + `<span class="rival-name">${esc(name)}</span>${visitBadge(player?.sessionsVisitedAt, `${base}/Sessions`)}`
     + `<span class="rival-pum">${fmt(pumbility)}</span></div>`
     + `<div class="rival-scrap"><div class="rival-counts" title="scraped scores · best scores · scraped sessions">${
       scrapLine(player?.scrapStats, best)}</div>`
-    + (me ? '' : `<div class="rival-stats" title="${solo ? statsSoloTip : statsTip}">${statWords(stats, ' · ', statsWords)}</div>`)
+    + (me  ?  ''  :  `<div class="rival-stats" title="${(solo  ?  statsSoloTip  :  statsTip)}">${statWords(stats, ' · ', statsWords)}</div>`)
     + '</div>'
     + '<div class="rival-links">'
     + (me
-      ? `<a class="rival-link" href="${base}">My page</a>`
-      : '<label class="rival-link rival-solo" title="Compare only you and this rival">'
-        + `<input type="checkbox" data-solo="${esc(playerId)}"${solo ? ' checked' : ''}>Solo</label>`)
+      ?  `<a class="rival-link" href="${base}">My page</a>`
+      :  '<label class="rival-link rival-solo" title="Compare only you and this rival">'
+        + `<input type="checkbox" data-solo="${esc(playerId)}"${(solo  ?  ' checked'  :  '')}>Solo</label>`)
     + `<a class="rival-link" href="${base}/Sessions">Sessions</a>`
     + `<button class="rival-link rival-delete" type="button" data-delete="${esc(playerId)}" `
-    + `data-name="${esc(name)}"${me ? ' data-own="1"' : ''} `
-    + `title="${me ? 'Delete all your saved scores' : 'Delete this player and all their saved scores'}">Delete</button>`
+    + `data-name="${esc(name)}"${(me  ?  ' data-own="1"'  :  '')} `
+    + `title="${(me  ?  'Delete all your saved scores'  :  'Delete this player and all their saved scores')}">Delete</button>`
     + '</div>'
     + '</div>';
 }

@@ -29,9 +29,9 @@ export function resultStat(rival: RivalResult): Stat {
     return 'unplayed';
 
   if (rival.realDelta < 0)
-    return rival.delta < 0 ? 'lose' : 'hidden';
+    return (rival.delta < 0  ?  'lose'  :  'hidden');
 
-  return rival.realDelta === 0 ? 'tie' : 'win';
+  return (rival.realDelta === 0  ?  'tie'  :  'win');
 }
 
 
@@ -53,7 +53,7 @@ export function chartTier(chart: ChartRow, ties = false): TabId {
   if (stats.includes('hidden'))
     return 'hidden';
 
-  return ties  &&  stats.includes('tie') ? 'tie' : 'you-win';
+  return ((ties  &&  stats.includes('tie'))  ?  'tie'  :  'you-win');
 }
 
 
@@ -76,7 +76,7 @@ export function realCounts(charts: ChartRow[]): Map<string, Counts> {
       if (! counts)
         stats.set(rival.playerId, counts = { ...NO_COUNTS });
 
-      counts[rival.realDelta === null ? 'unplayed' : rival.realDelta < 0 ? 'lose' : 'win']++;
+      counts[rival.realDelta === null  ?  'unplayed'  :  rival.realDelta < 0  ?  'lose'  :  'win']++;
     }
   }
 
@@ -91,7 +91,7 @@ export function resultCounts(charts: ChartRow[]): Counts {
   for (const chart of charts) {
     for (const rival of chart.rivals) {
       const stat = resultStat(rival);
-      counts[chart.snoozedUntil !== null  &&  (stat === 'lose'  ||  stat === 'unplayed') ? 'hidden' : stat]++;
+      counts[(chart.snoozedUntil !== null  &&  (stat === 'lose'  ||  stat === 'unplayed'))  ?  'hidden'  :  stat]++;
     }
   }
 
@@ -100,17 +100,17 @@ export function resultCounts(charts: ChartRow[]): Counts {
 
 
 // Totals counted the `countBy` way.
-export const countCharts = (charts: ChartRow[], countBy: CountBy) =>
-  (countBy === 'charts' ? tierCounts(charts) : resultCounts(charts));
+export const countCharts = (charts: ChartRow[], countBy: CountBy)  =>
+  (countBy === 'charts'  ?  tierCounts(charts)  :  resultCounts(charts));
 
 
 // Both countings of a level.
-export const levelStats = (charts: ChartRow[]) => ({ charts: tierCounts(charts), results: resultCounts(charts) });
+export const levelStats = (charts: ChartRow[])  =>  ({ charts: tierCounts(charts), results: resultCounts(charts) });
 
 
-export const levelType = (level: string) => (level.match(/^[A-Za-z-]+/)  ??  [level])[0];
+export const levelType = (level: string)  =>  (level.match(/^[A-Za-z-]+/)  ??  [level])[0];
 
-export const levelNum = (level: string) => parseInt((level.match(/\d+/)  ??  ['0'])[0], 10);
+export const levelNum = (level: string)  =>  parseInt((level.match(/\d+/)  ??  ['0'])[0], 10);
 
 // Singles and doubles get the two sides of the level bars; other chart types are listed below them.
 export const SIDE_TYPES: Record<string, number> = { S: 0, D: 1 };
@@ -124,4 +124,4 @@ function compareLevels(a: string, b: string) {
 }
 
 
-export const sortedLevels = (charts: ChartRow[]) => [...new Set(charts.map((chart) => chart.chart))].sort(compareLevels);
+export const sortedLevels = (charts: ChartRow[])  =>  [...new Set(charts.map((chart)  =>  chart.chart))].sort(compareLevels);

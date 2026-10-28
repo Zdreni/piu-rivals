@@ -52,13 +52,13 @@ export function createChartResults(container, onSelectTab) {
   const expandedCharts = new Set();
   let lastRender = null;
 
-  tabs.addEventListener('click', (event) => {
+  tabs.addEventListener('click', (event)  => {
     const tab = event.target.closest('.tab');
     if (tab)
       onSelectTab(tab.dataset.tab);
   });
 
-  body.addEventListener('click', (event) => {
+  body.addEventListener('click', (event)  => {
     const button = event.target.closest('button[data-expand]');
     if (! button)
       return;
@@ -69,14 +69,14 @@ export function createChartResults(container, onSelectTab) {
   });
 
   // With `collapseWon`, rivals you beat are folded until their "show N others..." row is clicked.
-  const tableRows = (charts, myName, scoreCap, collapseWon, colorByRealDiff = false) => charts.flatMap((chart, i) => {
+  const tableRows = (charts, myName, scoreCap, collapseWon, colorByRealDiff = false)  =>  charts.flatMap((chart, i)  => {
     const chartTrs = chartResultsItem(chart, myName, {
       collapseWon: collapseWon  &&  ! expandedCharts.has(chartKey(chart)),
       colorByRealDiff,
       scoreCap,
     });
 
-    return i === 0 ? chartTrs : ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs];
+    return (i === 0  ?  chartTrs  :  ['<tr class="gap"><td colspan="5"></td></tr>', ...chartTrs]);
   });
 
   // `levelCharts` are the charts of the selected level. `hiddenGroups` are its losses left out of the
@@ -87,28 +87,29 @@ export function createChartResults(container, onSelectTab) {
   function render(levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap) {
     lastRender = [levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, results, scoreCap];
 
-    const groups = hiddenGroups.filter(({ charts }) => charts.length);
-    const tabCounts = Object.fromEntries(TABS.map(({ id }) => [
+    const groups = hiddenGroups.filter(({ charts })  =>  charts.length);
+    const tabCounts = Object.fromEntries(TABS.map(({ id })  =>  [
       id, id === 'hidden'
-        ? groups.reduce((acc, { charts }) => acc + charts.length, 0)
-        : levelCharts.filter((chart) => chartTier(chart) === id).length,
+        ?  groups.reduce((acc, { charts })  =>  acc + charts.length, 0)
+        :  levelCharts.filter((chart)  =>  chartTier(chart) === id).length,
     ]));
-    const tabNumber = (id) => (results ? results[TIER_STAT[id]] : tabCounts[id]);
+
+    const tabNumber = (id)  =>  (results  ?  results[TIER_STAT[id]]  :  tabCounts[id]);
     // Tabs are named after what their numbers count.
-    const tabWord = (id) => STAT_WORDS[results ? 'results' : 'charts'][TIER_STAT[id]];
+    const tabWord = (id)  =>  STAT_WORDS[results  ?  'results'  :  'charts'][TIER_STAT[id]];
     // The "Hidden" tab only shows up when there is something hidden; if it was open, "Lost" takes over.
     if (selectedTab === 'hidden'  &&  tabCounts.hidden === 0) {
       onSelectTab('rivals-win');
       return;
     }
 
-    const capitalized = (word) => word[0].toUpperCase() + word.slice(1);
-    tabs.innerHTML = TABS.filter(({ id }) => id !== 'hidden'  ||  tabCounts.hidden).map(({ id }) =>
+    const capitalized = (word)  =>  word[0].toUpperCase() + word.slice(1);
+    tabs.innerHTML = TABS.filter(({ id })  =>  id !== 'hidden'  ||  tabCounts.hidden).map(({ id })  =>
       `<button class="tab" type="button" role="tab" aria-selected="${id === selectedTab}" data-tab="${id}">`
       + `${capitalized(tabWord(id))}<span class="tab-count ${id}">${tabNumber(id)}</span></button>`).join('');
 
     if (tabCounts[selectedTab] === 0) {
-      const message = emptyMessage ?? `No ${STAT_WORDS.charts[TIER_STAT[selectedTab]]} charts at this level.`;
+      const message = emptyMessage  ??  `No ${STAT_WORDS.charts[TIER_STAT[selectedTab]]} charts at this level.`;
       body.innerHTML = `<div class="empty">${message}</div>`;
       return;
     }
@@ -116,12 +117,12 @@ export function createChartResults(container, onSelectTab) {
     let rows;
     if (selectedTab === 'hidden') {
       // Each group starts with a title row. Diffs are coloured like in the "Inferior" tab, so capped ties show as losses.
-      rows = groups.map(({ label, charts }) =>
+      rows = groups.map(({ label, charts })  =>
         `<tr><td class="group-title" colspan="5">${esc(label)} · ${charts.length}</td></tr>`
         + tableRows(charts, myName, scoreCap, true, true).join('')).join('');
     } else {
-      const visible = levelCharts.filter((chart) => chartTier(chart) === selectedTab);
-      const byRivalCount = (a, b) => b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
+      const visible = levelCharts.filter((chart)  =>  chartTier(chart) === selectedTab);
+      const byRivalCount = (a, b)  =>  b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
       visible.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount }[selectedTab]  ||  byTargetWeight);
       rows = tableRows(visible, myName, scoreCap, selectedTab === 'rivals-win').join('');
     }

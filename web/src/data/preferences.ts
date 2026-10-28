@@ -32,15 +32,15 @@ export interface Preferences {
 export type LevelRange = { minLevel: number; maxLevel: number };
 
 
-export const clampScoreCap = (cap: number) =>
+export const clampScoreCap = (cap: number)  =>
   Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
 
-export const clampNpMinimalRivals = (count: number) => Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
+export const clampNpMinimalRivals = (count: number)  =>  Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
 
-export const clampLevel = (level: number) => Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.round(level)));
+export const clampLevel = (level: number)  =>  Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.round(level)));
 
 // Whether a chart's level is in the range; at MAX_LEVEL, higher levels are in too.
-export const levelInRange = (level: number, { minLevel, maxLevel }: LevelRange) =>
+export const levelInRange = (level: number, { minLevel, maxLevel }: LevelRange)  =>
   level >= minLevel  &&  (maxLevel >= MAX_LEVEL  ||  level <= maxLevel);
 
 
@@ -54,9 +54,10 @@ export function autoLevels(playedLevels: number[]): LevelRange {
   const counts = new Map<number, number>();
   for (const level of playedLevels)
     counts.set(level, (counts.get(level)  ??  0) + 1);
-  const levels = [...counts.keys()].sort((a, b) => a - b);
+
+  const levels = [...counts.keys()].sort((a, b)  =>  a - b);
   const lowest = levels[0]!, highest = levels[levels.length - 1]!;
-  const min = levels.find((level) => counts.get(level)! >= AUTO_MIN_LEVEL_CHARTS)  ??  lowest;
+  const min = levels.find((level)  =>  counts.get(level)! >= AUTO_MIN_LEVEL_CHARTS)  ??  lowest;
   return { minLevel: clampLevel(min), maxLevel: clampLevel(highest + 1) };
 }
 
@@ -68,7 +69,7 @@ export function resolveLevels({ minLevel, maxLevel }: Preferences, auto: LevelRa
   if (min <= max)
     return { minLevel: min, maxLevel: max };
 
-  return minLevel === null ? { minLevel: max, maxLevel: max } : { minLevel: min, maxLevel: min };
+  return (minLevel === null  ?  { minLevel: max, maxLevel: max }  :  { minLevel: min, maxLevel: min });
 }
 
 
@@ -76,10 +77,10 @@ export function resolveLevels({ minLevel, maxLevel }: Preferences, auto: LevelRa
 export function parsePreferences(stored: StoredPreferences): Preferences {
   const { scoreCap, npMinimalRivals, countBy, minLevel, maxLevel } = stored;
   return {
-    scoreCap: typeof scoreCap === 'number' ? clampScoreCap(scoreCap) : MAX_SCORE_CAP,
-    npMinimalRivals: typeof npMinimalRivals === 'number' ? clampNpMinimalRivals(npMinimalRivals) : MIN_NP_RIVALS,
-    countBy: COUNT_BY_OPTIONS.find((option) => option === countBy)  ??  COUNT_BY_OPTIONS[0],
-    minLevel: typeof minLevel === 'number' ? clampLevel(minLevel) : null,
-    maxLevel: typeof maxLevel === 'number' ? clampLevel(maxLevel) : null,
+    scoreCap: (typeof scoreCap === 'number'  ?  clampScoreCap(scoreCap)  :  MAX_SCORE_CAP),
+    npMinimalRivals: (typeof npMinimalRivals === 'number'  ?  clampNpMinimalRivals(npMinimalRivals)  :  MIN_NP_RIVALS),
+    countBy: COUNT_BY_OPTIONS.find((option)  =>  option === countBy)  ??  COUNT_BY_OPTIONS[0],
+    minLevel: (typeof minLevel === 'number'  ?  clampLevel(minLevel)  :  null),
+    maxLevel: (typeof maxLevel === 'number'  ?  clampLevel(maxLevel)  :  null),
   };
 }

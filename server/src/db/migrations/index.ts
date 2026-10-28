@@ -25,5 +25,5 @@ const migrations: Record<string, Migration> = {
 
 
 export function migrateToLatest(db: Kysely<Database>) {
-  return new Migrator({ db, provider: { getMigrations: async () => migrations } }).migrateToLatest();
+  return new Migrator({ db, provider: { getMigrations: async ()  =>  migrations } }).migrateToLatest();
 }

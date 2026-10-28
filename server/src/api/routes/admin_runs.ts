@@ -40,10 +40,10 @@ type RunRow = Awaited<ReturnType<ReturnType<typeof runQuery>['execute']>>[number
 
 
 // The API knows players by GUID; players deleted since the run are left out.
-const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun => ({
+const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun  =>  ({
   id: row.id,
   kind: row.kind,
-  playerIds: row.player_ids?.flatMap((id) => guids.get(id)  ??  [])  ??  null,
+  playerIds: row.player_ids?.flatMap((id)  =>  guids.get(id)  ??  [])  ??  null,
   status: row.status,
   startedBy: row.started_by,
   createdAt: toIso(row.created_at),
@@ -51,9 +51,9 @@ const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun => ({
   finishedAt: toIsoOrNull(row.finished_at),
   playersTotal: row.players_total,
   playersDone: row.players_done,
-  currentPlayer: row.player_guid
-    ? playerSummary({ piuscores_guid: row.player_guid, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
-    : null,
+  currentPlayer: (row.player_guid
+    ?  playerSummary({ piuscores_guid: row.player_guid, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
+    :  null),
   sessionsAdded: row.sessions_added,
   playsAdded: row.plays_added,
   bestsImproved: row.bests_improved,
@@ -62,8 +62,8 @@ const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun => ({
 });
 
 
-const runGuids = (db: Kysely<Database>, rows: RunRow[]) =>
-  playerGuidsById(db, [...new Set(rows.flatMap((row) => row.player_ids  ??  []))]);
+const runGuids = (db: Kysely<Database>, rows: RunRow[])  =>
+  playerGuidsById(db, [...new Set(rows.flatMap((row)  =>  row.player_ids  ??  []))]);
 
 
 // When the latest finished "all players" run started, whatever became of it; a running one is left out.
@@ -82,8 +82,9 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
       runQuery(db).where('r.status', 'in', ACTIVE_STATUSES).orderBy('r.id').execute(),
       lastAllRunAt(db),
     ]);
+
     const guids = await runGuids(db, rows);
-    return { runs: rows.map((row) => toRun(row, guids)), hasMore: false, total: rows.length, lastAllRunAt: lastAll };
+    return { runs: rows.map((row)  =>  toRun(row, guids)), hasMore: false, total: rows.length, lastAllRunAt: lastAll };
   }
 
   const [rows, count, lastAll] = await Promise.all([
@@ -95,7 +96,7 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
 
   const shown = rows.slice(0, limit);
   const guids = await runGuids(db, shown);
-  return { runs: shown.map((row) => toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total), lastAllRunAt: lastAll };
+  return { runs: shown.map((row)  =>  toRun(row, guids)), hasMore: rows.length > limit, total: Number(count.total), lastAllRunAt: lastAll };
 }
 
 
@@ -107,21 +108,25 @@ async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<numb
     return [];
 
   const stored = await db.selectFrom('players').select(['id', 'piuscores_guid', playerName().as('name')]).where('id', 'in', ids).execute();
-  const players = new Map(stored.map((p) => [p.id, p]));
+  const players = new Map(stored.map((p)  =>  [p.id, p]));
   const active = (ACTIVE_STATUSES as readonly string[]).includes(row.status);
-  const stateOf = (id: number, index: number): ScrapeRunPlayerState => {
+
+  const stateOf = (id: number, index: number): ScrapeRunPlayerState  => {
     if (failedIds.has(id))
       return 'failed';
+
     if (index < row.players_done)
       return 'done';
+
     if (row.status === 'running'  &&  id === row.current_player_id)
       return 'running';
-    return active ? 'waiting' : 'skipped';
+
+    return (active  ?  'waiting'  :  'skipped');
   };
 
-  return ids.flatMap((id, index) => {
+  return ids.flatMap((id, index)  => {
     const player = players.get(id);
-    return player ? [{ id: player.piuscores_guid, name: player.name, state: stateOf(id, index) }] : [];
+    return (player  ?  [{ id: player.piuscores_guid, name: player.name, state: stateOf(id, index) }]  :  []);
   });
 }
 
@@ -145,15 +150,15 @@ async function runResponse(db: Kysely<Database>, runId: number): Promise<ScrapeR
 
   return {
     run: toRun(row, await runGuids(db, [row])),
-    players: await runPlayers(db, row, new Set(failureList.map((f) => f.player_id))),
-    failureList: failureList.map((f) => ({ playerId: f.piuscores_guid, message: f.message, createdAt: toIso(f.created_at) })),
+    players: await runPlayers(db, row, new Set(failureList.map((f)  =>  f.player_id))),
+    failureList: failureList.map((f)  =>  ({ playerId: f.piuscores_guid, message: f.message, createdAt: toIso(f.created_at) })),
     previousRunId: previous?.id  ??  null,
     nextRunId: next?.id  ??  null,
   };
 }
 
 
-export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) => {
+export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db })  => {
   app.addHook('preHandler', requireAdmin);
 
 
@@ -167,7 +172,7 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
         players: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 1000 })),
       }),
     },
-  }, async (request): Promise<ScrapeRunResponse> => {
+  }, async (request): Promise<ScrapeRunResponse>  => {
     const { kind, players } = request.body;
     const userId = sessionUser(request).id;
     let playerIds: number[] | null = null;
@@ -183,17 +188,17 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
         playerIds = await ensurePlayers(db, guids, userId);
       } else {
         const ids = await playerIdsByGuid(db, guids);
-        const unknown = guids.filter((guid) => ! ids.has(guid));
+        const unknown = guids.filter((guid)  =>  ! ids.has(guid));
         if (unknown.length)
           throw new HttpError(404, `Unknown players: ${unknown.join(', ')}`);
 
-        playerIds = guids.map((guid) => ids.get(guid)!);
+        playerIds = guids.map((guid)  =>  ids.get(guid)!);
       }
     }
 
-    const runId = kind === 'register'  ||  kind === 'selected'
-      ? await joinOrQueueRun(db, kind, playerIds!, userId)
-      : await queueRun(db, kind, playerIds, userId);
+    const runId = ((kind === 'register'  ||  kind === 'selected')
+      ?  await joinOrQueueRun(db, kind, playerIds!, userId)
+      :  await queueRun(db, kind, playerIds, userId));
     return runResponse(db, runId);
   });
 
@@ -207,14 +212,14 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
         limit: Type.Integer({ minimum: 1, maximum: MAX_RUN_LIMIT, default: RUN_PAGE_SIZE }),
       }),
     },
-  }, async (request) => loadRuns(db, request.query.state, request.query.limit));
+  }, async (request)  =>  loadRuns(db, request.query.state, request.query.limit));
 
 
-  app.get('/admin/scrape-runs/:id', { schema: { params: IdParams } }, async (request) => runResponse(db, request.params.id));
+  app.get('/admin/scrape-runs/:id', { schema: { params: IdParams } }, async (request)  =>  runResponse(db, request.params.id));
 
 
   // A queued run is cancelled right away; a running one stops after its current player.
-  app.post('/admin/scrape-runs/:id/cancel', { schema: { params: IdParams } }, async (request) => {
+  app.post('/admin/scrape-runs/:id/cancel', { schema: { params: IdParams } }, async (request)  => {
     const { id } = request.params;
     const run = await db.selectFrom('scrape_runs').select('status').where('id', '=', id).executeTakeFirst();
     if (! run)

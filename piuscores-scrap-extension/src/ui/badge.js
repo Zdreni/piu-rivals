@@ -26,18 +26,18 @@ const ACTIVE_STATUSES = ['queued', 'running'];
 function ago(iso) {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60_000);
   if (minutes < 60)
-    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+    return (minutes <= 1  ?  'just now'  :  `${minutes} minutes ago`);
 
   const hours = Math.round(minutes / 60);
   if (hours < 24)
-    return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
+    return (hours === 1  ?  'an hour ago'  :  `${hours} hours ago`);
 
   const days = Math.round(hours / 24);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
+  return (days === 1  ?  'yesterday'  :  `${days} days ago`);
 }
 
 
-const counts = (run) => `${run.sessionsAdded} new sessions, ${run.playsAdded} plays`;
+const counts = (run)  =>  `${run.sessionsAdded} new sessions, ${run.playsAdded} plays`;
 
 
 function runText(run) {
@@ -48,9 +48,9 @@ function runText(run) {
     return ['Scraping', `${counts(run)} so far…`];
 
   if (run.status === 'done')
-    return ['Scraped', run.failures ? `${counts(run)}; ${run.failures} failed` : counts(run)];
+    return ['Scraped', run.failures  ?  `${counts(run)}; ${run.failures} failed`  :  counts(run)];
 
-  return [`Scrape ${run.status}`, run.failures ? `${run.failures} failed` : `${counts(run)} before it stopped`];
+  return [`Scrape ${run.status}`, run.failures  ?  `${run.failures} failed`  :  `${counts(run)} before it stopped`];
 }
 
 
@@ -63,14 +63,14 @@ function playerText(run, runPlayer) {
   switch (runPlayer.state) {
     case 'waiting': {
       const ahead = runPlayer.index - run.playersDone;
-      return ['Queued for scraping', run.status === 'queued'  ||  ahead <= 0
-        ? 'Waiting for the scrape worker…'
-        : `${ahead} player${ahead === 1 ? '' : 's'} ahead in the run…`];
+      return ['Queued for scraping', (run.status === 'queued'  ||  ahead <= 0)
+        ?  'Waiting for the scrape worker…'
+        :  `${ahead} player${(ahead === 1  ?  ''  :  's')} ahead in the run…`];
     }
     case 'running':
-      return ['Scraping', solo ? `${counts(run)} so far…` : `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run…`];
+      return ['Scraping', solo  ?  `${counts(run)} so far…`  :  `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run…`];
     case 'done':
-      return ['Scraped', solo ? counts(run) : `Scraped in a run with ${others} other player${others === 1 ? '' : 's'}`];
+      return ['Scraped', solo  ?  counts(run)  :  `Scraped in a run with ${others} other player${(others === 1  ?  ''  :  's')}`];
     case 'failed':
       return ['Scrape failed', 'The run on piu-rivals has the error'];
     default:
@@ -89,7 +89,7 @@ function buttonFor(view) {
   if (view.run)
     return { label: 'Scraping…', enabled: false };
 
-  return view.state === 'known' ? { label: ADDED_LABEL, enabled: false } : { label: ADD_LABEL, enabled: true };
+  return (view.state === 'known'  ?  { label: ADDED_LABEL, enabled: false }  :  { label: ADD_LABEL, enabled: true });
 }
 
 
@@ -100,18 +100,18 @@ function describe(view) {
     return { kind: 'error', title: 'piu-rivals', detail: view.message, button: null };
 
   const button = buttonFor(view);
-  const { run, runPlayer } = view.run ? view : view.finished  ??  {};
+  const { run, runPlayer } = (view.run  ?  view  :  view.finished  ??  {});
   if (run) {
-    const [title, detail] = runPlayer ? playerText(run, runPlayer) : runText(run);
-    const failed = runPlayer
-      ? ['failed', 'skipped'].includes(runPlayer.state)
-      : ! ACTIVE_STATUSES.includes(run.status)  &&  run.status !== 'done';
-    return { kind: failed ? 'error' : 'known', title, detail, button };
+    const [title, detail] = (runPlayer  ?  playerText(run, runPlayer)  :  runText(run));
+    const failed = (runPlayer
+      ?  ['failed', 'skipped'].includes(runPlayer.state)
+      :  ! ACTIVE_STATUSES.includes(run.status)  &&  run.status !== 'done');
+    return { kind: (failed  ?  'error'  :  'known'), title, detail, button };
   }
 
   if (view.state === 'known') {
     const scraped = view.player.lastScrapedAt;
-    return { kind: 'known', title: 'In piu-rivals', detail: scraped ? `Last scraped ${ago(scraped)}` : 'Not scraped yet', button };
+    return { kind: 'known', title: 'In piu-rivals', detail: (scraped  ?  `Last scraped ${ago(scraped)}`  :  'Not scraped yet'), button };
   }
 
   return { kind: 'unknown', title: 'Not in piu-rivals', detail: `${view.name  ||  'This player'} isn't stored yet.`, button };
@@ -131,7 +131,7 @@ export function createBadge({ onRegister }) {
   const box = root.querySelector('.box');
   const button = root.querySelector('.btn');
 
-  button.addEventListener('click', () => {
+  button.addEventListener('click', ()  => {
     button.disabled = true;
     onRegister();
   });
@@ -145,6 +145,7 @@ export function createBadge({ onRegister }) {
 
   function show(view) {
     attach();
+
     const { kind, title, detail, button: buttonState } = describe(view);
     box.className = `box ${kind}`;
     box.querySelector('.title').textContent = title;
@@ -158,6 +159,6 @@ export function createBadge({ onRegister }) {
   return {
     attach,
     show,
-    hide: () => { box.hidden = true; },
+    hide: ()  =>  { box.hidden = true; },
   };
 }

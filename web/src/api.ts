@@ -4,6 +4,7 @@ const TOKEN_KEY = 'piu-rivals.token';
 // Sent when the server no longer accepts the stored session, so the app shows the sign-in again.
 export const SIGNED_OUT_EVENT = 'piu-rivals:signed-out';
 
+
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
@@ -45,16 +46,16 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
     response = await fetch(`${config.apiUrl}${path}`, {
       method,
       headers: {
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(token  ?  { authorization: `Bearer ${token}` }  :  {}),
+        ...(body !== undefined  ?  { 'content-type': 'application/json' }  :  {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: (body !== undefined  ?  JSON.stringify(body)  :  undefined),
     });
   } catch {
     throw new ApiError(0, 'The piu-rivals server is unreachable');
   }
 
-  const data = await response.json().catch(() => null);
+  const data = await response.json().catch(()  =>  null);
   if (! response.ok) {
     if (response.status === 401  &&  token) {
       storeToken(null);
@@ -68,4 +69,4 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
 }
 
 
-export const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+export const errorText = (error: unknown)  =>  (error instanceof Error  ?  error.message  :  String(error));

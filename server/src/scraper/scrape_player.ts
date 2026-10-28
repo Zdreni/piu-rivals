@@ -38,7 +38,7 @@ export async function scrapePlayer(
   browser: SessionsBrowser,
   playerId: string,
   sink: ScrapeSink,
-  onSession: (progress: SessionProgress) => Promise<void> | void = () => {},
+  onSession: (progress: SessionProgress) => Promise<void> | void = ()  =>  {},
 ): Promise<PlayerScrapeResult> {
   const checkpoint = await sink.checkpoint();
   const hasSessions = await browser.openPlayer(playerId);
@@ -47,9 +47,9 @@ export async function scrapePlayer(
   // The open session shows PUMBILITY as of that session, so it is current only for the newest one,
   // which is open when the page loads. A Phoenix session shows Phoenix's PUMBILITY, so it's read
   // only when the newest session is Phoenix 2.
-  const newest = page.hasNewerPage ? undefined : page.cards[0];
+  const newest = (page.hasNewerPage  ?  undefined  :  page.cards[0]);
   const newestOpen = !! newest?.isOpen  &&  newest.mix === 'Phoenix 2';
-  const pumbility = newestOpen ? await browser.readOpenPumbility() : null;
+  const pumbility = (newestOpen  ?  await browser.readOpenPumbility()  :  null);
   await sink.savePlayerInfo(page.playerName, pumbility);
 
   const result: PlayerScrapeResult = { name: page.playerName, sessions: 0, playsAdded: 0, bestsImproved: 0 };
@@ -87,11 +87,11 @@ export async function scrapePlayer(
 
   const plan = planScan(checkpoint, collected, stop);
   const queue = [
-    ...(plan.grown ? [{ card: plan.grown, grown: true }] : []),
-    ...plan.fresh.map((card) => ({ card, grown: false })),
+    ...(plan.grown  ?  [{ card: plan.grown, grown: true }]  :  []),
+    ...plan.fresh.map((card)  =>  ({ card, grown: false })),
   ];
 
-  const total = queue.filter(({ card }) => card.mix === 'Phoenix 2').length;
+  const total = queue.filter(({ card })  =>  card.mix === 'Phoenix 2').length;
   for (const { card: found, grown } of queue) {
     if (found.mix !== 'Phoenix 2') {
       await sink.skipSession({ card: found, grown });

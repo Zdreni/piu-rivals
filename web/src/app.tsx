@@ -7,18 +7,19 @@ import { RunsPage } from './pages/admin/runs_page.tsx';
 import { TracksPage } from './pages/admin/tracks_page.tsx';
 import { UserPage } from './pages/admin/user_page.tsx';
 import { UsersPage } from './pages/admin/users_page.tsx';
-import { HistoryPage } from './pages/rivals/history_page.tsx';
+import { HistoryPage } from './pages/history/history_page.tsx';
 import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
 
 // Outline icons in the text's colour, before the menu bar's links.
-const icon = (children: ReactNode) => <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true">{children}</svg>;
+const icon = (children: ReactNode)  =>  <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true">{children}</svg>;
 // Two people: you and your rivals.
 const RIVALS_ICON = icon(<>
   <circle cx="5.5" cy="5.5" r="2.5" /><path d="M1 14c0-2.5 2-4.3 4.5-4.3S10 11.5 10 14" />
   <circle cx="11" cy="4.5" r="2" /><path d="M11.5 8.6c2 .2 3.5 1.9 3.5 4" />
 </>);
+
 // A line going up: your scores rising.
 const HISTORY_ICON = icon(<path d="M1.5 12.5l4-4 3 3 6-6M10.5 5.5h4v4" />);
 // A head and shoulders: your account.
@@ -34,7 +35,7 @@ function Header() {
     <header className="header">
       <div className="header-left">
         <nav className="nav nav-main" aria-label="Pages">
-          <NavLink to={signedIn ? '/rivals' : '/'} end>{RIVALS_ICON}Rivals</NavLink>
+          <NavLink to={(signedIn  ?  '/rivals'  :  '/')} end>{RIVALS_ICON}Rivals</NavLink>
           {signedIn  &&  me.user.player  &&  <NavLink to="/history">{HISTORY_ICON}History</NavLink>}
         </nav>
       </div>
@@ -78,10 +79,11 @@ function AdminOnly({ children }: { children: ReactNode }) {
 // readable width, with the footer below them.
 const FULL_PAGES = ['/rivals', '/history'];
 
+
 function Layout({ children }: { children: ReactNode }) {
   const full = FULL_PAGES.includes(useLocation().pathname);
   return (
-    <div className={full ? 'app full' : 'app'}>
+    <div className={(full  ?  'app full'  :  'app')}>
       <Header />
       <main className="main">{children}</main>
       {! full  &&  (

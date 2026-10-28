@@ -1,0 +1,6 @@
+/* The History page: the cards by day, under day titles in the levels' colours. */
+.rivals.history .dlg-body { min-height: 0; }
+.rivals .group-title.day { border-bottom-color: #2B4034; color: #9AB3A3; }
+.rivals .show-more-charts { grid-column: 1 / -1; justify-self: center; margin: 4px 0 20px; padding: 8px 16px; color: #C9D8CE;
+                            border: 1px solid #2B4034; border-radius: 4px; cursor: pointer; font: 400 15px/1.2 Roboto, Arial, sans-serif; }
+.rivals .show-more-charts:hover { color: #EAF5EC; border-color: #3D5A49; }

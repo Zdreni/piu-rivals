@@ -11,7 +11,7 @@ const RUN_POLL_MS = 3000;
 const LINKS_POLL_MS = 10_000;
 const ACTIVE_STATUSES = ['queued', 'running'];
 
-const text = (el) => (el ? el.textContent.trim() : '');
+const text = (el)  =>  (el  ?  el.textContent.trim()  :  '');
 
 
 function ownPlayerId() {
@@ -29,7 +29,7 @@ function ownPlayerId() {
 
 
 // The account menu caption reads "<username> (<in-game name>)", e.g. "Dino (DINO #3869)".
-const accountUsername = () => text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1]  ??  null;
+const accountUsername = ()  =>  text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1]  ??  null;
 
 
 // The player of a profile (/Player/<id>) or Sessions (/Player/<id>/Sessions) path. Your own pages
@@ -44,14 +44,14 @@ function playerIdOf(pathname) {
     return id.toLowerCase();
 
   const username = accountUsername();
-  return username  &&  id.toLowerCase() === username.toLowerCase() ? ownPlayerId() : null;
+  return ((username  &&  id.toLowerCase() === username.toLowerCase())  ?  ownPlayerId()  :  null);
 }
 
 
-const pagePlayerId = () => playerIdOf(location.pathname);
+const pagePlayerId = ()  =>  playerIdOf(location.pathname);
 
 
-const pagePlayerName = () => text(document.querySelector('main h5')).replace(/\s+[—–-]\s+Sessions$/i, '').trim();
+const pagePlayerName = ()  =>  text(document.querySelector('main h5')).replace(/\s+[—–-]\s+Sessions$/i, '').trim();
 
 
 // After the extension is reloaded, this page's script can no longer reach it.
@@ -100,7 +100,7 @@ async function refresh() {
 async function scrapeFromLink(playerId) {
   const result = await send({ type: 'register', playerId });
   if (playerId === shownPlayerId  &&  ! status?.run)
-    refresh().catch((error) => console.error(TAG, error));
+    refresh().catch((error)  =>  console.error(TAG, error));
 
   return result;
 }
@@ -118,27 +118,28 @@ let marksTimer = null;
 async function markLinks() {
   const request = ++marksRequest;
   clearTimeout(marksTimer);
+
   const result = await send({ type: 'players' });
   if (request !== marksRequest)
     return;
 
   // Marks already shown stay when the server can't be asked.
   if (result.state !== 'error')
-    playerLinks.mark(result.ids ? new Set(result.ids) : null);
+    playerLinks.mark((result.ids  ?  new Set(result.ids)  :  null));
 
   if (playerLinks.waiting())
     marksTimer = setTimeout(markLinksLogged, LINKS_POLL_MS);
 }
 
 
-const markLinksLogged = () => markLinks().catch((error) => console.error(TAG, error));
+const markLinksLogged = ()  =>  markLinks().catch((error)  =>  console.error(TAG, error));
 
 
 function watchRun(runId) {
   const playerId = shownPlayerId;
   clearTimeout(pollTimer);
 
-  pollTimer = setTimeout(async () => {
+  pollTimer = setTimeout(async ()  => {
     const result = await send({ type: 'run', runId, playerId });
     if (playerId !== shownPlayerId)
       return;
@@ -151,7 +152,7 @@ function watchRun(runId) {
 
     // A run can go on with other players after this one is finished.
     const { run, runPlayer } = result;
-    if (runPlayer ? ['waiting', 'running'].includes(runPlayer.state) : ACTIVE_STATUSES.includes(run.status)) {
+    if (runPlayer  ?  ['waiting', 'running'].includes(runPlayer.state)  :  ACTIVE_STATUSES.includes(run.status)) {
       status = { ...status, run, runPlayer };
       render();
       watchRun(runId);
@@ -202,7 +203,7 @@ function showPage() {
   }
 
   // Not shown as "checking" yet: for non-admins nothing should appear at all.
-  refresh().catch((error) => console.error(TAG, error));
+  refresh().catch((error)  =>  console.error(TAG, error));
 }
 
 
@@ -210,9 +211,10 @@ function showPage() {
 let timer = null;
 
 
-new MutationObserver(() => {
+new MutationObserver(()  => {
   clearTimeout(timer);
-  timer = setTimeout(() => {
+
+  timer = setTimeout(()  => {
     showPage();
     markLinksLogged();
   }, 300);
@@ -223,17 +225,17 @@ new MutationObserver(() => {
 function recheck() {
   markLinksLogged();
   if (shownPlayerId  &&  ! status?.run)
-    refresh().catch((error) => console.error(TAG, error));
+    refresh().catch((error)  =>  console.error(TAG, error));
 }
 
 
-chrome.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener((changes, area)  => {
   if (area === 'local'  &&  changes[TOKEN_KEY])
     recheck();
 });
 
 
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', ()  => {
   if (document.visibilityState === 'visible')
     recheck();
 });

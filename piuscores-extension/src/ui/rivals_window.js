@@ -34,7 +34,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
   let chartsGroups = null;
   let chartResults = null;
 
-  const rerender = () => render().catch((error) => console.error('[piuscores]', error));
+  const rerender = ()  =>  render().catch((error)  =>  console.error('[piuscores]', error));
 
 
   function ensure() {
@@ -50,7 +50,7 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     showButton.title = 'Show all saved rival scores';
     showButton.textContent = 'RIVALS';
     showButton.hidden = state.isOpen;
-    showButton.addEventListener('click', () => open());
+    showButton.addEventListener('click', ()  =>  open());
     buttonStack().appendChild(showButton);
 
     overlay = document.createElement('div');
@@ -70,23 +70,23 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     header = createWindowHeader(overlay.querySelector('.dlg-head'), {
       exportTargets,
       onChange: render,
-      onCleared: () => {
+      onCleared: ()  => {
         state.selectedLevel = null;
         state.selectedTab = 'rivals-win';
         return render();
       },
-      onClose: () => close(),
+      onClose: ()  =>  close(),
     });
 
     rivalList = createRivalList(overlay.querySelector('.rival-list'), render);
 
-    chartsGroups = createChartsGroups(overlay.querySelector('.filters'), (level) => {
+    chartsGroups = createChartsGroups(overlay.querySelector('.filters'), (level)  => {
       state.selectedLevel = level;
       saveUiState(state);
       rerender();
     });
 
-    chartResults = createChartResults(overlay.querySelector('.score-content'), (tab) => {
+    chartResults = createChartResults(overlay.querySelector('.score-content'), (tab)  => {
       state.selectedTab = tab;
       saveUiState(state);
       rerender();
@@ -103,56 +103,57 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     const hidden = new Set(hiddenRivals);
     // A solo rival is compared alone, whatever the stored selection says.
     const solo = rivalList.soloRival();
-    const included = (playerId) => solo ? playerId === solo : ! hidden.has(playerId);
+    const included = (playerId)  =>  (solo  ?  playerId === solo  :  ! hidden.has(playerId));
 
     // Lost charts tried within the try cooldown stay hidden until it passes; unknown dates never hide.
-    const coolingDown = (chart) => {
+    const coolingDown = (chart)  => {
       const days = daysSince(chart.myDates.lastTryDate);
       return chartTier(chart) === 'rivals-win'  &&  days !== null  &&  days < tryCooldown;
     };
 
     const shownCharts = allCharts
-      .map((chart) => withRivals(chart, (rival) => included(rival.playerId)))
+      .map((chart)  =>  withRivals(chart, (rival)  =>  included(rival.playerId)))
       .filter(Boolean)
       // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
+      .filter((chart)  =>  ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals);
 
-    const charts = shownCharts.filter((chart) => ! coolingDown(chart));
+    const charts = shownCharts.filter((chart)  =>  ! coolingDown(chart));
     const coolingCharts = shownCharts.filter(coolingDown);
 
     // Charts a rival beats you on only by the uncapped score, so the score cap turns the loss into a draw.
-    const isCapLoss = (chart) => chartTier(chart) !== 'rivals-win'
-      &&  chart.rivals.some((rival) => rival.realDelta !== null  &&  rival.realDelta < 0);
+    const isCapLoss = (chart)  =>  chartTier(chart) !== 'rivals-win'
+      &&  chart.rivals.some((rival)  =>  rival.realDelta !== null  &&  rival.realDelta < 0);
 
     const capLosses = charts
       .filter(isCapLoss)
-      .map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
+      .map((chart)  =>  ({ ...chart, weight: targetWeight(chart.rivals.map((rival)  =>  rival.realDelta)) }));
 
     const levels = sortedLevels(shownCharts);
     if (! levels.includes(state.selectedLevel)) {
-      state.selectedLevel = levels[0] ?? null;
+      state.selectedLevel = levels[0]  ??  null;
       saveUiState(state);
     }
 
     const { countBy } = preferences;
-    const totals = countBy === 'charts' ? tierCounts(charts) : resultCounts(charts);
+    const totals = (countBy === 'charts'  ?  tierCounts(charts)  :  resultCounts(charts));
     header.render(players[ownPlayerId], totals, preferences);
     // In solo mode the solo rival's stats are the header's, with all the settings applied.
-    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, solo ? totals : null, countBy);
+    rivalList.render(allCharts, players, ownPlayerId, hidden, bestCounts, (solo  ?  totals  :  null), countBy);
+
     // The level bars count score-cap losses as hidden losses rather than wins.
-    const barCharts = charts.filter((chart) => ! isCapLoss(chart));
+    const barCharts = charts.filter((chart)  =>  ! isCapLoss(chart));
     const hiddenCharts = [...coolingCharts, ...capLosses];
     chartsGroups.render(barCharts, hiddenCharts, state.selectedLevel, countBy);
 
-    const emptyMessage = allCharts.length === 0
-      ? 'No saved rival scores yet — grab them on a player\'s Sessions page.'
-      : shownCharts.length === 0
-        ? 'No charts for the selected rivals — check some rivals on the left.'
-        : null;
+    const emptyMessage = (allCharts.length === 0
+      ?  'No saved rival scores yet — grab them on a player\'s Sessions page.'
+      :  shownCharts.length === 0
+        ?  'No charts for the selected rivals — check some rivals on the left.'
+        :  null);
 
-    const atLevel = (chart) => chart.chart === state.selectedLevel;
+    const atLevel = (chart)  =>  chart.chart === state.selectedLevel;
     // Counted by results, the tabs show the selected level's bar numbers; by charts they count their own lists.
-    const tabResults = countBy === 'results' ? levelStats(barCharts.filter(atLevel), hiddenCharts.filter(atLevel)).results : null;
+    const tabResults = (countBy === 'results'  ?  levelStats(barCharts.filter(atLevel), hiddenCharts.filter(atLevel)).results  :  null);
     chartResults.render(
       charts.filter(atLevel),
       [
@@ -201,5 +202,5 @@ export function createRivalsWindow(exportTargets, pagePlayerId) {
     rerender();
   }
 
-  return { initialize, render, isOpen: () => state.isOpen };
+  return { initialize, render, isOpen: ()  =>  state.isOpen };
 }

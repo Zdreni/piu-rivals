@@ -2,12 +2,12 @@ import type {
   ChartPreference, ChartPreferencesResponse, MeResponse, PlayerSummary, Rival, RivalsResponse, SnoozeDays,
 } from '@piu-rivals/shared';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { api, errorText } from '../../api.ts';
-import { useSession } from '../../session.tsx';
+import { api, errorText } from '../api.ts';
+import { useSession } from '../session.tsx';
 import { parsePreferences, type Preferences } from './preferences.ts';
 
 // How long a snooze lasts, as the server works it out; shown until the server's time comes back.
-const snoozeMs = (days: SnoozeDays) => ((days - 1) * 24 + 12) * 3600_000;
+const snoozeMs = (days: SnoozeDays)  =>  ((days - 1) * 24 + 12) * 3600_000;
 
 
 // The rival list, the Rivals view's settings and the snoozed charts. Every change shows at once and is saved in the
@@ -37,19 +37,19 @@ export function useRivalSettings(): RivalSettings {
   const sending = useRef(false);
   const rivalRequests = useRef(0);
   const chartRequests = useRef(0);
-  const preferences = useMemo(() => parsePreferences(me?.preferences  ??  {}), [me?.preferences]);
+  const preferences = useMemo(()  =>  parsePreferences(me?.preferences  ??  {}), [me?.preferences]);
   const chartPreferences = me?.chartPreferences;
-  const snoozes = useMemo(() => new Map((chartPreferences  ??  []).flatMap(({ chartId, snoozedUntil }) =>
-    (snoozedUntil ? [[chartId, Date.parse(snoozedUntil)] as const] : []))), [chartPreferences]);
+  const snoozes = useMemo(()  =>  new Map((chartPreferences  ??  []).flatMap(({ chartId, snoozedUntil })  =>
+    (snoozedUntil  ?  [[chartId, Date.parse(snoozedUntil)] as const]  :  []))), [chartPreferences]);
 
-  const busy = () => sending.current  ||  rivalRequests.current > 0  ||  chartRequests.current > 0  ||  Object.keys(unsent.current).length > 0;
+  const busy = ()  =>  sending.current  ||  rivalRequests.current > 0  ||  chartRequests.current > 0  ||  Object.keys(unsent.current).length > 0;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ()  => {
     const fresh = await api<MeResponse>('GET', '/me');
-    updateMe(() => fresh);
+    updateMe(()  =>  fresh);
   }, [updateMe]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ()  => {
     if (busy())
       return;
 
@@ -57,18 +57,18 @@ export function useRivalSettings(): RivalSettings {
       const fresh = await api<MeResponse>('GET', '/me');
       // A change made while loading is newer than what came back.
       if (! busy())
-        updateMe(() => fresh);
+        updateMe(()  =>  fresh);
     } catch {
       // A background refresh; the next one tries again.
     }
   }, [updateMe]);
 
-  const failed = useCallback(async (e: unknown) => {
+  const failed = useCallback(async (e: unknown)  => {
     setError(errorText(e));
-    await load().catch(() => {});
+    await load().catch(()  =>  {});
   }, [load]);
 
-  const sendPreferences = useCallback(async () => {
+  const sendPreferences = useCallback(async ()  => {
     if (sending.current  ||  ! Object.keys(unsent.current).length)
       return;
 
@@ -88,21 +88,21 @@ export function useRivalSettings(): RivalSettings {
     await sendPreferences();
   }, [failed]);
 
-  const changePreferences = useCallback((changes: Partial<Preferences>) => {
-    updateMe((current) => ({ ...current, preferences: { ...current.preferences, ...changes } }));
+  const changePreferences = useCallback((changes: Partial<Preferences>)  => {
+    updateMe((current)  =>  ({ ...current, preferences: { ...current.preferences, ...changes } }));
     Object.assign(unsent.current, changes);
     void sendPreferences();
   }, [updateMe, sendPreferences]);
 
   // Shows `change` at once, then sends `request`. The server's rival list replaces the shown one only when no
   // other rival change is on its way, since that one may not be in it yet.
-  const changeRivals = useCallback(async (change: (rivals: Rival[]) => Rival[], request: () => Promise<RivalsResponse>) => {
-    updateMe((current) => ({ ...current, rivals: change(current.rivals) }));
+  const changeRivals = useCallback(async (change: (rivals: Rival[]) => Rival[], request: () => Promise<RivalsResponse>)  => {
+    updateMe((current)  =>  ({ ...current, rivals: change(current.rivals) }));
     rivalRequests.current++;
     try {
       const { rivals } = await request();
       if (rivalRequests.current === 1)
-        updateMe((current) => ({ ...current, rivals }));
+        updateMe((current)  =>  ({ ...current, rivals }));
 
       setError(null);
     } catch (e) {
@@ -112,40 +112,40 @@ export function useRivalSettings(): RivalSettings {
     }
   }, [updateMe, failed]);
 
-  const addRival = useCallback((player: PlayerSummary) => {
+  const addRival = useCallback((player: PlayerSummary)  => {
     void changeRivals(
-      (rivals) => (rivals.some((rival) => rival.id === player.id) ? rivals : [...rivals, { ...player, hidden: false }]),
-      () => api<RivalsResponse>('POST', '/me/rivals', { playerId: player.id }),
+      (rivals)  =>  (rivals.some((rival)  =>  rival.id === player.id)  ?  rivals  :  [...rivals, { ...player, hidden: false }]),
+      ()  =>  api<RivalsResponse>('POST', '/me/rivals', { playerId: player.id }),
     );
   }, [changeRivals]);
 
-  const removeRival = useCallback((playerId: string) => {
+  const removeRival = useCallback((playerId: string)  => {
     void changeRivals(
-      (rivals) => rivals.filter((rival) => rival.id !== playerId),
-      () => api<RivalsResponse>('DELETE', `/me/rivals/${playerId}`),
+      (rivals)  =>  rivals.filter((rival)  =>  rival.id !== playerId),
+      ()  =>  api<RivalsResponse>('DELETE', `/me/rivals/${playerId}`),
     );
   }, [changeRivals]);
 
-  const setRivalHidden = useCallback((playerId: string, hidden: boolean) => {
+  const setRivalHidden = useCallback((playerId: string, hidden: boolean)  => {
     void changeRivals(
-      (rivals) => rivals.map((rival) => (rival.id === playerId ? { ...rival, hidden } : rival)),
-      () => api<RivalsResponse>('PATCH', `/me/rivals/${playerId}`, { hidden }),
+      (rivals)  =>  rivals.map((rival)  =>  (rival.id === playerId  ?  { ...rival, hidden }  :  rival)),
+      ()  =>  api<RivalsResponse>('PATCH', `/me/rivals/${playerId}`, { hidden }),
     );
   }, [changeRivals]);
 
   // Like a rival change: shown at once, and the server's list replaces it only when no other chart change is on its way.
-  const sendSnooze = useCallback(async (chartId: number, days: SnoozeDays | null) => {
-    const change = (prefs: ChartPreference[]) => {
-      const rest = prefs.filter((pref) => pref.chartId !== chartId);
-      return days === null ? rest : [...rest, { chartId, snoozedUntil: new Date(Date.now() + snoozeMs(days)).toISOString() }];
+  const sendSnooze = useCallback(async (chartId: number, days: SnoozeDays | null)  => {
+    const change = (prefs: ChartPreference[])  => {
+      const rest = prefs.filter((pref)  =>  pref.chartId !== chartId);
+      return (days === null  ?  rest  :  [...rest, { chartId, snoozedUntil: new Date(Date.now() + snoozeMs(days)).toISOString() }]);
     };
 
-    updateMe((current) => ({ ...current, chartPreferences: change(current.chartPreferences  ??  []) }));
+    updateMe((current)  =>  ({ ...current, chartPreferences: change(current.chartPreferences  ??  []) }));
     chartRequests.current++;
     try {
       const { chartPreferences } = await api<ChartPreferencesResponse>('PATCH', `/me/chart-preferences/${chartId}`, { snoozeDays: days });
       if (chartRequests.current === 1)
-        updateMe((current) => ({ ...current, chartPreferences }));
+        updateMe((current)  =>  ({ ...current, chartPreferences }));
 
       setError(null);
     } catch (e) {
@@ -155,7 +155,7 @@ export function useRivalSettings(): RivalSettings {
     }
   }, [updateMe, failed]);
 
-  const snooze = useCallback((chartId: number, days: SnoozeDays | null) => void sendSnooze(chartId, days), [sendSnooze]);
+  const snooze = useCallback((chartId: number, days: SnoozeDays | null)  =>  void sendSnooze(chartId, days), [sendSnooze]);
 
   return {
     rivals: me?.rivals  ??  [], preferences, error, changePreferences, addRival, removeRival, setRivalHidden, refresh, snoozes, snooze,

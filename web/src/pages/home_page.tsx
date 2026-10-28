@@ -11,7 +11,7 @@ export function HomePage() {
   const wasSignedOut = useRef(status === 'signed-out');
 
   // Signing in here goes on to the Rivals view, for players who have one.
-  useEffect(() => {
+  useEffect(()  => {
     if (status === 'signed-out')
       wasSignedOut.current = true;
     else if (status === 'signed-in'  &&  wasSignedOut.current  &&  me?.user.player)
@@ -37,23 +37,23 @@ export function HomePage() {
     <section>
       <h1>Hi, {user.displayName  ||  user.email}</h1>
       {user.player
-        ? (<>
+        ?  (<>
           <p>
             Your player: <strong>{playerLabel(user.player)}</strong>, PUMBILITY {formatNumber(user.player.pumbility)}.
-            {' '}{rivals.length} rival{rivals.length === 1 ? '' : 's'}.
+            {' '}{rivals.length} rival{rivals.length === 1  ?  ''  :  's'}.
           </p>
-          <p className="muted" title={user.player.lastScrapedAt ? formatTime(user.player.lastScrapedAt) : undefined}>
+          <p className="muted" title={(user.player.lastScrapedAt  ?  formatTime(user.player.lastScrapedAt)  :  undefined)}>
             <a href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(user.player.id)}/Sessions`} target="_blank" rel="noreferrer">
               Your scores
             </a>
-            {user.player.lastScrapedAt ? ` last updated ${formatAgo(user.player.lastScrapedAt)}.` : ' not updated yet.'}
+            {user.player.lastScrapedAt  ?  ` last updated ${formatAgo(user.player.lastScrapedAt)}.`  :  ' not updated yet.'}
           </p>
         </>)
-        : <p className="muted">No PIU Scores player is linked to your account yet, so there's no Rivals view for you.</p>}
+        :  <p className="muted">No PIU Scores player is linked to your account yet, so there's no Rivals view for you.</p>}
       {/* One line: the text on the left, cut short if need be, and the button at the right edge. */}
       <div className="signed-in-as">
         <span className="muted" title={user.email}>Signed in as {user.email}</span>
-        <button type="button" className="secondary small-button" onClick={() => void signOut()}>Sign out</button>
+        <button type="button" className="secondary small-button" onClick={()  =>  void signOut()}>Sign out</button>
       </div>
     </section>
   );

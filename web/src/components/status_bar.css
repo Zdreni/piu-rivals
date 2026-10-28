@@ -1,0 +1,5 @@
+/* The bar above the view while scores are loading, or with an error (see StatusBar). */
+
+.rivals .status-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #2B4034; }
+.rivals .status-text { font-size: 13px; color: #9AB3A3; max-width: 22rem; }
+.rivals .status-text.error { color: #FF5A5A; }

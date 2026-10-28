@@ -52,7 +52,7 @@ async function saveSessionScores(result, playerName, ownPlayerId, allowNewPlayer
         change: scoreUpdate.change,
         track: row.track,
         chart: row.chart,
-        player: playerId === ownPlayerId ? 'You' : playerName  ||  playerId,
+        player: (playerId === ownPlayerId  ?  'You'  :  playerName  ||  playerId),
         score: row.score,
         prevScore: scoreUpdate.prevScore,
         delta: null,
@@ -68,9 +68,9 @@ async function saveSessionScores(result, playerName, ownPlayerId, allowNewPlayer
   if (events.length === 0)
     return;
 
-  const player = playerId === ownPlayerId ? 'You' : playerName  ||  playerId;
+  const player = (playerId === ownPlayerId  ?  'You'  :  playerName  ||  playerId);
   console.log(`${TAG} sessions: ${player}, ${events.length} best-score update(s)`);
-  console.table(events.map((event) => ({
+  console.table(events.map((event)  =>  ({
     type: event.change, track: event.track, chart: event.chart, player,
     score: event.score, prevScore: event.prevScore,
   })));
@@ -90,7 +90,7 @@ async function saveScrapProgress(playerId, playerName, info, scrapedScores, isNe
     lastScrapedSession: info,
     scrapStats: {
       scores: (scrapStats.scores  ||  0) + scrapedScores,
-      sessions: (scrapStats.sessions  ||  0) + (isNewSession ? 1 : 0),
+      sessions: (scrapStats.sessions  ||  0) + (isNewSession  ?  1  :  0),
     },
   };
 

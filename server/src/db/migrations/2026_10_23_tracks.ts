@@ -7,10 +7,10 @@ const tableOptions = sql`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0
 
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.createTable('tracks')
-    .addColumn('id', 'integer', (c) => c.primaryKey().autoIncrement())
-    .addColumn('song_key', sql`varchar(191) COLLATE utf8mb4_bin`, (c) => c.notNull().unique())
-    .addColumn('title', 'varchar(255)', (c) => c.notNull())
-    .addColumn('short_title', 'varchar(255)', (c) => c.notNull())
+    .addColumn('id', 'integer', (c)  =>  c.primaryKey().autoIncrement())
+    .addColumn('song_key', sql`varchar(191) COLLATE utf8mb4_bin`, (c)  =>  c.notNull().unique())
+    .addColumn('title', 'varchar(255)', (c)  =>  c.notNull())
+    .addColumn('short_title', 'varchar(255)', (c)  =>  c.notNull())
     .modifyEnd(tableOptions)
     .execute();
 

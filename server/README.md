@@ -89,3 +89,7 @@ nginx terminates TLS on `https://api.pumpking.top:6767` and forwards to `127.0.0
 setup, including MySQL, the TLS certificate and the nginx config, is in
 [docs/vps_deployment.md](../docs/vps_deployment.md). `SCRAPE_DELAY_MS` (default 2000) is the worker's pause between page actions on
 piuscores.
+
+## Conventions
+
+Follow the coding rules in [../CODING_RULES.md](../CODING_RULES.md).

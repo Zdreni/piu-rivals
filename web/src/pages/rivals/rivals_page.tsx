@@ -2,68 +2,38 @@ import type { PlayerSummary } from '@piu-rivals/shared';
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
-import { ChartResults } from './chart_results.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { PHONE, type SidePanel } from './layout.ts';
-import { autoLevels, type Preferences, resolveLevels } from './preferences.ts';
-import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from './model.ts';
+import { PHONE } from '../../components/media.ts';
+import type { SidePanel } from './layout.ts';
+import { SelectedLevelCharts } from './selected_level_charts.tsx';
+import { autoLevels, type Preferences, resolveLevels } from '../../data/preferences.ts';
+import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivals } from '../../data/model.ts';
+import { PreferencesPanel } from './preferences_panel.tsx';
 import { RivalList } from './rival_list.tsx';
-import { chartTier, countCharts, levelStats, sortedLevels, type TabId } from './stats.ts';
+import { chartTier, countCharts, levelStats, sortedLevels, type TabId } from '../../data/stats.ts';
 import { readUiState, saveUiState, type UiState } from './ui_state.ts';
-import { useBests } from './use_bests.ts';
-import { useRivalSettings } from './use_rival_settings.ts';
-import { PreferenceControls, WindowHeader } from './window_header.tsx';
-import './rivals.css';
+import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
+import { useBests } from '../../data/use_bests.ts';
+import { useRivalSettings } from '../../data/use_rival_settings.ts';
+import { StatusBar } from '../../components/status_bar.tsx';
+import '../../score_views.css';
 
-// While the page is visible, scores and the rival list are loaded again every few minutes, and when the page
-// comes back into view after a while.
-const REFRESH_MS = 5 * 60 * 1000;
-const RETURN_REFRESH_MS = 60 * 1000;
 // While charts are snoozed, the time is checked this often, to wake them and count down the time they have left.
 const SNOOZE_TICK_MS = 60 * 1000;
-
-
-export function useAutoRefresh(refresh: () => void) {
-  const latest = useRef(refresh);
-  latest.current = refresh;
-
-  useEffect(() => {
-    let last = Date.now();
-    const run = () => {
-      last = Date.now();
-      latest.current();
-    };
-
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible')
-        run();
-    }, REFRESH_MS);
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible'  &&  Date.now() - last > RETURN_REFRESH_MS)
-        run();
-    };
-
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, []);
-}
 
 
 // The time now, in ms since epoch, updated every SNOOZE_TICK_MS while `ticking`.
 function useClock(ticking: boolean) {
   const [now, setNow] = useState(Date.now);
 
-  useEffect(() => {
+  useEffect(()  => {
     if (! ticking)
       return;
 
     setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), SNOOZE_TICK_MS);
-    return () => clearInterval(timer);
+
+    const timer = setInterval(()  =>  setNow(Date.now()), SNOOZE_TICK_MS);
+    return ()  =>  clearInterval(timer);
   }, [ticking]);
 
   return now;
@@ -75,32 +45,38 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const { rivals, preferences, snoozes } = settings;
   const now = useClock(snoozes.size > 0);
   const { scoreCap, npMinimalRivals } = preferences;
-  const playerIds = useMemo(() => [me.id, ...rivals.map((rival) => rival.id)], [me.id, rivals]);
+  const playerIds = useMemo(()  =>  [me.id, ...rivals.map((rival)  =>  rival.id)], [me.id, rivals]);
   const data = useBests(playerIds);
   // Until the level range is set, it follows your scores; see below.
-  const autoRange = useMemo(() => {
-    const charts = [...data.bests.get(me.id)?.keys()  ??  []].map((chartId) => data.charts.get(chartId));
-    return autoLevels(charts.flatMap((chart) => (chart ? [chart.level] : [])));
+  const autoRange = useMemo(()  => {
+    const charts = [...data.bests.get(me.id)?.keys()  ??  []].map((chartId)  =>  data.charts.get(chartId));
+    return autoLevels(charts.flatMap((chart)  =>  (chart  ?  [chart.level]  :  [])));
   }, [data.version, data.charts, data.bests, me.id]);
+
   const levelRange = resolveLevels(preferences, autoRange);
   const { minLevel, maxLevel } = levelRange;
   // The first time your scores are in, the level range they give is saved, so it doesn't move later without you changing
   // it. Once a page: if saving fails, it isn't tried again until the page is opened again. With no scores yet, the range
   // isn't saved and stays at its default.
   const levelsSaved = useRef(false);
-  useEffect(() => {
+
+  useEffect(()  => {
     if (levelsSaved.current  ||  ! data.ready  ||  ! data.bests.get(me.id)?.size)
       return;
 
     levelsSaved.current = true;
+
     const changes: Partial<Preferences> = {};
     if (preferences.minLevel === null)
       changes.minLevel = minLevel;
+
     if (preferences.maxLevel === null)
       changes.maxLevel = maxLevel;
+
     if (Object.keys(changes).length)
       settings.changePreferences(changes);
   }, [data.ready, data.version, me.id, preferences.minLevel, preferences.maxLevel, minLevel, maxLevel]);
+
   const [ui, setUi] = useState<UiState>(readUiState);
   const [focused, setFocused] = useState<string | null>(null);
   // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused.
@@ -110,44 +86,46 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const [sideOpen, setSideOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
 
-  useAutoRefresh(() => {
+  useAutoRefresh(()  => {
     void settings.refresh();
     void data.sync();
   });
 
-  const changeUi = useCallback((changes: Partial<UiState>) => {
-    setUi((current) => {
+  const changeUi = useCallback((changes: Partial<UiState>)  => {
+    setUi((current)  => {
       const next = { ...current, ...changes };
       saveUiState(next);
       return next;
     });
   }, []);
 
-  const selectTab = useCallback((tab: TabId) => changeUi({ selectedTab: tab }), [changeUi]);
+  const selectTab = useCallback((tab: TabId)  =>  changeUi({ selectedTab: tab }), [changeUi]);
 
   // The back button slides a side panel out rather than leaving the page: sliding one in adds a step to the browser's
   // history, which sliding it out any other way takes back. A maximized card opened over it adds its own step on top
-  // (see ChartResults), and going back from that one leaves the panel in.
+  // (see ChartCardMaximized), and going back from that one leaves the panel in.
   const sideOpenRef = useRef(sideOpen);
   sideOpenRef.current = sideOpen;
-  useEffect(() => {
+
+  useEffect(()  => {
     if (! sideOpen)
       return;
 
     if (! window.history.state?.sideOpen)
       window.history.pushState({ ...window.history.state, sideOpen: true }, '');
-    const back = () => ! window.history.state?.sideOpen  &&  setSideOpen(false);
+
+    const back = ()  =>  ! window.history.state?.sideOpen  &&  setSideOpen(false);
     window.addEventListener('popstate', back);
-    return () => {
+    return ()  => {
       window.removeEventListener('popstate', back);
       // A moment later, so a panel slid in again at once (as React's strict mode does) keeps its step.
-      window.setTimeout(() => ! sideOpenRef.current  &&  window.history.state?.sideOpen  &&  window.history.back());
+      window.setTimeout(()  =>  ! sideOpenRef.current  &&  window.history.state?.sideOpen  &&  window.history.back());
     };
   }, [sideOpen]);
 
   // On phones, while a side panel is in, a tap on the levels (but on their top bar's buttons) slides it out; a tap on a
   // bar selects its level too.
-  const closeSideOnLevels = (event: MouseEvent) => {
+  const closeSideOnLevels = (event: MouseEvent)  => {
     const target = event.target as Element;
     if (! sideOpen  ||  ! PHONE.matches  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
       return;
@@ -156,15 +134,17 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       event.preventDefault();
       event.stopPropagation();
     }
+
     toggleSide(sidePanel);
   };
 
   // The other panel's button swaps the panels in place.
-  const toggleSide = (panel: SidePanel) => {
+  const toggleSide = (panel: SidePanel)  => {
     if (sideOpen  &&  panel !== sidePanel) {
       setSidePanel(panel);
       return;
     }
+
     if (sideOpen) {
       setSideOpen(false);
       return;
@@ -177,76 +157,77 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
     // The other panel takes the last one's place off the edge first, and slides in from there once it's laid out.
     setSidePanel(panel);
-    requestAnimationFrame(() => requestAnimationFrame(() => setSideOpen(true)));
+    requestAnimationFrame(()  =>  requestAnimationFrame(()  =>  setSideOpen(true)));
   };
 
-  const focus = (playerId: string | null) => {
+  const focus = (playerId: string | null)  => {
     setFocused(playerId);
     if (solo !== playerId)
       setSolo(null);
   };
 
   const allCharts = useMemo(
-    () => buildCharts(data.charts, data.bests, me.id, rivals.map((rival) => ({ id: rival.id, name: rival.name  ??  rival.id })), scoreCap,
+    ()  =>  buildCharts(data.charts, data.bests, me.id, rivals.map((rival)  =>  ({ id: rival.id, name: rival.name  ??  rival.id })), scoreCap,
       { minLevel, maxLevel }),
     [data.version, data.charts, data.bests, me.id, rivals, scoreCap, minLevel, maxLevel],
   );
 
-  const soloRival = rivals.some((rival) => rival.id === solo) ? solo : null;
+  const soloRival = (rivals.some((rival)  =>  rival.id === solo)  ?  solo  :  null);
   // A solo rival is always counted by results, whatever the setting says.
-  const countBy = soloRival ? 'results' : preferences.countBy;
-  const view = useMemo(() => {
-    const hidden = new Set(rivals.filter((rival) => rival.hidden).map((rival) => rival.id));
+  const countBy = (soloRival  ?  'results'  :  preferences.countBy);
+  const view = useMemo(()  => {
+    const hidden = new Set(rivals.filter((rival)  =>  rival.hidden).map((rival)  =>  rival.id));
     // A solo rival is compared alone, whatever the stored selection says.
-    const included = (playerId: string) => (soloRival ? playerId === soloRival : ! hidden.has(playerId));
+    const included = (playerId: string)  =>  (soloRival  ?  playerId === soloRival  :  ! hidden.has(playerId));
     const charts = allCharts
-      .map((chart) => withRivals(chart, (rival) => included(rival.playerId)))
-      .filter((chart): chart is ChartRow => chart !== null)
+      .map((chart)  =>  withRivals(chart, (rival)  =>  included(rival.playerId)))
+      .filter((chart): chart is ChartRow  =>  chart !== null)
       // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((chart) => ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals)
-      .map((chart) => {
+      .filter((chart)  =>  ! chart.unplayed  ||  chart.rivals.length >= npMinimalRivals)
+      .map((chart)  => {
         const until = snoozes.get(chart.id);
-        return until !== undefined  &&  until > now ? { ...chart, snoozedUntil: until } : chart;
+        return ((until !== undefined  &&  until > now)  ?  { ...chart, snoozedUntil: until }  :  chart);
       });
 
     // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
     // listed as snoozed, the soonest to wake first.
-    const capHidden = charts.filter((chart) => chart.snoozedUntil === null  &&  chartTier(chart) === 'hidden')
-      .map((chart) => ({ ...chart, weight: targetWeight(chart.rivals.map((rival) => rival.realDelta)) }));
-    const snoozed = charts.filter((chart) => chart.snoozedUntil !== null)
-      .sort((a, b) => a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
+    const capHidden = charts.filter((chart)  =>  chart.snoozedUntil === null  &&  chartTier(chart) === 'hidden')
+      .map((chart)  =>  ({ ...chart, weight: targetWeight(chart.rivals.map((rival)  =>  rival.realDelta)) }));
+
+    const snoozed = charts.filter((chart)  =>  chart.snoozedUntil !== null)
+      .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
     return { charts, capHidden, snoozed, levels: sortedLevels(charts) };
   }, [allCharts, rivals, soloRival, npMinimalRivals, snoozes, now]);
 
   const { charts, capHidden, snoozed, levels } = view;
-  const selectedLevel = ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel) ? ui.selectedLevel : levels[0]  ??  null;
+  const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
 
-  useEffect(() => {
+  useEffect(()  => {
     if (levels.length  &&  selectedLevel !== ui.selectedLevel)
       changeUi({ selectedLevel });
   }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
 
   const totals = countCharts(charts, countBy);
   const myStats = levelStats(charts);
-  const atLevel = (chart: ChartRow) => chart.chart === selectedLevel;
-  const emptyMessage = ! rivals.length
-    ? 'Add rivals on the Others tab on the left to compare your scores with theirs.'
-    : ! data.ready
-      ? 'Loading scores…'
-      : ! allCharts.length
-        ? 'No scores for your rivals yet. They show up once your rivals are scraped.'
-        : ! charts.length
-          ? 'No charts for the selected rivals — check some rivals on the left.'
-          : null;
+  const atLevel = (chart: ChartRow)  =>  chart.chart === selectedLevel;
+  const emptyMessage = (! rivals.length
+    ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'
+    :  ! data.ready
+      ?  'Loading scores…'
+      :  ! allCharts.length
+        ?  'No scores for your rivals yet. They show up once your rivals are scraped.'
+        :  ! charts.length
+          ?  'No charts for the selected rivals — check some rivals on the left.'
+          :  null);
 
-  const error = settings.error  ??  (data.error ? `Couldn't load scores: ${data.error}` : null);
-  const status = error ? { text: error, error: true } : ! data.ready ? { text: 'Loading scores…', error: false } : null;
+  const error = settings.error  ??  (data.error  ?  `Couldn't load scores: ${data.error}`  :  null);
+  const status = (error  ?  { text: error, error: true }  :  ! data.ready  ?  { text: 'Loading scores…', error: false }  :  null);
 
   return (
     <div className="rivals">
-      <WindowHeader status={status} />
+      <StatusBar status={status} />
       <div
-        className={`dlg-main${sideOpen ? ' side-open' : ''}${sidePanel === 'preferences' ? ' side-preferences' : ''}`}
+        className={`dlg-main${(sideOpen  ?  ' side-open'  :  '')}${(sidePanel === 'preferences'  ?  ' side-preferences'  :  '')}`}
         onClickCapture={closeSideOnLevels}
       >
         <RivalList
@@ -258,32 +239,27 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           focused={focused}
           solo={soloRival}
           // In solo mode the solo rival's stats are the header's, with all the settings applied.
-          soloStats={soloRival ? totals : null}
+          soloStats={(soloRival  ?  totals  :  null)}
           myStats={myStats}
           countBy={countBy}
-          onTab={(rivalTab) => changeUi({ rivalTab })}
+          onTab={(rivalTab)  =>  changeUi({ rivalTab })}
           onFocus={focus}
           onSolo={setSolo}
-          onToggle={(playerId, on) => settings.setRivalHidden(playerId, ! on)}
+          onToggle={(playerId, on)  =>  settings.setRivalHidden(playerId, ! on)}
           onRemove={settings.removeRival}
           onAdd={settings.addRival}
         />
-        <div className="prefs-panel" aria-label="Preferences">
-          <div className="prefs-top">Preferences</div>
-          <div className="prefs-controls">
-            <PreferenceControls preferences={preferences} levels={levelRange} solo={!! soloRival} onChange={settings.changePreferences} />
-          </div>
-        </div>
+        <PreferencesPanel preferences={preferences} levels={levelRange} solo={!! soloRival} onChange={settings.changePreferences} />
         <ChartsGroups
           charts={charts}
           selectedLevel={selectedLevel}
           countBy={countBy}
           showTies={!! soloRival}
-          sidePanel={sideOpen ? sidePanel : null}
-          onSelect={(level) => changeUi({ selectedLevel: level })}
+          sidePanel={(sideOpen  ?  sidePanel  :  null)}
+          onSelect={(level)  =>  changeUi({ selectedLevel: level })}
           onToggleSide={toggleSide}
         />
-        <ChartResults
+        <SelectedLevelCharts
           // Another level starts with every card folded again.
           key={selectedLevel}
           levelCharts={charts.filter(atLevel)}

@@ -6,7 +6,7 @@ import {
 
 const TIMEOUT_MS = 30000;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number)  =>  new Promise((resolve)  =>  setTimeout(resolve, ms));
 
 
 async function waitFor(check: () => Promise<boolean>, description: string, timeoutMs = TIMEOUT_MS) {
@@ -49,8 +49,9 @@ export class SessionsBrowser {
     });
 
     await this.page.waitForSelector('main h5', { timeout: TIMEOUT_MS });
+
     const cards = await this.page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 })
-      .then(() => true, () => false);
+      .then(()  =>  true, ()  =>  false);
 
     if (! /Sessions$/i.test((await this.page.textContent('main h5'))?.trim()  ||  ''))
       throw new Error(`No Sessions page for player ${playerId}`);
@@ -65,34 +66,36 @@ export class SessionsBrowser {
 
 
   private cardSignature(): Promise<string> {
-    return this.page.$$eval('[data-testid="session-card"]', (cards) => cards.map((card) =>
+    return this.page.$$eval('[data-testid="session-card"]', (cards)  =>  cards.map((card)  =>
       `${card.querySelector('.sbd-card-when')?.textContent}|${card.querySelector('.sbd-card-meta')?.textContent}`).join('\n'));
   }
 
 
   async goToPage(direction: 'older' | 'newer') {
     await sleep(config.scrapeDelayMs);
+
     const before = await this.cardSignature();
-    const label = direction === 'older' ? 'Next page' : 'Previous page';
+    const label = (direction === 'older'  ?  'Next page'  :  'Previous page');
     await this.page.click(`[data-testid="session-pagination"] button[aria-label="${label}"]`);
-    await waitFor(async () => await this.cardSignature() !== before, `the ${direction} Sessions page`);
+    await waitFor(async ()  =>  await this.cardSignature() !== before, `the ${direction} Sessions page`);
   }
 
 
   // PUMBILITY of the open session; it may render a moment after the cards.
   async readOpenPumbility(): Promise<number | null> {
     let pumbility: number | null = null;
-    await waitFor(async () => {
+
+    await waitFor(async ()  => {
       pumbility = parseOpenSession(await this.openSessionHtml())?.pumbility  ??  null;
       return pumbility !== null;
-    }, 'PUMBILITY', 3000).catch(() => {});
+    }, 'PUMBILITY', 3000).catch(()  =>  {});
 
     return pumbility;
   }
 
 
   private async openSessionHtml(): Promise<string> {
-    return this.page.locator('[data-testid="session-hero"]').evaluate((hero) => hero.outerHTML).catch(() => '');
+    return this.page.locator('[data-testid="session-hero"]').evaluate((hero)  =>  hero.outerHTML).catch(()  =>  '');
   }
 
 
@@ -100,7 +103,7 @@ export class SessionsBrowser {
   // and the card as it reads now: the session may have grown since `card` was read.
   async openSession(found: SessionCard): Promise<{ html: string; card: SessionCard }> {
     const { cards } = await this.readPage();
-    const index = cards.findIndex((c) => sameCard(c, found));
+    const index = cards.findIndex((c)  =>  sameCard(c, found));
     if (index < 0)
       throw new Error(`Session "${found.title}" (${found.timestamp}) is no longer on its page`);
 
@@ -110,10 +113,11 @@ export class SessionsBrowser {
     await this.page.locator('[data-testid="session-card"]').nth(index).click();
 
     let mismatches: string[] = [];
-    await waitFor(async () => {
+
+    await waitFor(async ()  => {
       mismatches = openSessionMismatches(parseOpenSession(await this.openSessionHtml()), card);
       return mismatches.length === 0  &&  await this.page.locator('[data-testid="session-all-plays"]').count() > 0;
-    }, `session "${card.title}" (${card.timestamp}) to open`).catch((error) => {
+    }, `session "${card.title}" (${card.timestamp}) to open`).catch((error)  => {
       throw new Error(`${error.message}: ${mismatches.join('; ')  ||  'all plays list is missing'}`);
     });
 
@@ -127,10 +131,11 @@ export class SessionsBrowser {
 
     const rows = this.page.locator('[data-testid="session-all-plays"] [data-testid="session-score-row"]');
     let shown = 0;
-    await waitFor(async () => {
+
+    await waitFor(async ()  => {
       shown = await rows.count();
-      return total === null ? await showAll.count() === 0 : shown >= total;
-    }, `${total === null ? 'all' : `all ${total}`} plays of "${card.title}" (${card.timestamp}) to load`).catch((error) => {
+      return (total === null  ?  await showAll.count() === 0  :  shown >= total);
+    }, `${(total === null  ?  'all'  :  `all ${total}`)} plays of "${card.title}" (${card.timestamp}) to load`).catch((error)  => {
       throw new Error(`${error.message}: ${shown} shown`);
     });
 

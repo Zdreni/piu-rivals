@@ -10,7 +10,7 @@ export function isRivalsPage() {
 }
 
 
-const nameKey = (name) => displayName(name).toLowerCase();
+const nameKey = (name)  =>  displayName(name).toLowerCase();
 
 
 // Roster rows only show names, so IDs come from stored players. Full names (with the "#1234" tag)
@@ -19,7 +19,7 @@ function rivalIdsByName(players) {
   const exact = new Map();
   const loose = new Map();
 
-  const add = (name, playerId) => {
+  const add = (name, playerId)  => {
     if (! name  ||  ! playerId)
       return;
 
@@ -36,7 +36,7 @@ function rivalIdsByName(players) {
   for (const [playerId, player] of Object.entries(players  ||  {}))
     add(player?.name, playerId);
 
-  return (name) => exact.get(name) ?? loose.get(nameKey(name)) ?? null;
+  return (name)  =>  exact.get(name)  ??  loose.get(nameKey(name))  ??  null;
 }
 
 
@@ -54,7 +54,7 @@ function createSessionsLink(compareButton, playerId) {
 
 
 function storedOnlyRow(playerId, player) {
-  const name = typeof player?.name === 'string'  &&  player.name ? player.name : playerId;
+  const name = ((typeof player?.name === 'string'  &&  player.name)  ?  player.name  :  playerId);
   const row = document.createElement('div');
   row.className = 'rvl-row';
   row.style.opacity = '0.75';
@@ -72,9 +72,9 @@ function storedOnlyRow(playerId, player) {
 
   const meta = document.createElement('div');
   meta.className = 'rvl-row-meta';
-  meta.textContent = typeof player?.pumbility === 'number'
-    ? `Stored only · PUMBILITY ${player.pumbility.toLocaleString('en-US')}`
-    : 'Stored only';
+  meta.textContent = (typeof player?.pumbility === 'number'
+    ?  `Stored only · PUMBILITY ${player.pumbility.toLocaleString('en-US')}`
+    :  'Stored only');
   main.append(nameEl, meta);
 
   row.append(avatar, main, createSessionsLink(null, playerId));
@@ -87,19 +87,19 @@ function storedOnlyRow(playerId, player) {
 function renderStoredOnly(roster, players, ownPlayerId, rosterIds) {
   const existing = document.querySelector(`[${STORED_ROSTER_ATTR}]`);
   const activeTab = text(document.querySelector('.mud-tab.mud-tab-active'));
-  const storedOnly = roster  &&  (! activeTab  ||  activeTab === 'Your rivals')
-    ? Object.entries(players  ||  {})
-      .filter(([playerId]) => playerId !== ownPlayerId  &&  ! rosterIds.has(playerId))
-      .sort(([, a], [, b]) => (b?.pumbility ?? -1) - (a?.pumbility ?? -1)
-        ||  String(a?.name ?? '').localeCompare(String(b?.name ?? '')))
-    : [];
+  const storedOnly = ((roster  &&  (! activeTab  ||  activeTab === 'Your rivals'))
+    ?  Object.entries(players  ||  {})
+      .filter(([playerId])  =>  playerId !== ownPlayerId  &&  ! rosterIds.has(playerId))
+      .sort(([, a], [, b])  =>  (b?.pumbility  ??  -1) - (a?.pumbility  ??  -1)
+        ||  String(a?.name  ??  '').localeCompare(String(b?.name  ??  '')))
+    :  []);
   if (! storedOnly.length) {
     existing?.remove();
     return;
   }
 
   // Re-rendered only when the content changes, so our own DOM edits don't retrigger it endlessly.
-  const signature = JSON.stringify(storedOnly.map(([playerId, p]) => [playerId, p?.name, p?.pumbility]));
+  const signature = JSON.stringify(storedOnly.map(([playerId, p])  =>  [playerId, p?.name, p?.pumbility]));
   if (existing?.getAttribute(STORED_ROSTER_ATTR) === signature  &&  existing.previousElementSibling === roster)
     return;
 
@@ -116,7 +116,7 @@ function renderStoredOnly(roster, players, ownPlayerId, rosterIds) {
 
   const list = document.createElement('div');
   list.className = 'rvl-roster';
-  list.append(...storedOnly.map(([playerId, player]) => storedOnlyRow(playerId, player)));
+  list.append(...storedOnly.map(([playerId, player])  =>  storedOnlyRow(playerId, player)));
   block.append(caption, list);
   roster.after(block);
 }
@@ -130,7 +130,7 @@ export async function runRivalsPage() {
     return;
 
   const roster = document.querySelector('[data-testid="rival-roster"]');
-  const rows = roster ? roster.querySelectorAll('.rvl-row') : [];
+  const rows = (roster  ?  roster.querySelectorAll('.rvl-row')  :  []);
 
   const { players, ownPlayerId } = await chrome.storage.local.get(['players', 'ownPlayerId']);
   const rivalId = rivalIdsByName(players);
@@ -149,7 +149,7 @@ export async function runRivalsPage() {
     if (! playerId)
       continue;
 
-    const compare = [...row.querySelectorAll('button')].find((button) => text(button) === 'Compare');
+    const compare = [...row.querySelectorAll('button')].find((button)  =>  text(button) === 'Compare');
     const link = createSessionsLink(compare, playerId);
     if (compare)
       compare.after(link);

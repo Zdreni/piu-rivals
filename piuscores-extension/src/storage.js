@@ -16,9 +16,9 @@ export const MAX_NP_RIVALS = 5;
 export const COUNT_BY_OPTIONS = ['results', 'charts'];
 
 // Names carry a "#1234" tag suffix; it's left out when showing them.
-export const displayName = (name) => name.replace(/\s*#\d{4}$/, '');
+export const displayName = (name)  =>  name.replace(/\s*#\d{4}$/, '');
 
-export const storageKey = (row) => `${row.track}|${row.chart}`;
+export const storageKey = (row)  =>  `${row.track}|${row.chart}`;
 
 
 // New players are only added by the scrap button on their Sessions page; automatic page scraping
@@ -28,31 +28,31 @@ export function isKnownPlayer(players, playerId, ownPlayerId) {
 }
 
 
-export const isScrapLevel = (chart) => {
+export const isScrapLevel = (chart)  => {
   const level = chart.match(/\d+/);
   return level !== null  &&  Number(level[0]) >= MIN_SCRAPE_LEVEL;
 };
 
 
 // Positive = I'm ahead, same sign convention as the site. Scores above the cap compare as equal to it.
-export const delta = (mine, theirs, cap = MAX_SCORE_CAP) =>
-  mine === null  ||  mine === undefined  ||  theirs === null ? null : Math.min(mine, cap) - Math.min(theirs, cap);
+export const delta = (mine, theirs, cap = MAX_SCORE_CAP)  =>
+  ((mine === null  ||  mine === undefined  ||  theirs === null)  ?  null  :  Math.min(mine, cap) - Math.min(theirs, cap));
 
 
-export const targetWeight = (diffs) =>
-  diffs.reduce((acc, d) => acc + (d !== null  &&  d < 0 ? Math.sqrt(-d) : 0), 0);
+export const targetWeight = (diffs)  =>
+  diffs.reduce((acc, d)  =>  acc + ((d !== null  &&  d < 0)  ?  Math.sqrt(-d)  :  0), 0);
 
 
-export const byTargetWeight = (a, b) =>
+export const byTargetWeight = (a, b)  =>
   b.weight - a.weight  ||  Number(b.unplayed) - Number(a.unplayed)  ||  a.track.localeCompare(b.track);
 
 
-export const leadWeight = (chart) =>
-  chart.rivals.reduce((acc, rival) =>
-    acc + (rival.delta !== null  &&  rival.delta > 0 ? Math.sqrt(rival.delta) : 0), 0);
+export const leadWeight = (chart)  =>
+  chart.rivals.reduce((acc, rival)  =>
+    acc + ((rival.delta !== null  &&  rival.delta > 0)  ?  Math.sqrt(rival.delta)  :  0), 0);
 
 
-export const byLeadWeight = (a, b) =>
+export const byLeadWeight = (a, b)  =>
   leadWeight(b) - leadWeight(a)  ||  a.track.localeCompare(b.track);
 
 
@@ -60,7 +60,7 @@ export const byLeadWeight = (a, b) =>
 export async function migrateStorage() {
   const { storageVersion, results } = await chrome.storage.local.get(['storageVersion', 'results']);
   // Data saved before versioning has no storageVersion and is in the version 1 format.
-  const version = storageVersion ?? (results ? 1 : STORAGE_VERSION);
+  const version = storageVersion  ??  (results  ?  1  :  STORAGE_VERSION);
   if (version === STORAGE_VERSION) {
     if (storageVersion === undefined)
       await chrome.storage.local.set({ storageVersion: STORAGE_VERSION });
@@ -75,10 +75,10 @@ export async function migrateStorage() {
 
   const updates = { storageVersion: STORAGE_VERSION };
   if (version < 2  &&  results) {
-    updates.results = Object.fromEntries(Object.entries(results).map(([key, scores]) => [
+    updates.results = Object.fromEntries(Object.entries(results).map(([key, scores])  =>  [
       key,
-      Object.fromEntries(Object.entries(scores  ||  {}).map(([playerId, score]) =>
-        [playerId, typeof score === 'number' ? { bestScore: score } : score])),
+      Object.fromEntries(Object.entries(scores  ||  {}).map(([playerId, score])  =>
+        [playerId, typeof score === 'number'  ?  { bestScore: score }  :  score])),
     ]));
   }
 
@@ -89,9 +89,9 @@ export async function migrateStorage() {
 
 export async function loadCharts() {
   const all = await chrome.storage.local.get(null);
-  const players = all.players  &&  typeof all.players === 'object' ? all.players : {};
+  const players = ((all.players  &&  typeof all.players === 'object')  ?  all.players  :  {});
 
-  const playerName = (playerId) => {
+  const playerName = (playerId)  => {
     const player = players[playerId];
     if (player  &&  typeof player === 'object'  &&  typeof player.name === 'string')
       return player.name;
@@ -99,8 +99,8 @@ export async function loadCharts() {
     return playerId;
   };
 
-  const ownPlayerId = typeof all.ownPlayerId === 'string' ? all.ownPlayerId : null;
-  const results = all.results  &&  typeof all.results === 'object' ? all.results : {};
+  const ownPlayerId = (typeof all.ownPlayerId === 'string'  ?  all.ownPlayerId  :  null);
+  const results = ((all.results  &&  typeof all.results === 'object')  ?  all.results  :  {});
   const { scoreCap } = parsePreferences(all.preferences);
   const charts = [];
 
@@ -110,12 +110,12 @@ export async function loadCharts() {
 
     const [track, chart] = key.split(/\|(?=[^|]*$)/);
     const scores = rawScores;
-    const myRecord = ownPlayerId ? scores[ownPlayerId] : null;
-    const mine = myRecord?.bestScore ?? null;
+    const myRecord = (ownPlayerId  ?  scores[ownPlayerId]  :  null);
+    const mine = myRecord?.bestScore  ??  null;
     const rivals = [
       ...Object.entries(scores)
-        .filter(([playerId]) => playerId !== ownPlayerId)
-        .map(([playerId, { bestScore: score, bestScoreDate, lastTryDate }]) => ({
+        .filter(([playerId])  =>  playerId !== ownPlayerId)
+        .map(([playerId, { bestScore: score, bestScoreDate, lastTryDate }])  =>  ({
           player: playerName(playerId),
           playerId,
           score,
@@ -125,7 +125,7 @@ export async function loadCharts() {
           // Uncapped difference, for display only.
           realDelta: delta(mine, score),
         })),
-    ].sort((a, b) => b.score - a.score);
+    ].sort((a, b)  =>  b.score - a.score);
 
     if (rivals.length) {
       charts.push({
@@ -135,7 +135,7 @@ export async function loadCharts() {
         myDates: { bestScoreDate: myRecord?.bestScoreDate, lastTryDate: myRecord?.lastTryDate },
         rivals,
         unplayed: mine === null,
-        weight: targetWeight(rivals.map((rival) => rival.delta)),
+        weight: targetWeight(rivals.map((rival)  =>  rival.delta)),
       });
     }
   }
@@ -148,21 +148,21 @@ export async function loadCharts() {
 export async function loadPlayers() {
   const { players, ownPlayerId, results } = await chrome.storage.local.get(['players', 'ownPlayerId', 'results']);
   const bestCounts = {};
-  for (const scores of Object.values(results  &&  typeof results === 'object' ? results : {})) {
+  for (const scores of Object.values(((results  &&  typeof results === 'object')  ?  results  :  {}))) {
     for (const playerId of Object.keys(scores  ||  {}))
       bestCounts[playerId] = (bestCounts[playerId]  ||  0) + 1;
   }
 
   return {
-    players: players  &&  typeof players === 'object' ? players : {},
-    ownPlayerId: typeof ownPlayerId === 'string' ? ownPlayerId : null,
+    players: ((players  &&  typeof players === 'object')  ?  players  :  {}),
+    ownPlayerId: (typeof ownPlayerId === 'string'  ?  ownPlayerId  :  null),
     bestCounts,
   };
 }
 
 
 // Snaps days to the longest try cooldown option not above them.
-export const clampTryCooldown = (days) => TRY_COOLDOWN_OPTIONS.findLast((option) => option <= days) ?? 0;
+export const clampTryCooldown = (days)  =>  TRY_COOLDOWN_OPTIONS.findLast((option)  =>  option <= days)  ??  0;
 
 
 // The try cooldown option `step` options away from `days`, kept within the options.
@@ -182,22 +182,22 @@ export function daysSince(date) {
 }
 
 
-export const clampNpMinimalRivals = (count) => Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
+export const clampNpMinimalRivals = (count)  =>  Math.min(MAX_NP_RIVALS, Math.max(MIN_NP_RIVALS, Math.round(count)));
 
 
-export const clampScoreCap = (cap) =>
+export const clampScoreCap = (cap)  =>
   Math.min(MAX_SCORE_CAP, Math.max(MIN_SCORE_CAP, Math.round(cap / SCORE_CAP_STEP) * SCORE_CAP_STEP));
 
 
 function parsePreferences(preferences) {
-  const prefs = preferences  &&  typeof preferences === 'object' ? preferences : {};
+  const prefs = ((preferences  &&  typeof preferences === 'object')  ?  preferences  :  {});
   return {
-    hiddenRivals: Array.isArray(prefs.hiddenRivals) ? prefs.hiddenRivals : [],
-    scoreCap: typeof prefs.scoreCap === 'number' ? clampScoreCap(prefs.scoreCap) : MAX_SCORE_CAP,
+    hiddenRivals: (Array.isArray(prefs.hiddenRivals)  ?  prefs.hiddenRivals  :  []),
+    scoreCap: (typeof prefs.scoreCap === 'number'  ?  clampScoreCap(prefs.scoreCap)  :  MAX_SCORE_CAP),
     // Preferences saved before the rename keep their days under `retryCooldown`.
-    tryCooldown: clampTryCooldown(prefs.tryCooldown ?? prefs.retryCooldown ?? 0),
-    npMinimalRivals: typeof prefs.npMinimalRivals === 'number' ? clampNpMinimalRivals(prefs.npMinimalRivals) : MIN_NP_RIVALS,
-    countBy: COUNT_BY_OPTIONS.includes(prefs.countBy) ? prefs.countBy : COUNT_BY_OPTIONS[0],
+    tryCooldown: clampTryCooldown(prefs.tryCooldown  ??  prefs.retryCooldown  ??  0),
+    npMinimalRivals: (typeof prefs.npMinimalRivals === 'number'  ?  clampNpMinimalRivals(prefs.npMinimalRivals)  :  MIN_NP_RIVALS),
+    countBy: (COUNT_BY_OPTIONS.includes(prefs.countBy)  ?  prefs.countBy  :  COUNT_BY_OPTIONS[0]),
   };
 }
 
@@ -226,7 +226,7 @@ export function withRivals(chart, keep) {
   if (! rivals.length)
     return null;
 
-  return { ...chart, rivals, weight: targetWeight(rivals.map((rival) => rival.delta)) };
+  return { ...chart, rivals, weight: targetWeight(rivals.map((rival)  =>  rival.delta)) };
 }
 
 
@@ -252,7 +252,7 @@ export async function deletePlayer(playerId) {
 
   const updates = { players: restPlayers, results: restResults };
   if (preferences?.hiddenRivals?.includes(playerId)) {
-    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== playerId) };
+    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id)  =>  id !== playerId) };
   }
 
   await chrome.storage.local.set(updates);

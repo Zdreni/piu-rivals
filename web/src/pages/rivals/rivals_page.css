@@ -1,0 +1,60 @@
+/* The Rivals page's columns: how they're laid out and slide on each screen. */
+
+/* Side column */
+
+/* The rivals and the preferences take turns in this column, which slides in from the left edge (see the side panels
+   below). */
+.rivals { --side-width: 250px; }
+.rivals .rival-list, .rivals .prefs-panel { width: var(--side-width); }
+.rivals .dlg-main.side-preferences .rival-list { display: none; }
+.rivals .dlg-main.side-preferences .prefs-panel { display: flex; }
+
+/* Side panels on wide screens: the rivals or the preferences wait off the left edge until the levels' top bar slides
+   one in; the levels follow it, and the results give it their room. Out of sight, they can't be tabbed to. */
+
+@media (min-width: 1001px) {
+  .rivals .rival-list, .rivals .prefs-panel { margin-left: calc(-1 * var(--side-width)); visibility: hidden;
+                                              transition: margin-left .3s ease, visibility 0s .3s; }
+  .rivals .dlg-main.side-open .rival-list, .rivals .dlg-main.side-open .prefs-panel { margin-left: 0; visibility: visible;
+                                                                                      transition-delay: 0s; }
+}
+
+/* Narrow screens (e.g. a tablet in portrait) and phones: the levels beside the results, and the page scrolls. The levels
+   get the width the results don't need, up to a limit; they are as tall as the screen and stick to its top while the
+   page scrolls through the results, and scroll on their own if they don't fit. The results' tabs stick to the top too,
+   so only the cards scroll.
+   The rivals wait off the left edge, --side wide. The Rivals button in the levels' top bar slides the whole row right
+   by that width: the rivals come in and the levels follow. On phones the rivals are as wide as the results, which go
+   off the right edge; on tablets they are as wide as on wide screens, and the results shrink to make room for them,
+   the levels too (down to what bars with three 3-digit counts need) if the results would get narrower than 300px. The row is laid out in widths of the view (cqw), since
+   it is wider than the view; --levels is the levels' width. The preferences' button slides the preferences in the
+   same way, in the rivals' place. */
+
+@media (max-width: 1000px) {
+  .rivals .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); --side: calc(100cqw - var(--levels));
+                      display: grid; width: calc(100cqw + var(--side));
+                      grid-template-columns: var(--side) var(--levels) calc(100cqw - var(--levels));
+                      grid-template-rows: auto; margin-left: calc(-1 * var(--side));
+                      transition: grid-template-columns .3s ease, width .3s ease, margin-left .3s ease; }
+  /* The shift is a margin, not a transform: a transform moves on its own, ahead of the columns whenever the browser
+     is slow to lay them out, which pushes the levels past the screen's left edge and back while they change width. */
+  .rivals .dlg-main.side-open { margin-left: 0; }
+  .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
+}
+
+@media (min-width: 601px) and (max-width: 1000px) {
+  .rivals .dlg-main { --side: var(--side-width); }
+  .rivals .dlg-main.side-open { --levels: min(340px, max(176px, 100cqw - var(--side) - 300px)); width: 100cqw;
+      grid-template-columns: var(--side) var(--levels) calc(100cqw - var(--side) - var(--levels)); }
+}
+
+/* Phones: the levels get 45% of the width, and the results the rest. Beside the rivals or the
+   preferences, the levels narrow to 35%, and those panels get the rest. */
+@media (max-width: 600px) {
+  .rivals .dlg-main { --levels: 45cqw; }
+  .rivals .dlg-main.side-open { --levels: 35cqw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rivals .dlg-main, .rivals .rival-list, .rivals .prefs-panel { transition: none; }
+}

@@ -8,18 +8,19 @@ import { formatAgo, formatNumber, playerLabel, useLoad } from '../../util.ts';
 type SortColumn = 'dbId' | 'name' | 'length' | 'scrapedName' | 'pumbility' | 'charts' | 'plays' | 'lastScrapedAt';
 
 // Missing values (no name, never scraped) go last when sorting up.
-const byText = (a: string | null, b: string | null) => Number(a === null) - Number(b === null)  ||  (a  ??  '').localeCompare(b  ??  '');
-const byNumber = (a: number | null, b: number | null) => Number(a === null) - Number(b === null)  ||  (a  ??  0) - (b  ??  0);
+const byText = (a: string | null, b: string | null)  =>  Number(a === null) - Number(b === null)  ||  (a  ??  '').localeCompare(b  ??  '');
+
+const byNumber = (a: number | null, b: number | null)  =>  Number(a === null) - Number(b === null)  ||  (a  ??  0) - (b  ??  0);
 
 const compare: Record<SortColumn, (a: AdminPlayer, b: AdminPlayer) => number> = {
-  dbId: (a, b) => a.dbId - b.dbId,
-  name: (a, b) => byText(a.name, b.name),
-  length: (a, b) => textLength(a.name) - textLength(b.name),
-  scrapedName: (a, b) => byText(a.scrapedName, b.scrapedName),
-  pumbility: (a, b) => byNumber(a.pumbility, b.pumbility),
-  charts: (a, b) => a.charts - b.charts,
-  plays: (a, b) => a.plays - b.plays,
-  lastScrapedAt: (a, b) => byText(a.lastScrapedAt, b.lastScrapedAt),
+  dbId: (a, b)  =>  a.dbId - b.dbId,
+  name: (a, b)  =>  byText(a.name, b.name),
+  length: (a, b)  =>  textLength(a.name) - textLength(b.name),
+  scrapedName: (a, b)  =>  byText(a.scrapedName, b.scrapedName),
+  pumbility: (a, b)  =>  byNumber(a.pumbility, b.pumbility),
+  charts: (a, b)  =>  a.charts - b.charts,
+  plays: (a, b)  =>  a.plays - b.plays,
+  lastScrapedAt: (a, b)  =>  byText(a.lastScrapedAt, b.lastScrapedAt),
 };
 
 
@@ -27,9 +28,9 @@ const compare: Record<SortColumn, (a: AdminPlayer, b: AdminPlayer) => number> = 
 // name is the one on PIU Scores again.
 function NameInput({ player, onSave }: { player: AdminPlayer; onSave: (displayName: string | null) => void }) {
   const [name, setName] = useState(player.name  ??  '');
-  useEffect(() => setName(player.name  ??  ''), [player.name]);
+  useEffect(()  =>  setName(player.name  ??  ''), [player.name]);
 
-  const save = () => {
+  const save = ()  => {
     const trimmed = name.trim();
     if (trimmed !== (player.name  ??  ''))
       onSave(trimmed  ||  null);
@@ -44,9 +45,9 @@ function NameInput({ player, onSave }: { player: AdminPlayer; onSave: (displayNa
       value={name}
       placeholder={player.scrapedName  ??  'Not scraped yet'}
       aria-label={`Name of ${playerLabel(player)}`}
-      onChange={(event) => setName(event.target.value)}
+      onChange={(event)  =>  setName(event.target.value)}
       onBlur={save}
-      onKeyDown={(event) => {
+      onKeyDown={(event)  => {
         if (event.key === 'Enter')
           event.currentTarget.blur();
         else if (event.key === 'Escape')
@@ -61,8 +62,9 @@ function RegisterForm({ onError }: { onError: (error: string | null) => void }) 
   const navigate = useNavigate();
   const [links, setLinks] = useState('');
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent)  => {
     event.preventDefault();
+
     const players = links.split(/\s+/).filter(Boolean);
     try {
       const { run } = await api<ScrapeRunResponse>('POST', '/admin/scrape-runs', { kind: 'register', players });
@@ -74,13 +76,13 @@ function RegisterForm({ onError }: { onError: (error: string | null) => void }) 
   };
 
   return (
-    <form className="card" onSubmit={(event) => void submit(event)}>
+    <form className="card" onSubmit={(event)  =>  void submit(event)}>
       <h2>Register players</h2>
       <p className="muted small">
         PIU Scores player links or GUIDs, one per line, e.g. https://piuscores.arroweclip.se/Player/&lt;GUID&gt;/Sessions.
         They're added and their full Phoenix 2 history is scraped.
       </p>
-      <textarea rows={3} required value={links} onChange={(event) => setLinks(event.target.value)} aria-label="Player links" />
+      <textarea rows={3} required value={links} onChange={(event)  =>  setLinks(event.target.value)} aria-label="Player links" />
       <button type="submit">Register and scrape</button>
     </form>
   );
@@ -89,12 +91,12 @@ function RegisterForm({ onError }: { onError: (error: string | null) => void }) 
 
 export function PlayersPage() {
   const navigate = useNavigate();
-  const players = useLoad(() => api<AdminPlayersResponse>('GET', '/admin/players'), []);
+  const players = useLoad(()  =>  api<AdminPlayersResponse>('GET', '/admin/players'), []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort<SortColumn>>({ column: 'name', descending: false });
 
-  const startRun = async (kind: ScrapeRunKind, playerIds?: string[]) => {
+  const startRun = async (kind: ScrapeRunKind, playerIds?: string[])  => {
     if (kind === 'rescan'  &&  ! confirm(`Rescan ${playerIds?.length} player(s)? Their stored plays are deleted and their whole history is scraped again.`))
       return;
 
@@ -106,7 +108,7 @@ export function PlayersPage() {
     }
   };
 
-  const remove = async (player: AdminPlayer) => {
+  const remove = async (player: AdminPlayer)  => {
     if (! confirm(`Delete ${playerLabel(player)} with all their scores? Users and rival lists lose them too.`))
       return;
 
@@ -121,7 +123,7 @@ export function PlayersPage() {
     }
   };
 
-  const rename = async (player: AdminPlayer, displayName: string | null) => {
+  const rename = async (player: AdminPlayer, displayName: string | null)  => {
     try {
       await api('PATCH', `/admin/players/${player.id}`, { displayName });
       setError(null);
@@ -132,7 +134,7 @@ export function PlayersPage() {
     await players.reload();
   };
 
-  const toggle = (playerId: string) => {
+  const toggle = (playerId: string)  => {
     const next = new Set(selected);
     if (next.has(playerId))
       next.delete(playerId);
@@ -142,10 +144,10 @@ export function PlayersPage() {
     setSelected(next);
   };
 
-  const list = useMemo(() => {
-    const sign = sort.descending ? -1 : 1;
+  const list = useMemo(()  => {
+    const sign = (sort.descending  ?  -1  :  1);
     // Ties go by name.
-    return [...players.data?.players  ??  []].sort((a, b) => sign * compare[sort.column](a, b)  ||  compare.name(a, b));
+    return [...players.data?.players  ??  []].sort((a, b)  =>  sign * compare[sort.column](a, b)  ||  compare.name(a, b));
   }, [players.data, sort]);
 
   const chosen = [...selected];
@@ -166,10 +168,10 @@ export function PlayersPage() {
       {(error  ??  players.error)  &&  <p className="error" role="alert">{error  ??  players.error}</p>}
 
       <div className="title-row">
-        <span className="muted">{list.length} player{list.length === 1 ? '' : 's'}{chosen.length ? `, ${chosen.length} selected` : ''}</span>
+        <span className="muted">{list.length} player{list.length === 1  ?  ''  :  's'}{chosen.length  ?  `, ${chosen.length} selected`  :  ''}</span>
         <div className="buttons">
-          <button type="button" disabled={! chosen.length} onClick={() => void startRun('selected', chosen)}>Scrape selected</button>
-          <button type="button" className="secondary" disabled={! chosen.length} onClick={() => void startRun('rescan', chosen)}>
+          <button type="button" disabled={! chosen.length} onClick={()  =>  void startRun('selected', chosen)}>Scrape selected</button>
+          <button type="button" className="secondary" disabled={! chosen.length} onClick={()  =>  void startRun('rescan', chosen)}>
             Rescan selected
           </button>
         </div>
@@ -184,7 +186,7 @@ export function PlayersPage() {
                   type="checkbox"
                   aria-label="Select all"
                   checked={list.length > 0  &&  chosen.length === list.length}
-                  onChange={(event) => setSelected(new Set(event.target.checked ? list.map((p) => p.id) : []))}
+                  onChange={(event)  =>  setSelected(new Set((event.target.checked  ?  list.map((p)  =>  p.id)  :  [])))}
                 />
               </th>
               <SortHeader column="dbId" label="ID" className="number" {...sortProps} />
@@ -200,18 +202,18 @@ export function PlayersPage() {
             </tr>
           </thead>
           <tbody>
-            {list.map((player) => (
+            {list.map((player)  =>  (
               <tr key={player.id}>
                 <td>
                   <input
                     type="checkbox"
                     checked={selected.has(player.id)}
-                    onChange={() => toggle(player.id)}
+                    onChange={()  =>  toggle(player.id)}
                     aria-label={`Select ${playerLabel(player)}`}
                   />
                 </td>
                 <td className="number muted">{player.dbId}</td>
-                <td><NameInput player={player} onSave={(displayName) => void rename(player, displayName)} /></td>
+                <td><NameInput player={player} onSave={(displayName)  =>  void rename(player, displayName)} /></td>
                 <td className="number">{textLength(player.name)}</td>
                 <td>
                   <a href={`https://piuscores.arroweclip.se/Player/${player.id}/Sessions`} target="_blank" rel="noreferrer">
@@ -223,7 +225,7 @@ export function PlayersPage() {
                 <td className="number">{formatNumber(player.plays)}</td>
                 <td className="muted">{formatAgo(player.lastScrapedAt)}</td>
                 <td className="muted">{player.lastSessionTimestamp  ??  '—'}</td>
-                <td><button type="button" className="danger small-button" onClick={() => void remove(player)}>Delete</button></td>
+                <td><button type="button" className="danger small-button" onClick={()  =>  void remove(player)}>Delete</button></td>
               </tr>
             ))}
           </tbody>

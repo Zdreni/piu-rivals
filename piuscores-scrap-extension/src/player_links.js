@@ -61,10 +61,11 @@ export function createPlayerLinks({ playerIdOf, onScrape }) {
   async function scrape(playerId) {
     requests.set(playerId, { state: 'sending' });
     mark(knownIds);
+
     const result = await onScrape(playerId);
-    requests.set(playerId, result.run
-      ? { state: 'requested' }
-      : { state: 'failed', message: result.message  ||  'Not signed in to piu-rivals as an admin' });
+    requests.set(playerId, (result.run
+      ?  { state: 'requested' }
+      :  { state: 'failed', message: result.message  ||  'Not signed in to piu-rivals as an admin' }));
     mark(knownIds);
   }
 
@@ -75,7 +76,7 @@ export function createPlayerLinks({ playerIdOf, onScrape }) {
     button.className = BUTTON_CLASS;
     button.dataset.player = playerId;
 
-    button.addEventListener('click', (event) => {
+    button.addEventListener('click', (event)  => {
       event.preventDefault();
       event.stopPropagation();
       scrape(playerId);
@@ -117,8 +118,8 @@ export function createPlayerLinks({ playerIdOf, onScrape }) {
       addStyle();
 
     for (const link of document.querySelectorAll('a[href]')) {
-      const playerId = knownIds ? linkPlayerId(link) : null;
-      const linkMark = playerId ? (knownIds.has(playerId) ? 'known' : 'unknown') : null;
+      const playerId = (knownIds  ?  linkPlayerId(link)  :  null);
+      const linkMark = (playerId  ?  (knownIds.has(playerId)  ?  'known'  :  'unknown')  :  null);
       if (linkMark !== link.getAttribute(MARK)) {
         if (linkMark)
           link.setAttribute(MARK, linkMark);
@@ -140,6 +141,6 @@ export function createPlayerLinks({ playerIdOf, onScrape }) {
   return {
     mark,
     // Whether a player requested here isn't in piu-rivals yet, so the marks are worth checking again.
-    waiting: () => [...requests.values()].some((request) => request.state === 'requested'),
+    waiting: ()  =>  [...requests.values()].some((request)  =>  request.state === 'requested'),
   };
 }

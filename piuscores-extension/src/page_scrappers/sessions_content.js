@@ -9,7 +9,7 @@ export function isSessionsPage() {
 
 
 export function sessionPagePlayerId() {
-  return isSessionsPage() ? pagePlayerId() : null;
+  return (isSessionsPage()  ?  pagePlayerId()  :  null);
 }
 
 
@@ -18,7 +18,7 @@ export function pagePlayerName() {
 }
 
 
-export const readOpenSessionPumbility = () => parseNumber(text(document.querySelector(
+export const readOpenSessionPumbility = ()  =>  parseNumber(text(document.querySelector(
   '[data-testid="session-ceremony"] .sbd-pumb-big',
 )));
 
@@ -30,7 +30,7 @@ export function readSessionsPage() {
   if (! playerId  ||  getSessionCards().length === 0)
     return null;
 
-  return { playerId, name: pagePlayerName(), pumbility: isNewestSessionOpen() ? readOpenSessionPumbility() : null };
+  return { playerId, name: pagePlayerName(), pumbility: (isNewestSessionOpen()  ?  readOpenSessionPumbility()  :  null) };
 }
 
 
@@ -40,7 +40,7 @@ function parsePlayScore(element) {
     return null;
 
   const n = parseInt(p.textContent.replace(/[^\d]/g, ''), 10);
-  return Number.isNaN(n) ? null : n;
+  return (Number.isNaN(n)  ?  null  :  n);
 }
 
 
@@ -78,13 +78,13 @@ export function scrapeSessionScores() {
 
   const rowsByChart = new Map();
 
-  const addScore = (track, chart, score) => {
+  const addScore = (track, chart, score)  => {
     if (! track  ||  ! isScrapLevel(chart)  ||  score === null)
       return false;
 
     const row = { track, chart, score };
     const key = storageKey(row);
-    if (score > (rowsByChart.get(key)?.score ?? -1))
+    if (score > (rowsByChart.get(key)?.score  ??  -1))
       rowsByChart.set(key, row);
 
     return true;
@@ -173,7 +173,7 @@ function openSessionMismatches(info) {
 // Waits until the session of the clicked card (`info`) is open, then shows all of its plays.
 export async function loadSessionContent(info) {
   try {
-    await waitForChange(() => openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
+    await waitForChange(()  =>  openSessionMismatches(info).length === 0, `session "${info.title}" to open`);
   } catch (error) {
     console.error(`${TAG} Session "${info.title}" (${info.timestamp}) didn't open:\n  `
       + openSessionMismatches(info).join('\n  '));
@@ -184,12 +184,12 @@ export async function loadSessionContent(info) {
   if (showAll) {
     showAll.click();
 
-    await waitForChange(() => {
+    await waitForChange(()  => {
       if (! document.querySelector('[data-testid="session-show-all-plays"]'))
         return true;
 
       const tally = [...document.querySelectorAll('[data-testid="session-hero"] .sbd-tally > div')]
-        .find((item) => text(item.querySelector('.sbd-tally-k')) === 'Plays');
+        .find((item)  =>  text(item.querySelector('.sbd-tally-k')) === 'Plays');
 
       const total = parseInt(text(tally?.querySelector('.sbd-tally-v')).replace(/[^\d]/g, ''), 10);
       return Number.isFinite(total)

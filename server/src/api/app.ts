@@ -27,7 +27,7 @@ export async function buildApp(deps: AppDeps, options: { logger?: boolean } = {}
   app.decorateRequest('sessionUser', null);
   app.addHook('onRequest', loadSessionUser(deps.db));
 
-  app.setErrorHandler<FastifyError | HttpError>((error, request, reply) => {
+  app.setErrorHandler<FastifyError | HttpError>((error, request, reply)  => {
     if (error instanceof HttpError)
       return reply.status(error.statusCode).send({ error: error.message });
 
@@ -43,7 +43,7 @@ export async function buildApp(deps: AppDeps, options: { logger?: boolean } = {}
     return reply.status(500).send({ error: 'Internal server error' });
   });
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', async ()  =>  ({ ok: true }));
   await app.register(authRoutes, deps);
   await app.register(meRoutes, deps);
   await app.register(dataRoutes, deps);

@@ -22,14 +22,14 @@ if (kind === 'register') {
   playerIds = await ensurePlayers(db, guids as string[]);
 } else if (kind !== 'all') {
   const ids = await playerIdsByGuid(db, guids as string[]);
-  const unknown = (guids as string[]).filter((guid) => ! ids.has(guid));
+  const unknown = (guids as string[]).filter((guid)  =>  ! ids.has(guid));
   if (unknown.length) {
     console.error(`Unknown players: ${unknown.join(', ')}`);
     await db.destroy();
     process.exit(1);
   }
 
-  playerIds = (guids as string[]).map((guid) => ids.get(guid)!);
+  playerIds = (guids as string[]).map((guid)  =>  ids.get(guid)!);
 }
 
 const runId = await queueRun(db, kind as ScrapeRunKind, playerIds);

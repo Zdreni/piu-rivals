@@ -1,6 +1,6 @@
 import type { BestResult, BestsResponse, Chart } from '@piu-rivals/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, errorText } from '../../api.ts';
+import { api, errorText } from '../api.ts';
 import { type CachedPlayers, openBestsCache } from './bests_cache.ts';
 import type { PlayerBests } from './model.ts';
 
@@ -31,8 +31,8 @@ interface Store {
 }
 
 
-const chunks = <T>(items: T[]) =>
-  Array.from({ length: Math.ceil(items.length / PLAYERS_PER_REQUEST) }, (_, i) =>
+const chunks = <T>(items: T[])  =>
+  Array.from({ length: Math.ceil(items.length / PLAYERS_PER_REQUEST) }, (_, i)  =>
     items.slice(i * PLAYERS_PER_REQUEST, (i + 1) * PLAYERS_PER_REQUEST));
 
 
@@ -60,21 +60,21 @@ async function persist(data: CachedPlayers) {
 
 
 async function download(store: Store, playerIds: string[], since?: string) {
-  const query = `players=${playerIds.join(',')}${since ? `&since=${encodeURIComponent(since)}` : ''}`;
+  const query = `players=${playerIds.join(',')}${(since  ?  `&since=${encodeURIComponent(since)}`  :  '')}`;
   const response = await api<BestsResponse>('GET', `/bests?${query}`);
   merge(store, response.charts, response.bests);
   for (const playerId of playerIds)
     store.since.set(playerId, response.serverTime);
 
-  await persist({ charts: response.charts, bests: response.bests, marks: playerIds.map((playerId) => ({ playerId, since: response.serverTime })) });
+  await persist({ charts: response.charts, bests: response.bests, marks: playerIds.map((playerId)  =>  ({ playerId, since: response.serverTime })) });
   // Players holding a different number of rows than the server missed a deletion, e.g. a rescan.
-  return playerIds.filter((playerId) => (store.bests.get(playerId)?.size  ??  0) !== (response.counts[playerId]  ??  0));
+  return playerIds.filter((playerId)  =>  (store.bests.get(playerId)?.size  ??  0) !== (response.counts[playerId]  ??  0));
 }
 
 
 // `changed` runs whenever new rows were merged, so cached rows show while the server is asked.
 async function syncPlayers(store: Store, playerIds: string[], changed: () => void) {
-  const uncached = playerIds.filter((playerId) => ! store.fromCache.has(playerId));
+  const uncached = playerIds.filter((playerId)  =>  ! store.fromCache.has(playerId));
   if (uncached.length) {
     const cached = await (await openBestsCache()).load(uncached);
     merge(store, cached.charts, cached.bests);
@@ -87,12 +87,12 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
     changed();
   }
 
-  const known = playerIds.filter((playerId) => store.since.has(playerId));
-  const fresh = playerIds.filter((playerId) => ! store.since.has(playerId));
+  const known = playerIds.filter((playerId)  =>  store.since.has(playerId));
+  const fresh = playerIds.filter((playerId)  =>  ! store.since.has(playerId));
   const stale: string[] = [];
   // A chunk asks from its earliest sync; rows the others had already come again, which is harmless.
   for (const chunk of chunks(known)) {
-    stale.push(...await download(store, chunk, chunk.map((playerId) => store.since.get(playerId)!).sort()[0]));
+    stale.push(...await download(store, chunk, chunk.map((playerId)  =>  store.since.get(playerId)!).sort()[0]));
     changed();
   }
 
@@ -109,7 +109,7 @@ async function syncPlayers(store: Store, playerIds: string[], changed: () => voi
     store.since.delete(playerId);
   }
 
-  await (await openBestsCache()).clear(stale).catch((error) => console.warn('[piu-rivals] Unable to clear cached scores:', error));
+  await (await openBestsCache()).clear(stale).catch((error)  =>  console.warn('[piu-rivals] Unable to clear cached scores:', error));
   for (const chunk of chunks(stale)) {
     await download(store, chunk);
     changed();
@@ -129,18 +129,18 @@ export function useBests(playerIds: string[]): Bests {
   wanted.current = playerIds;
 
   // One sync at a time; a sync asked for meanwhile runs once the current one is done, for the players wanted then.
-  const sync = useCallback(async () => {
+  const sync = useCallback(async ()  => {
     if (running.current) {
       again.current = true;
       return running.current;
     }
 
     setSyncing(true);
-    running.current = (async () => {
+    running.current = (async ()  => {
       do {
         again.current = false;
         try {
-          await syncPlayers(store.current, wanted.current, () => setVersion((v) => v + 1));
+          await syncPlayers(store.current, wanted.current, ()  =>  setVersion((v)  =>  v + 1));
           setError(null);
         } catch (e) {
           setError(errorText(e));
@@ -156,10 +156,10 @@ export function useBests(playerIds: string[]): Bests {
     }
   }, []);
 
-  useEffect(() => {
+  useEffect(()  => {
     void sync();
   }, [key, sync]);
 
   const { charts, bests, since } = store.current;
-  return { charts, bests, ready: playerIds.every((playerId) => since.has(playerId)), version, syncing, error, sync };
+  return { charts, bests, ready: playerIds.every((playerId)  =>  since.has(playerId)), version, syncing, error, sync };
 }

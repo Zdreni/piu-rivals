@@ -33,9 +33,9 @@ function RunPlayer({ player, errors }: { player: ScrapeRunPlayer; errors: Scrape
       <span className={`player-mark player-${player.state}`} title={title} aria-label={title}>{mark}</span>
       <div>
         {player.name
-          ? <span>{player.name} <span className="muted">({sessions})</span></span>
-          : <span>{sessions}</span>}
-        {player.state === 'failed'  &&  errors.map((failure, index) => (
+          ?  <span>{player.name} <span className="muted">({sessions})</span></span>
+          :  <span>{sessions}</span>}
+        {player.state === 'failed'  &&  errors.map((failure, index)  =>  (
           <div key={index} className="player-error small">
             <span className="muted">{formatTime(failure.createdAt)}</span> {failure.message}
           </div>
@@ -59,22 +59,22 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function RunPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const details = useLoad(() => api<ScrapeRunResponse>('GET', `/admin/scrape-runs/${id}`), [id]);
+  const details = useLoad(()  =>  api<ScrapeRunResponse>('GET', `/admin/scrape-runs/${id}`), [id]);
   const [error, setError] = useState<string | null>(null);
   const [allBeforeShown, setAllBeforeShown] = useState(false);
   const [allAfterShown, setAllAfterShown] = useState(false);
   const run = details.data?.run;
-  const active = run ? isActive(run) : false;
+  const active = (run  ?  isActive(run)  :  false);
 
-  useEffect(() => {
+  useEffect(()  => {
     if (! active)
       return;
 
-    const timer = setInterval(() => void details.reload(), POLL_MS);
-    return () => clearInterval(timer);
+    const timer = setInterval(()  =>  void details.reload(), POLL_MS);
+    return ()  =>  clearInterval(timer);
   }, [active, details.reload]);
 
-  const cancel = async () => {
+  const cancel = async ()  => {
     try {
       await api('POST', `/admin/scrape-runs/${id}/cancel`);
       setError(null);
@@ -85,49 +85,51 @@ export function RunPage() {
   };
 
   if (! run) {
-    return details.error
-      ? <p className="error" role="alert">{details.error}</p>
-      : <p className="muted">Loading…</p>;
+    return (details.error
+      ?  <p className="error" role="alert">{details.error}</p>
+      :  <p className="muted">Loading…</p>);
   }
 
   const players = details.data?.players  ??  [];
   // The worker takes the players in order: the first playersDone are finished, the next one is current.
   const current = Math.min(run.playersDone, players.length);
-  const hidden = (player: ScrapeRunPlayer, index: number) => player.state !== 'failed'  &&  (index < current
-    ? ! allBeforeShown  &&  index < current - PLAYERS_AROUND
-    : ! allAfterShown  &&  index > current + PLAYERS_AROUND);
-  const shownPlayers = players.filter((player, index) => ! hidden(player, index));
-  const hiddenBefore = players.filter((player, index) => index < current  &&  hidden(player, index)).length;
+  const hidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < current
+    ?  ! allBeforeShown  &&  index < current - PLAYERS_AROUND
+    :  ! allAfterShown  &&  index > current + PLAYERS_AROUND);
+
+  const shownPlayers = players.filter((player, index)  =>  ! hidden(player, index));
+  const hiddenBefore = players.filter((player, index)  =>  index < current  &&  hidden(player, index)).length;
   const hiddenAfter = players.length - shownPlayers.length - hiddenBefore;
-  const showButton = (count: number, label: string, onClick: () => void) => count > 0  &&  (
+  const showButton = (count: number, label: string, onClick: () => void)  =>  count > 0  &&  (
     <button type="button" className="secondary small-button" onClick={onClick}>
       …show {label} {formatNumber(count)}…
     </button>
   );
+
   // Player failures show under their players; the rest, failures of the run itself, in their own list.
   const failures = details.data?.failureList  ??  [];
-  const playerErrors = (playerId: string) => failures.filter((failure) => failure.playerId === playerId);
-  const runFailures = failures.filter((failure) => ! failure.playerId);
+  const playerErrors = (playerId: string)  =>  failures.filter((failure)  =>  failure.playerId === playerId);
+  const runFailures = failures.filter((failure)  =>  ! failure.playerId);
   const { previousRunId, nextRunId } = details.data!;
   // Stopping after the last player would change nothing.
   const onLastPlayer = run.status === 'running'  &&  run.playersTotal > 0  &&  run.playersDone >= run.playersTotal - 1;
-  const stepButton = (runId: number | null, label: string) => (
-    <button type="button" className="secondary" disabled={! runId} title={runId ? `Run #${runId}` : undefined}
-            onClick={() => navigate(`/admin/runs/${runId}`)}>
+  const stepButton = (runId: number | null, label: string)  =>  (
+    <button type="button" className="secondary" disabled={! runId} title={(runId  ?  `Run #${runId}`  :  undefined)}
+            onClick={()  =>  navigate(`/admin/runs/${runId}`)}>
       {label}
     </button>
   );
 
   return (
     <section>
-      <p><Link to={runsTabPath(active ? 'current' : 'previous')}>← Scraping</Link></p>
+      <p><Link to={runsTabPath((active  ?  'current'  :  'previous'))}>← Scraping</Link></p>
       <div className="title-row">
         <h1>Run #{run.id}: {runKindLabel(run)}</h1>
         <div className="buttons">
           {active  &&  ! run.cancelRequested  &&  (
-            <button type="button" className="secondary" disabled={onLastPlayer} onClick={() => void cancel()}
-                    title={onLastPlayer ? "This is the run's last player; the run ends after it anyway" : undefined}>
-              {run.status === 'queued' ? 'Cancel' : 'Stop after current player'}
+            <button type="button" className="secondary" disabled={onLastPlayer} onClick={()  =>  void cancel()}
+                    title={(onLastPlayer  ?  "This is the run's last player; the run ends after it anyway"  :  undefined)}>
+              {run.status === 'queued'  ?  'Cancel'  :  'Stop after current player'}
             </button>
           )}
           {stepButton(previousRunId, '← Previous')}
@@ -148,7 +150,7 @@ export function RunPage() {
           <Stat label="failed players" value={formatNumber(run.failures)} />
         </div>
         <dl className="facts small">
-          <dt>Queued</dt><dd>{formatTime(run.createdAt)}{run.startedBy ? ` by ${run.startedBy}` : ''}</dd>
+          <dt>Queued</dt><dd>{formatTime(run.createdAt)}{run.startedBy  ?  ` by ${run.startedBy}`  :  ''}</dd>
           <dt>Started</dt><dd>{formatTime(run.startedAt)}</dd>
           <dt>Finished</dt><dd>{formatTime(run.finishedAt)}</dd>
         </dl>
@@ -159,11 +161,11 @@ export function RunPage() {
       {players.length > 0  &&  (
         <>
           <h2>Players</h2>
-          {showButton(hiddenBefore, 'previous', () => setAllBeforeShown(true))}
+          {showButton(hiddenBefore, 'previous', ()  =>  setAllBeforeShown(true))}
           <ul className="run-players">
-            {shownPlayers.map((player) => <RunPlayer key={player.id} player={player} errors={playerErrors(player.id)} />)}
+            {shownPlayers.map((player)  =>  <RunPlayer key={player.id} player={player} errors={playerErrors(player.id)} />)}
           </ul>
-          {showButton(hiddenAfter, 'next', () => setAllAfterShown(true))}
+          {showButton(hiddenAfter, 'next', ()  =>  setAllAfterShown(true))}
         </>
       )}
 
@@ -171,7 +173,7 @@ export function RunPage() {
         <>
           <h2>Run failure</h2>
           <ul className="failures">
-            {runFailures.map((failure, index) => (
+            {runFailures.map((failure, index)  =>  (
               <li key={index}>
                 <span className="muted small">{formatTime(failure.createdAt)}</span>
                 <div>{failure.message}</div>

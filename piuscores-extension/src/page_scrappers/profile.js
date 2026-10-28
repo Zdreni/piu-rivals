@@ -2,7 +2,7 @@ import { pagePlayerId, parseNumber, savePlayerInfo, text } from './common.js';
 
 
 function profilePlayerId() {
-  return /^\/Player\/[^/]+\/?$/.test(location.pathname) ? pagePlayerId() : null;
+  return (/^\/Player\/[^/]+\/?$/.test(location.pathname)  ?  pagePlayerId()  :  null);
 }
 
 

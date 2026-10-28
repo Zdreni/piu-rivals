@@ -20,10 +20,10 @@ export function createRivalList(container, onChange) {
   let soloRival = null;
   let pendingScroll = false;
 
-  container.addEventListener('change', async (event) => {
+  container.addEventListener('change', async (event)  => {
     const solo = event.target.closest('input[data-solo]');
     if (solo) {
-      soloRival = solo.checked ? solo.dataset.solo : null;
+      soloRival = (solo.checked  ?  solo.dataset.solo  :  null);
       await onChange();
       return;
     }
@@ -46,7 +46,7 @@ export function createRivalList(container, onChange) {
     }
   });
 
-  container.addEventListener('click', async (event) => {
+  container.addEventListener('click', async (event)  => {
     const button = event.target.closest('button[data-delete]');
     if (! button) {
       const rival = event.target.closest('.rival');
@@ -58,7 +58,7 @@ export function createRivalList(container, onChange) {
       if (unfocus  &&  ! event.target.closest('.rival-toggle'))
         return;
 
-      focusedRival = unfocus ? null : rival.dataset.rival;
+      focusedRival = (unfocus  ?  null  :  rival.dataset.rival);
       for (const other of container.querySelectorAll('.rival')) {
         other.classList.toggle('focused', other.dataset.rival === focusedRival);
       }
@@ -70,9 +70,9 @@ export function createRivalList(container, onChange) {
     }
 
     const { delete: playerId, name, own } = button.dataset;
-    const question = own
-      ? 'Delete all your saved scores? Your player record is kept. This cannot be undone.'
-      : `Delete ${name} and all their saved scores? This cannot be undone.`;
+    const question = (own
+      ?  'Delete all your saved scores? Your player record is kept. This cannot be undone.'
+      :  `Delete ${name} and all their saved scores? This cannot be undone.`);
     if (! window.confirm(question))
       return;
 
@@ -97,7 +97,7 @@ export function createRivalList(container, onChange) {
     for (const chart of charts) {
       for (const rival of chart.rivals) {
         const counts = (rivalStats[rival.playerId] ||= { lose: 0, win: 0, unplayed: 0 });
-        counts[rival.realDelta === null ? 'unplayed' : rival.realDelta < 0 ? 'lose' : 'win']++;
+        counts[rival.realDelta === null  ?  'unplayed'  :  rival.realDelta < 0  ?  'lose'  :  'win']++;
       }
     }
 
@@ -109,16 +109,16 @@ export function createRivalList(container, onChange) {
     if (ownPlayerId)
       ids.add(ownPlayerId);
 
-    const rivals = [...ids].map((playerId) => ({
+    const rivals = [...ids].map((playerId)  =>  ({
       playerId,
       name: displayName(players[playerId]?.name  ||  playerId),
-      pumbility: typeof players[playerId]?.pumbility === 'number' ? players[playerId].pumbility : null,
+      pumbility: (typeof players[playerId]?.pumbility === 'number'  ?  players[playerId].pumbility  :  null),
     }));
-    rivals.sort((a, b) => (b.pumbility ?? -1) - (a.pumbility ?? -1)
+    rivals.sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-    container.innerHTML = rivals.length
-      ? rivals.map((rival) => {
+    container.innerHTML = (rivals.length
+      ?  rivals.map((rival)  => {
         const me = rival.playerId === ownPlayerId;
         const on = me  ||  ! hidden.has(rival.playerId);
         const solo = rival.playerId === soloRival;
@@ -129,11 +129,11 @@ export function createRivalList(container, onChange) {
           faded: !! soloRival  &&  ! me  &&  ! solo,
           focused: rival.playerId === focusedRival,
           stats: (solo  &&  soloStats)  ||  rivalStats[rival.playerId]  ||  { lose: 0, win: 0, unplayed: 0 },
-          statsWords: STAT_WORDS[solo  &&  soloStats ? countBy : 'results'],
+          statsWords: STAT_WORDS[(solo  &&  soloStats)  ?  countBy  :  'results'],
           best: bestCounts[rival.playerId],
         });
       }).join('')
-      : '<div class="muted">No rivals yet</div>';
+      :  '<div class="muted">No rivals yet</div>');
 
     if (pendingScroll) {
       pendingScroll = false;
@@ -160,5 +160,5 @@ export function createRivalList(container, onChange) {
     return true;
   }
 
-  return { render, focus, soloRival: () => soloRival };
+  return { render, focus, soloRival: ()  =>  soloRival };
 }

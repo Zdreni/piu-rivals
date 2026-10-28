@@ -1,0 +1,24 @@
+/* A maximized card (see ChartCardMaximized): over the dimmed page, as tall as its results, up to the screen's height, past
+   which its results scroll. On phones it's as wide as the screen but for a margin, and its rows have room for names,
+   scores and diffs, a little bigger than in the cards. Wider (.in-place), it keeps its card's width and place across the
+   page, and its rows their sizes, so it only gets longer: its top is its card's, or higher if it doesn't fit below
+   (--card-left, --card-top and --card-width, set by ChartCardMaximized). Its header is unrolled for good, the chart and a
+   close button beside the track, and the snooze lengths are a row of buttons. */
+.rivals.card-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+                       padding: 16px 8px; background: rgba(8,12,10,.75); overflow: hidden; }
+.rivals.card-overlay .chart-card { width: 100%; max-height: 100%; overflow: hidden; transform-origin: 0 0; border: 1px solid #2B4034; border-radius: 8px;
+                                   background: #14201A; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+.rivals.card-overlay.in-place .chart-card { position: absolute; left: var(--card-left); top: var(--card-top); width: var(--card-width);
+                                            max-height: calc(100% - 32px); }
+.rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; }
+.rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; }
+.rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
+.rivals.card-overlay:not(.in-place) .chart-card-head .track { font-size: 18px; }
+.rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+                      margin: -6px -6px -6px 0; color: #9AB3A3; cursor: pointer; }
+.rivals .card-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.rivals .card-close:hover { color: #EAF5EC; }
+.rivals.card-overlay .snooze { gap: 10px; font-size: 15px; }
+.rivals.card-overlay .snooze-button { height: 40px; padding: 0 12px; }
+.rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
+.rivals.card-overlay .chart-card-box { border-radius: 0; }

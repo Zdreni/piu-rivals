@@ -1,0 +1,46 @@
+/* Results column */
+
+.rivals .score-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; container-type: inline-size; }
+/* The tabs' counts are coloured by their results, and only tinted: half the colour, half the text white, like the
+   counts on fold buttons. */
+.rivals .tab-count.rivals-win { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
+.rivals .tab-count.not-played { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
+.rivals .tab-count.you-win { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
+.rivals .tab-count.tie { color: #F2E8B6; }
+.rivals .tab-count.hidden { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
+/* The tab a chart was just snoozed or woken into splashes in its colour: a glow that swells and fades, and a ring
+   that spreads out of it (see SelectedLevelCharts). */
+.rivals .tabs .tab { position: relative; }
+.rivals .tab[data-tab="rivals-win"] { --flash: #FF2A00; }
+.rivals .tab[data-tab="not-played"] { --flash: #3FA9F5; }
+.rivals .tab[data-tab="you-win"] { --flash: #4FE33F; }
+.rivals .tab[data-tab="tie"] { --flash: #F2E8B6; }
+.rivals .tab[data-tab="hidden"] { --flash: #D0573F; }
+.rivals .tab-flash { position: absolute; inset: 2px; border-radius: 10px; pointer-events: none;
+                     background: radial-gradient(closest-side, color-mix(in srgb, var(--flash) 55%, transparent), transparent);
+                     animation: tab-flash .9s ease-out both; }
+.rivals .tab-flash::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--flash); border-radius: inherit;
+                            animation: tab-flash-ring .9s ease-out both; }
+@keyframes tab-flash { from { opacity: 0; transform: scale(.5); } 20% { opacity: 1; } to { opacity: 0; transform: scale(1.3); } }
+@keyframes tab-flash-ring { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes tab-flash-fade { from { opacity: 1; } to { opacity: 0; } }
+
+@media (max-width: 1000px) {
+  .rivals .score-content { min-height: 0; }
+}
+
+/* Tablets and wide screens, while the rivals or the preferences are in and the results are too narrow for two cards
+   (always on tablets): narrower cards (see components/charts/chart_card.css), so two fit in 554px. */
+@media (min-width: 601px) {
+  @container (max-width: 719px) {
+    .rivals .side-open .dlg-body { --results-pad: 6px; }
+    .rivals .side-open .chart-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(265px + 2 * var(--results-pad), 100%), 1fr)); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The tab only glows and fades, without swelling. */
+  .rivals .tab-flash { animation-name: tab-flash-fade; }
+  .rivals .tab-flash::after { animation: none; opacity: 0; }
+}

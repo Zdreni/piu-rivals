@@ -35,7 +35,7 @@ export interface ScanPlan {
   fresh: SessionCard[];
 }
 
-export const sameSession = (stored: StoredSession | null, card: SessionCard) =>
+export const sameSession = (stored: StoredSession | null, card: SessionCard)  =>
   !! stored  &&  stored.title === card.title  &&  stored.timestamp === card.timestamp;
 
 
@@ -52,7 +52,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export function cardDates(now = Date.now()) {
   // A day of slack for piuscores' time zone.
   let notAfter = now + DAY_MS;
-  return (timestamp: string): number | null => {
+  return (timestamp: string): number | null  => {
     const match = timestamp.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+([A-Za-z]{3})\b/);
     const weekday = WEEKDAYS.indexOf(match?.[1]  ??  '');
     const month = MONTHS.indexOf(match?.[3]  ??  '');
@@ -109,7 +109,7 @@ export function planScan(checkpoint: Checkpoint, collected: SessionCard[], stop:
     throw new Error(`Neither the latest scanned session ("${describe(latest)}") nor the one `
       + `before it ("${describe(checkpoint.anchor)}") is in the Sessions history; the player needs a rescan`);
 
-  const index = Math.max(0, oldestFirst.findIndex((card) => card.mix === 'Phoenix 2'));
+  const index = Math.max(0, oldestFirst.findIndex((card)  =>  card.mix === 'Phoenix 2'));
   if (! oldestFirst.length)
     throw new Error(`The latest scanned session ("${describe(latest)}") is missing from the `
       + 'Sessions history; the player needs a rescan');
@@ -118,4 +118,4 @@ export function planScan(checkpoint: Checkpoint, collected: SessionCard[], stop:
 }
 
 
-const describe = (session: StoredSession) => `${session.title}, ${session.timestamp}`;
+const describe = (session: StoredSession)  =>  `${session.title}, ${session.timestamp}`;

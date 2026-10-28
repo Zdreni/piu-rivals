@@ -1,0 +1,47 @@
+/* Preferences panel: the settings, one under another with their titles spelled out, in the rivals' place. */
+
+.rivals .prefs-panel { display: none; flex-shrink: 0; flex-direction: column; border-right: 1px solid #2B4034; }
+/* As tall as the levels' top bar. */
+.rivals .prefs-top { flex-shrink: 0; box-sizing: border-box; height: calc(6px + 10px + 18px + 12px + 1px);
+                     display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #2B4034;
+                     color: #C9D8CE; font: 500 15px/1.2 Roboto, Arial, sans-serif; }
+.rivals .prefs-controls { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 24px;
+                          padding: 16px; }
+/* The label sits above the − value + row. */
+.rivals .prefs-panel .stepper { display: grid; grid-template-columns: auto auto auto; justify-content: start; align-items: center;
+                                gap: 6px; color: #9AB3A3; font-size: 17px; font-variant-numeric: tabular-nums; }
+.rivals .prefs-panel .stepper-label { grid-column: 1 / -1; text-align: left; font-size: 15px; line-height: 1.2; white-space: nowrap;
+                                      color: #C9D8CE; }
+.rivals .prefs-panel .stepper-value { min-width: 56px; text-align: center; color: #EAF5EC; }
+.rivals .prefs-panel .stepper.off .stepper-value { color: #9AB3A3; }
+.rivals .prefs-panel .stepper button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                                       width: 36px; height: 36px; padding: 0; font: 600 20px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .prefs-panel .stepper button:hover:not(:disabled) { color: #4FE33F; border-color: #4FE33F; }
+.rivals .prefs-panel .stepper button:disabled { opacity: .35; cursor: default; }
+/* A two-way switch with the same label above it as the steppers. */
+.rivals .prefs-panel .switch { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 6px 0; color: #9AB3A3; }
+.rivals .prefs-panel .switch button { background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; height: 36px; padding: 0 16px;
+                                      font: 400 15px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .prefs-panel .switch button:first-of-type { border-radius: 4px 0 0 4px; }
+.rivals .prefs-panel .switch button:last-of-type { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.rivals .prefs-panel .switch button:hover:not(.on) { color: #4FE33F; border-color: #4FE33F; position: relative; }
+.rivals .prefs-panel .switch button:disabled:not(.on) { opacity: .4; cursor: default; color: #9AB3A3; border-color: #2B4034; }
+.rivals .prefs-panel .switch button.on { background: #2B4034; color: #EAF5EC; cursor: default; }
+.rivals .prefs-panel .setting-hint { display: block; grid-column: 1 / -1; font-size: 13px; line-height: 1.35; color: #8A9590; }
+/* Min and max level side by side, at the panel's edges, with their hint under them. Their buttons and values are a little
+   narrower, so that in the narrowest panel (217px inside) they still keep 17px apart. */
+.rivals .prefs-panel .level-range { display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 6px 16px; }
+.rivals .prefs-panel .level-range .stepper { gap: 6px 2px; }
+.rivals .prefs-panel .level-range .stepper-value { min-width: 32px; }
+.rivals .prefs-panel .level-range .stepper button { width: 32px; }
+
+/* Tablets, while the preferences are in: tighter margins, about as on phones. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .rivals .side-open .prefs-controls { padding: 12px; gap: 20px; }
+}
+
+@media (max-width: 600px) {
+  /* As tall as the tabs here (see tabs.css). */
+  .rivals .prefs-top { height: 48px; padding: 0 12px; font-size: 14px; }
+  .rivals .prefs-controls { padding: 12px; gap: 20px; }
+}

@@ -14,7 +14,7 @@ async function build() {
   await copyFile(path.join(root, 'src', 'manifest.json'), path.join(dist, 'manifest.json'));
 
   const options = {
-    entryPoints: entries.map((entry) => path.join(root, 'src', entry)),
+    entryPoints: entries.map((entry)  =>  path.join(root, 'src', entry)),
     bundle: true,
     format: 'iife',
     target: 'chrome110',
@@ -30,7 +30,7 @@ async function build() {
 }
 
 
-build().catch((error) => {
+build().catch((error)  => {
   console.error(error);
   process.exitCode = 1;
 });

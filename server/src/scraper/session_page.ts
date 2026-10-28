@@ -61,12 +61,12 @@ export interface SessionPlays {
   unreadable: number;
 }
 
-const clean = (value: string) => value.replace(/\s+/g, ' ').trim();
+const clean = (value: string)  =>  value.replace(/\s+/g, ' ').trim();
 
 
-export const parseNumber = (value: string | undefined): number | null => {
+export const parseNumber = (value: string | undefined): number | null  => {
   const digits = (value  ||  '').replace(/[^\d]/g, '');
-  return digits ? Number(digits) : null;
+  return (digits  ?  Number(digits)  :  null);
 };
 
 
@@ -85,19 +85,19 @@ export function parseSessionsPage(html: string): SessionsPage {
   const $ = cheerio.load(html);
   const heading = clean($('main h5').first().text());
 
-  const cards = $('[data-testid="session-card"]').toArray().map((element) => {
+  const cards = $('[data-testid="session-card"]').toArray().map((element)  => {
     const card = $(element);
     const meta = clean(card.find('.sbd-card-meta').text());
     const mix = cardMix(meta);
     return {
       mix,
-      title: mix ? meta.slice(mix.length).replace(/^\s*(?:·|-)\s*/, '').trim() : meta,
+      title: (mix  ?  meta.slice(mix.length).replace(/^\s*(?:·|-)\s*/, '').trim()  :  meta),
       timestamp: clean(card.find('.sbd-card-when').text()),
       isOpen: card.hasClass('sbd-card-now'),
     };
   });
 
-  const pageButton = (label: string) => {
+  const pageButton = (label: string)  => {
     const button = $(`[data-testid="session-pagination"] button[aria-label="${label}"]`);
     return button.length > 0  &&  button.attr('disabled') === undefined;
   };
@@ -135,14 +135,14 @@ export function parseOpenSession(html: string): OpenSession | null {
 
   const summary = clean(when.text());
   const playsTally = hero.find('.sbd-tally > div').toArray()
-    .find((item) => clean($(item).find('.sbd-tally-k').text()) === 'Plays');
+    .find((item)  =>  clean($(item).find('.sbd-tally-k').text()) === 'Plays');
 
   return {
     title: clean(hero.find('.sbd-hero-title').first().text()),
     summary,
     mix: clean(summary.split('·')[0]  ||  ''),
     date: parseSummaryDate(summary),
-    playsTotal: playsTally ? parseNumber($(playsTally).find('.sbd-tally-v').text()) : null,
+    playsTotal: (playsTally  ?  parseNumber($(playsTally).find('.sbd-tally-v').text())  :  null),
     pumbility: parseNumber($('[data-testid="session-ceremony"] .sbd-pumb-big').first().text()),
   };
 }
@@ -157,7 +157,7 @@ export function sameSessionTime(cardTimestamp: string, summary: string): boolean
     return false;
 
   const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-  const time = (value: string) => value.replace(/\s+/g, '').toLowerCase();
+  const time = (value: string)  =>  value.replace(/\s+/g, '').toLowerCase();
   return Number(card[1]) === Number(header[2])
     &&  months.indexOf(card[2]!.toLowerCase()) + 1 === Number(header[1])
     &&  time(card[3]!) === time(header[3]!);
@@ -166,11 +166,11 @@ export function sameSessionTime(cardTimestamp: string, summary: string): boolean
 
 // A card's title up to its first "·", e.g. "Play Session" of "Play Session · 77 min". What follows
 // may change: a session's duration grows when more scores are imported into it.
-export const sessionName = (title: string) => clean(title.split('·')[0]  ||  '');
+export const sessionName = (title: string)  =>  clean(title.split('·')[0]  ||  '');
 
 
 // Whether two cards are the same session, though it may have grown in between.
-export const sameCard = (a: SessionCard, b: SessionCard) =>
+export const sameCard = (a: SessionCard, b: SessionCard)  =>
   a.mix === b.mix  &&  sessionName(a.title) === sessionName(b.title)  &&  a.timestamp === b.timestamp;
 
 
@@ -197,11 +197,11 @@ export function openSessionMismatches(open: OpenSession | null, card: SessionCar
 // "D24" → D, 24. Other chart labels (e.g. co-op) are read the same way when they end in a number.
 export function parseChartLabel(label: string): { chartType: string; level: number } | null {
   const match = clean(label).match(/^([A-Za-z][A-Za-z-]*?)\s*(\d+)$/);
-  return match ? { chartType: match[1]!.toUpperCase(), level: Number(match[2]) } : null;
+  return (match  ?  { chartType: match[1]!.toUpperCase(), level: Number(match[2]) }  :  null);
 }
 
 
-const imageName = (src: string | undefined, folder: string) =>
+const imageName = (src: string | undefined, folder: string)  =>
   src?.match(new RegExp(`/${folder}/([^/?#]+)\\.\\w+(?:[?#].*)?$`))?.[1]  ??  null;
 
 
@@ -225,17 +225,17 @@ export function parseSessionPlays(html: string): SessionPlays {
 
     const chart = parseChartLabel(difficulty.attr('alt')  ||  '');
     const songTitle = clean(row.find('[data-testid="session-row-chart"]').first().text());
-    const songImage = row.find('img').toArray().map((img) => imageName($(img).attr('src'), 'songs')).find(Boolean);
+    const songImage = row.find('img').toArray().map((img)  =>  imageName($(img).attr('src'), 'songs')).find(Boolean);
     if (! chart  ||  ! songTitle) {
       unreadable++;
       continue;
     }
 
-    const stack = row.find('[data-testid="peer-score"] img').toArray().map((img) => $(img).attr('src'));
+    const stack = row.find('[data-testid="peer-score"] img').toArray().map((img)  =>  $(img).attr('src'));
     // A broken play's grade image is the grade's with a "_broken" suffix, e.g. "aa_broken".
-    const gradeImage = stack.map((src) => imageName(src, 'letters')).find(Boolean)  ??  null;
+    const gradeImage = stack.map((src)  =>  imageName(src, 'letters')).find(Boolean)  ??  null;
     const strip = row.find('[data-testid="judgement-strip"]').first();
-    const judgment = (name: string) => parseNumber(strip.find(`.judg-${name}`).first().text());
+    const judgment = (name: string)  =>  parseNumber(strip.find(`.judg-${name}`).first().text());
 
     plays.push({
       // Two songs may share a title, but not an image.
@@ -245,7 +245,7 @@ export function parseSessionPlays(html: string): SessionPlays {
       score,
       grade: gradeImage?.replace(/_broken$/, '')  ??  null,
       passed: ! gradeImage?.endsWith('_broken'),
-      plate: stack.map((src) => imageName(src, 'plates')).find(Boolean)  ??  null,
+      plate: stack.map((src)  =>  imageName(src, 'plates')).find(Boolean)  ??  null,
       perfect: judgment('perfect'),
       great: judgment('great'),
       good: judgment('good'),

@@ -45,29 +45,29 @@ export const chartsGroupsStyles = `
   .level-other .level-bar { grid-column: 2 / -1; }
 `;
 
-const levelType = (level) => (level.match(/^[A-Za-z]+/)  ||  [level])[0];
+const levelType = (level)  =>  (level.match(/^[A-Za-z]+/)  ||  [level])[0];
 
-const levelNum = (level) => parseInt((level.match(/\d+/)  ||  ['0'])[0], 10);
+const levelNum = (level)  =>  parseInt((level.match(/\d+/)  ||  ['0'])[0], 10);
 const TYPE_ORDER = { S: 0, D: 1 };
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word)  =>  `${n} ${word}${(n === 1  ?  ''  :  's')}`;
 
 
 function compareLevels(a, b) {
   const ta = levelType(a), tb = levelType(b);
-  return (TYPE_ORDER[ta] ?? 9) - (TYPE_ORDER[tb] ?? 9)
+  return (TYPE_ORDER[ta]  ??  9) - (TYPE_ORDER[tb]  ??  9)
     ||  ta.localeCompare(tb)
     ||  levelNum(a) - levelNum(b);
 }
 
 
-export const sortedLevels = (charts) => [...new Set(charts.map((chart) => chart.chart))].sort(compareLevels);
+export const sortedLevels = (charts)  =>  [...new Set(charts.map((chart)  =>  chart.chart))].sort(compareLevels);
 
 
 // The levels column: one bar per chart level, singles on the left and doubles on the right.
 // `onSelect` gets the level whose bar was clicked.
 export function createChartsGroups(container, onSelect) {
-  container.addEventListener('click', (event) => {
+  container.addEventListener('click', (event)  => {
     const bar = event.target.closest('.level-bar[data-level]');
     if (bar)
       onSelect(bar.dataset.level);
@@ -79,17 +79,17 @@ export function createChartsGroups(container, onSelect) {
     const levels = sortedLevels([...charts, ...hiddenCharts]);
     const stats = {};
     for (const level of levels) {
-      const atLevel = (chart) => chart.chart === level;
+      const atLevel = (chart)  =>  chart.chart === level;
       stats[level] = levelStats(charts.filter(atLevel), hiddenCharts.filter(atLevel));
     }
 
     // A level's heat grows with the square of its losses, relative to the level with the most.
-    const maxLose = Math.max(1, ...levels.map((level) => stats[level][countBy].lose));
-    const heat = (n) => ((n / maxLose) ** 2).toFixed(3);
+    const maxLose = Math.max(1, ...levels.map((level)  =>  stats[level][countBy].lose));
+    const heat = (n)  =>  ((n / maxLose) ** 2).toFixed(3);
 
     // Each bar is split by the share of wins / not played / hidden losses / losses; wins sit next to
     // the level number and losses at the outer end, so singles grow to the left and doubles to the right.
-    const bar = (level, side) => {
+    const bar = (level, side)  => {
       if (! level)
         return `<span class="level-bar ${side} placeholder" aria-hidden="true"></span>`;
 
@@ -97,35 +97,37 @@ export function createChartsGroups(container, onSelect) {
       const { charts: byCharts, results: byResults } = stats[level];
       const counts = stats[level][countBy];
       // The hidden-losses segment has no number; its count is in the tooltip, which shows both countings.
-      const part = (cls, n, label = n, style = '') =>
-        (n ? `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>` : '');
-      const tipLine = (stat) => `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
+      const part = (cls, n, label = n, style = '')  =>
+        (n  ?  `<span class="${cls}" style="flex-grow: ${n}${style}">${label}</span>`  :  '');
+
+      const tipLine = (stat)  =>  `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
         + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;
+
       const tip = `${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tipLine('win')}`;
-      return `<button class="level-bar ${side}${on ? ' on' : ''}" type="button" role="radio" aria-checked="${on}" `
+      return `<button class="level-bar ${side}${(on  ?  ' on'  :  '')}" type="button" role="radio" aria-checked="${on}" `
         + `data-level="${esc(level)}" title="${esc(tip)}">`
         + `${part('win', counts.win)}${part('unplayed', counts.unplayed)}${part('hidden-loss', counts.hidden, '')}`
         + `${part('lose', counts.lose, counts.lose, `; --heat: ${heat(counts.lose)}`)}</button>`;
     };
 
-    const sideLevels = levels.filter((level) => levelType(level) in TYPE_ORDER);
-    const otherLevels = levels.filter((level) => ! (levelType(level) in TYPE_ORDER));
+    const sideLevels = levels.filter((level)  =>  levelType(level) in TYPE_ORDER);
+    const otherLevels = levels.filter((level)  =>  ! (levelType(level) in TYPE_ORDER));
     // Every level between the highest and lowest gets a row, highest on top, so missing levels keep their place.
     const levelNums = sideLevels.map(levelNum);
     const minNum = Math.min(...levelNums), maxNum = Math.max(...levelNums);
-    const nums = sideLevels.length ? Array.from({ length: maxNum - minNum + 1 }, (_, i) => maxNum - i) : [];
-    const find = (type, num) => sideLevels.find((l) => levelType(l) === type  &&  levelNum(l) === num);
+    const nums = (sideLevels.length  ?  Array.from({ length: maxNum - minNum + 1 }, (_, i)  =>  maxNum - i)  :  []);
+    const find = (type, num)  =>  sideLevels.find((l)  =>  levelType(l) === type  &&  levelNum(l) === num);
 
-    const row = (num) => {
+    const row = (num)  => {
       const single = find('S', num), double = find('D', num);
       const on = selectedLevel !== null  &&  (selectedLevel === single  ||  selectedLevel === double);
-      return `${bar(single, 'single')}<span class="level-num${on ? ' on' : ''}">${num}</span>${bar(double, 'double')}`;
+      return `${bar(single, 'single')}<span class="level-num${(on  ?  ' on'  :  '')}">${num}</span>${bar(double, 'double')}`;
     };
 
-    const other = (level) => `<div class="level-other"><span class="level-num${level === selectedLevel ? ' on' : ''}">`
+    const other = (level)  =>  `<div class="level-other"><span class="level-num${(level === selectedLevel  ?  ' on'  :  '')}">`
       + `${esc(level)}</span>${bar(level, 'double')}</div>`;
 
-    const headOn = (type) => (selectedLevel !== null  &&  levelType(selectedLevel) === type ? ' on' : '');
+    const headOn = (type)  =>  ((selectedLevel !== null  &&  levelType(selectedLevel) === type)  ?  ' on'  :  '');
     container.innerHTML = `<div class="level-chart" role="radiogroup" aria-label="Levels">`
       + `<span class="level-head single${headOn('S')}">Singles</span><span></span><span class="level-head${headOn('D')}">Doubles</span>`
       + `${nums.map(row).join('')}${otherLevels.map(other).join('')}</div>`;

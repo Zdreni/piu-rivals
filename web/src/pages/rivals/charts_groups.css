@@ -1,0 +1,122 @@
+/* Levels column */
+
+.rivals .filters { display: flex; flex-direction: column; border-right: 1px solid #2B4034; flex-shrink: 0; }
+/* A top bar, as tall as the results' tabs beside it, so the lines under them meet: their 6px top padding, their
+   18px line with 10px above it and 10px + 2px (their underline less its overlap) below, and the 1px line. */
+.rivals .level-top { flex-shrink: 0; box-sizing: border-box; height: calc(6px + 10px + 18px + 12px + 1px);
+                     display: flex; align-items: center; gap: 8px; padding: 0 10px 0 16px; border-bottom: 1px solid #2B4034; }
+/* Its buttons slide the rivals or the preferences in. */
+.rivals .panel-toggle { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 10px;
+                        background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px;
+                        font: 500 14px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .panel-toggle:hover { color: #4FE33F; border-color: #4FE33F; }
+.rivals .panel-toggle.on { background: #2B4034; color: #EAF5EC; }
+.rivals .panel-toggle svg { width: 7px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6;
+                            stroke-linecap: round; stroke-linejoin: round; }
+/* The preferences' button is a square with sliders, at the bar's right end. */
+.rivals .prefs-toggle { margin-left: auto; width: 36px; padding: 0; justify-content: center; }
+.rivals .prefs-toggle svg { width: 18px; height: 18px; stroke-width: 2; }
+.rivals .prefs-toggle circle { fill: currentColor; }
+.rivals .level-scroll { display: flex; flex: 1; min-height: 0; padding: 10px 10px 10px 16px;
+                        overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
+                        scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .filters:hover .level-scroll { scrollbar-color: #3D5A49 transparent; }
+/* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). There's no row gap:
+   bars take 92% of their row instead, so the space between them stays in proportion to their height. */
+.rivals .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
+                       grid-auto-rows: minmax(10px, 1fr); font-size: 14px; }
+.rivals .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 8px; }
+.rivals .level-head.single { text-align: right; }
+.rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
+                     font-variant-numeric: tabular-nums; }
+.rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
+.rivals .level-bar { position: relative; display: block; height: 92%; align-self: center; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
+                     border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: var(--bar-dim); }
+/* Safari wraps a button's children in an anonymous box that doesn't stretch, so the segments get their own flex box
+   pinned to the button's edges. */
+.rivals .level-segs { position: absolute; inset: 0; display: flex; }
+.rivals .level-bar.single .level-segs { flex-direction: row-reverse; }
+/* Bars but the selected one are dimmed, on every screen, to --bar-dim; a mouse over one brightens it (not a tap, which
+   would leave it bright). */
+.rivals { --bar-dim: .4; }
+@media (hover: hover) { .rivals .level-bar:hover { opacity: 1; } }
+.rivals .level-bar.on { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
+.rivals .level-bar.placeholder { visibility: hidden; }
+/* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 5% of the bar (up to 6px) on
+   either side (see LevelBar), even if that bends the proportions. There's no padding, so it can't add to small segments. */
+.rivals .level-segs > span { flex: 0 0 0; box-sizing: border-box; --overlap: 0px; overflow: hidden; display: flex; align-items: center;
+                            justify-content: center; font: 600 11px/1 Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums;
+                            color: rgba(0,0,0,.55); }
+/* Wins and np darken from the level number outward. Losses burn from red in the middle to orange at
+   the end; how orange is set by --heat (0..1), and only the most losses of any level reach full orange. */
+.rivals .level-bar .win { background: linear-gradient(to right, #72C457, #3F7D24); }
+.rivals .level-bar.single .win { background: linear-gradient(to left, #72C457, #3F7D24); }
+.rivals .level-bar .unplayed { background: linear-gradient(to right, #0F2B3C, #061219); color: #7F9DB0; }
+.rivals .level-bar.single .unplayed { background: linear-gradient(to left, #0F2B3C, #061219); }
+.rivals .level-bar .lose { --hot: color-mix(in srgb, #FF8A00 calc(var(--heat) * 100%), #D01E00);
+                           background: linear-gradient(to left, var(--hot), #B01C00); color: #000; }
+.rivals .level-bar.single .lose { background: linear-gradient(to right, var(--hot), #B01C00); }
+.rivals .level-bar .tie { background: linear-gradient(to right, #F2E8B6, #B8AC72); }
+.rivals .level-bar.single .tie { background: linear-gradient(to left, #F2E8B6, #B8AC72); }
+.rivals .level-bar .hidden-loss { background: #34140E; }
+/* Segments round their outer corners and lie over the next segment, which slides 2px under them. Its padding and
+   min-width make up for those 2px, so what shows stays proportional and the count stays centered. */
+.rivals .level-segs > span { position: relative; }
+.rivals .level-bar .win { z-index: 4; }
+.rivals .level-bar .tie { z-index: 3; }
+.rivals .level-bar .unplayed { z-index: 2; }
+.rivals .level-bar .hidden-loss { z-index: 1; }
+.rivals .level-segs > span:not(.lose) { border-radius: 0 2px 2px 0; }
+.rivals .level-segs > span + span { --overlap: 2px; margin-left: -2px; padding-left: 2px; }
+.rivals .level-bar.single .level-segs > span:not(.lose) { border-radius: 2px 0 0 2px; }
+.rivals .level-bar.single .level-segs > span + span { margin: 0 -2px 0 0; padding: 0 2px 0 0; }
+.rivals .level-other { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; margin-top: 6px; }
+.rivals .level-other .level-num { grid-column: 1; justify-content: flex-end; padding-right: 6px; }
+.rivals .level-other .level-bar { grid-column: 2 / -1; }
+
+/* Narrow screens and phones: the levels stick to the top of the screen while the page scrolls (see rivals_page.css). */
+@media (max-width: 1000px) {
+  .rivals .filters { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; }
+  .rivals .level-top { padding-left: 10px; }
+  .rivals .level-scroll { padding-left: 10px; }
+  .rivals .level-chart { flex: 1; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
+}
+
+/* Tablets, while the rivals or the preferences are in: tighter margins, about as on phones. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .rivals .side-open .level-top { padding: 0 6px; }
+  .rivals .side-open .level-scroll { padding: 8px 6px; scrollbar-gutter: auto; }
+}
+
+@media (max-width: 600px) {
+  /* Beside the rivals or the preferences, the selected bar and the levels' heads are dimmed like the other bars, and
+     a tap on the levels slides the panel out, and on a bar selects its level too (see RivalsView). */
+  .rivals .side-open :is(.level-bar.on, .level-head) { opacity: var(--bar-dim); }
+  /* Taps on the levels aren't text selections, and a double tap doesn't zoom. */
+  .rivals .filters { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  .rivals .level-scroll { padding: 8px 4px 8px 6px; scrollbar-gutter: auto; }
+  /* The buttons nearly fill the bar, 4px from its edges and at least 8px apart. */
+  .rivals .level-top { gap: 8px; padding: 0 4px; }
+  .rivals .panel-toggle { gap: 4px; height: 40px; padding: 0 6px 0 5px; font-size: 13px; }
+  .rivals .prefs-toggle { width: 40px; padding: 0; }
+  .rivals .panel-toggle svg { width: 6px; height: 10px; }
+  .rivals .prefs-toggle svg { width: 20px; height: 20px; }
+  /* As tall as the tabs here (see tabs.css). */
+  .rivals .level-top { height: 48px; }
+  .rivals .level-chart { grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); font-size: 12px;
+                        transition: grid-template-columns .3s ease; }
+  .rivals .level-head { font-size: 12px; padding-bottom: 6px; }
+  .rivals .level-num { font-size: 12px; transition: opacity .3s ease; }
+  /* Narrowed beside a side panel, the levels drop their numbers, and the bars get their room. */
+  .rivals .side-open .level-chart { grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr); }
+  .rivals .side-open .level-num { opacity: 0; }
+  /* The bars drop their counts too, and with them the room the counts need (see LevelBar); segments keep as much of
+     their bar as with their counts, about 4.5% a digit and 5% on either side, so the bars look the same, only smaller. */
+  .rivals .side-open .level-segs > span { color: transparent; --digit: 4.5%; --label-pad: 5%; }
+  .rivals .level-other .level-num { padding-right: 4px; }
+  .rivals .level-segs > span { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rivals .level-chart, .rivals .level-num { transition: none; }
+}

@@ -1,0 +1,82 @@
+/* Rivals column */
+
+.rivals .rival-list { flex-shrink: 0; font-weight: 400; display: flex; flex-direction: column;
+                      border-right: 1px solid #2B4034; }
+.rivals .rival-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 10px 8px;
+                        scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .rival-scroll:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .rival-tabs { padding-left: 14px; margin-bottom: 10px; }
+.rivals .rival-tab { flex: 1; }
+.rivals .rival-tab .tab-count { min-width: 0; }
+.rivals .rival-list .muted { color: #9AB3A3; }
+.rivals .rival-hint { padding: 9px 6px; font-size: 15px; }
+.rivals .rival-hint.error { color: #FF5A5A; }
+.rivals .rival { padding: 9px 6px; border-radius: 4px; position: relative; cursor: pointer; }
+.rivals .rival.faded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+                              background: rgba(20,32,26,.8); }
+.rivals .rival:nth-child(odd of .rival) { background: rgba(255,255,255,.05); }
+.rivals .rival:hover { background: rgba(79,227,63,.12); }
+.rivals .rival.focused { background: rgba(79,227,63,.08); box-shadow: 0 0 0 1px #2B4034 inset; cursor: default; }
+/* The focused rival unrolls its counts, results and links: their row grows from nothing to their height. Folded, they
+   can't be tabbed to, once they're out of sight. */
+.rivals .rival-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.rivals .rival-more > div { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s .25s; }
+.rivals .rival.focused .rival-more { grid-template-rows: 1fr; }
+.rivals .rival.focused .rival-more > div { visibility: visible; transition-delay: 0s; }
+.rivals .rival-toggle { display: flex; align-items: center; gap: 8px; font-size: 17px; }
+.rivals .rival.focused .rival-toggle { cursor: pointer; }
+.rivals .rival input { appearance: none; margin: 0; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer;
+                       background: #3A4540; border: 1px solid #56635C; border-radius: 3px; display: grid; place-content: center; }
+.rivals .rival input:hover { border-color: #7A8A81; }
+.rivals .rival input:checked { background: #A9AFAC; border-color: #A9AFAC; }
+.rivals .rival input:checked::after { content: ''; width: 4px; height: 8px; margin-top: -2px;
+                                      border: solid #0F1A14; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.rivals .rival.me .rival-name, .rivals .rival.me .rival-pum { color: #FFC433; }
+.rivals .rival-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                      font-size: 16px; color: #B4C4BA; }
+.rivals .rival-pum { color: #9AB3A3; font-variant-numeric: tabular-nums; }
+.rivals .rival-links { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
+.rivals .rival-links + .rival-scrap { margin-top: 4px; }
+.rivals .rival-stats { color: #9AB3A3; }
+.rivals .rival-stats .blue { color: #3FA9F5; }
+.rivals .rival-stats .error { color: #FF5A5A; }
+.rivals .rival-stats .stats-label { color: #C9D8CE; }
+.rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 5px 12px;
+                      font-size: 14px; text-decoration: none; }
+.rivals .rival-link:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+/* Enable and Solo: checkboxes in buttons. */
+.rivals .rival-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.rivals .rival-solo:hover { color: #3FA9F5; border-color: #3FA9F5; background: #14201A; }
+.rivals .rival .rival-check input { width: 14px; height: 14px; }
+.rivals .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
+.rivals .rival .rival-check input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
+.rivals .rival-delete { margin-left: auto; font: inherit; font-size: 14px; cursor: pointer; }
+.rivals .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
+.rivals .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }
+.rivals .rival-counts, .rivals .rival-stats { margin-top: 3px; }
+.rivals .rival-counts { white-space: nowrap; }
+.rivals .rival-counts > span { color: #9AB3A3; }
+.rivals .rival-counts .zero, .rivals .rival-stats .zero { opacity: .4; }
+.rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-scrap { opacity: .45; }
+
+/* Others: players to add as rivals */
+
+.rivals .rival-add { margin: 0 16px 8px 14px; }
+.rivals .rival-add input { width: 100%; background: #1C2B22; color: #EAF5EC; border: 1px solid #2B4034; border-radius: 4px;
+                           padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
+.rivals .rival-add input::placeholder { color: #8A9590; }
+.rivals .rival-add input:focus { border-color: #4FE33F; }
+.rivals .rival.other { padding: 6px; }
+.rivals .rival-plus { flex-shrink: 0; width: 28px; height: 22px; background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034;
+                      border-radius: 4px; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .rival-plus-spacer { flex-shrink: 0; width: 28px; }
+.rivals .rival-plus:hover { color: #4FE33F; border-color: #4FE33F; background: #14201A; }
+
+/* Tablets, while the rivals are in: tighter margins, about as on phones. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .rivals .side-open .rival-scroll { padding: 0 6px 8px 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rivals .rival-more, .rivals .rival-more > div { transition: none; }
+}

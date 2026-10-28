@@ -1,5 +1,6 @@
 import { type Kysely, sql } from 'kysely';
 
+
 // How much each best score rose over the best before it, so the site can show it without the earlier tries.
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.alterTable('best_results').addColumn('improvement', 'integer').execute();

@@ -15,7 +15,7 @@ export function createDatabase(url = config.databaseUrl()): Kysely<Database> {
         connectionLimit: 5,
       }),
       // DATETIME columns are kept in UTC, including CURRENT_TIMESTAMP defaults.
-      onCreateConnection: async (connection) => {
+      onCreateConnection: async (connection)  => {
         await connection.executeQuery(CompiledQuery.raw(`SET time_zone = '+00:00'`));
       },
     }),

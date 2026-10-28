@@ -14,8 +14,8 @@ export function readUiState() {
     const saved = JSON.parse(raw);
     return {
       isOpen: saved.isOpen === true,
-      selectedLevel: typeof saved.selectedLevel === 'string' ? saved.selectedLevel : null,
-      selectedTab: TABS.some(({ id }) => id === saved.selectedTab) ? saved.selectedTab : DEFAULT_STATE.selectedTab,
+      selectedLevel: (typeof saved.selectedLevel === 'string'  ?  saved.selectedLevel  :  null),
+      selectedTab: (TABS.some(({ id })  =>  id === saved.selectedTab)  ?  saved.selectedTab  :  DEFAULT_STATE.selectedTab),
     };
   } catch (error) {
     console.error('[piuscores] Unable to restore rival scores window state', error);

@@ -1,0 +1,61 @@
+/* Underlined tabs, used by the rivals column and the results: the open tab is green, with a thick underline over
+   the thin line under all tabs; the others are dimmed until hovered. */
+
+.rivals .tabs, .rivals .rival-tabs { display: flex; gap: 4px; padding: 6px 16px 0; border-bottom: 1px solid #2B4034; }
+.rivals .tabs .tab, .rivals .rival-tabs .rival-tab { margin-bottom: -1px; padding: 10px 14px; color: #6B8174; background: transparent;
+    border: none; border-bottom: 3px solid transparent; border-radius: 0; font: 500 15px/1.2 Roboto, Arial, sans-serif;
+    text-align: center; cursor: pointer; transition: color .15s, border-color .15s; }
+.rivals .tabs .tab:hover, .rivals .rival-tabs .rival-tab:hover { color: #C9D8CE; }
+.rivals .tab[aria-selected="false"] .tab-count, .rivals .rival-tab[aria-selected="false"] .tab-count { opacity: .45; }
+.rivals .tab[aria-selected="false"]:hover .tab-count, .rivals .rival-tab[aria-selected="false"]:hover .tab-count { opacity: .7; }
+.rivals .tabs .tab[aria-selected="true"], .rivals .rival-tabs .rival-tab[aria-selected="true"] {
+    color: #4FE33F; border-bottom-color: #4FE33F; cursor: default; }
+
+/* The results' "Hidden" tab sits at the right end. */
+.rivals .tab[data-tab="hidden"] { margin-left: auto; }
+/* Room for three digits, so tabs keep their size as the counts change. */
+.rivals .tab-count { display: inline-block; min-width: 3ch; margin-left: 6px; opacity: .7; text-align: right;
+                     font-variant-numeric: tabular-nums; }
+.rivals .tab-word.short { display: none; }
+
+/* Tabs that don't fit on one line (see useTabsFit) are laid out as on phones (see below): their word, or its short
+   form if even then they don't fit, with its count a gap under it, in a row as tall as the one-line tabs. While
+   they're measured, they're kept on one line, and a tab whose words don't fit in its room overflows it. */
+.rivals .measuring { flex-wrap: nowrap !important; }
+.rivals .measuring > * { min-width: 0 !important; overflow: hidden !important; white-space: nowrap !important; }
+@media (min-width: 601px) {
+  .rivals .tabs.stacked, .rivals .rival-tabs.stacked { flex-wrap: nowrap; box-sizing: border-box;
+      min-height: calc(6px + 10px + 18px + 12px + 1px); padding-top: 2px; }
+  .rivals .stacked .tab, .rivals .stacked .rival-tab { padding: 2px 4px; font-size: 14px; line-height: 16px; white-space: nowrap; }
+  .rivals .tabs.stacked { gap: 0; padding-left: 4px; padding-right: 4px; }
+  .rivals .tabs.stacked .tab { flex: 1 1 0; margin-left: 0; padding-left: 2px; padding-right: 2px; }
+  .rivals .stacked .tab-count { display: block; min-width: 0; margin: 3px 0 0; text-align: center; }
+  .rivals .stacked .tab-word { display: block; }
+  .rivals .stacked .tab-word.short { display: none; }
+  .rivals .short-words .tab-word:not(.short) { display: none; }
+  .rivals .short-words .tab-word.short { display: block; }
+}
+
+@media (max-width: 1000px) {
+  .rivals .tabs { flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: #14201A; }
+}
+
+@media (max-width: 600px) {
+  /* The results' and the rivals' tabs are alike here: their word, with its count a gap under it, in a row as tall as
+     the levels' and the preferences' top bars. The tabs stretch to the row's height and centre their lines. The
+     results' share the width evenly. */
+  .rivals .tabs, .rivals .rival-tabs { box-sizing: border-box; min-height: 48px; padding-top: 2px; }
+  .rivals .tabs .tab, .rivals .rival-tabs .rival-tab { padding: 2px 4px; font-size: 14px; line-height: 16px; white-space: nowrap; }
+  .rivals .tabs { gap: 0; padding-left: 4px; padding-right: 4px; }
+  .rivals .tabs .tab { flex: 1 1 0; margin-left: 0; padding-left: 2px; padding-right: 2px; }
+  .rivals .tab-count { display: block; min-width: 0; margin: 3px 0 0; text-align: center; }
+  .rivals .tab-word:not(.short) { display: none; }
+  .rivals .tab-word.short { display: block; margin: 0 auto; overflow: hidden; }
+  /* The open tab spells its word out, and takes the room it needs from the others. */
+  .rivals .tabs .tab[aria-selected="true"] .tab-word.short { display: none; }
+  .rivals .tabs .tab[aria-selected="true"] .tab-word:not(.short) { display: block; margin: 0 auto; overflow: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rivals .tab-word { transition: none; }
+}

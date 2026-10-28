@@ -51,7 +51,7 @@ files, or use `npm run watch` to rebuild when they change.
 
 ## Conventions
 
-Follow the coding rules in [CODING_RULES.md](CODING_RULES.md).
+Follow the coding rules in [../CODING_RULES.md](../CODING_RULES.md).
 
 After every code change in `src/`, rebuild `dist/` with `npm run build` and
 commit the regenerated files together with the source change.

@@ -15,24 +15,24 @@ function required(name: string): string {
 }
 
 
-const numberOr = (name: string, fallback: number) => {
+const numberOr = (name: string, fallback: number)  => {
   const value = Number(process.env[name]);
-  return Number.isFinite(value)  &&  process.env[name] !== '' ? value : fallback;
+  return ((Number.isFinite(value)  &&  process.env[name] !== '')  ?  value  :  fallback);
 };
 
 
-const list = (value: string | undefined) =>
-  (value  ||  '').split(',').map((item) => item.trim()).filter(Boolean);
+const list = (value: string | undefined)  =>
+  (value  ||  '').split(',').map((item)  =>  item.trim()).filter(Boolean);
 
 
 export const config = {
-  databaseUrl: () => required('DATABASE_URL'),
+  databaseUrl: ()  =>  required('DATABASE_URL'),
   port: numberOr('PORT', 9876),
   // nginx in front terminates TLS, so the API only listens locally.
   host: process.env.HOST  ||  '127.0.0.1',
-  googleClientId: () => required('GOOGLE_CLIENT_ID'),
+  googleClientId: ()  =>  required('GOOGLE_CLIENT_ID'),
   // Emails that are made admins on login, e.g. the first admin.
-  adminEmails: list(process.env.ADMIN_EMAILS).map((email) => email.toLowerCase()),
+  adminEmails: list(process.env.ADMIN_EMAILS).map((email)  =>  email.toLowerCase()),
   corsOrigins: list(process.env.CORS_ORIGIN  ||  'https://zdreni.github.io,http://localhost:5173'),
   sessionDays: numberOr('SESSION_DAYS', 30),
   piuscoresUrl: process.env.PIUSCORES_URL  ||  'https://piuscores.arroweclip.se',

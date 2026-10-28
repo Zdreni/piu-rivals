@@ -3,12 +3,12 @@ import { showOwnPlayerToast, showPlayerAddedToast, showPumbilityToast } from '..
 
 export const TAG = '[piuscores]';
 
-export const text = (el) => (el ? el.textContent.trim() : '');
+export const text = (el)  =>  (el  ?  el.textContent.trim()  :  '');
 
 
-export const parseNumber = (value) => {
+export const parseNumber = (value)  => {
   const digits = value.replace(/[^\d]/g, '');
-  return digits ? Number(digits) : null;
+  return (digits  ?  Number(digits)  :  null);
 };
 
 
@@ -36,7 +36,7 @@ let knownOwnPlayerId = null;
 
 // The account menu caption reads "<username> (<in-game name>)", e.g. "Dino (DINO #3869)".
 function accountUsername() {
-  return text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1] ?? null;
+  return text(document.querySelector('.shell-menu-caption')).match(/^(.+?)\s*\(/)?.[1]  ??  null;
 }
 
 
@@ -52,14 +52,14 @@ export function pagePlayerId() {
     return id;
 
   const username = accountUsername();
-  return username  &&  id.toLowerCase() === username.toLowerCase() ? knownOwnPlayerId : null;
+  return ((username  &&  id.toLowerCase() === username.toLowerCase())  ?  knownOwnPlayerId  :  null);
 }
 
 
 // Your name always comes from the account menu (the username), not from your own pages, which
 // show the in-game name.
-export const playerNameFor = (playerId, ownPlayerId, pageName) =>
-  (playerId === ownPlayerId ? accountUsername() : null)  ||  pageName;
+export const playerNameFor = (playerId, ownPlayerId, pageName)  =>
+  (playerId === ownPlayerId  ?  accountUsername()  :  null)  ||  pageName;
 
 
 // Saves your username from the account menu, so it is known before any of your pages are visited.
@@ -109,7 +109,7 @@ async function mergeOwnAlias(ownPlayerId) {
     updates.results = merged;
 
   if (preferences?.hiddenRivals?.includes(alias)) {
-    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id) => id !== alias) };
+    updates.preferences = { ...preferences, hiddenRivals: preferences.hiddenRivals.filter((id)  =>  id !== alias) };
   }
 
   if (Object.keys(updates).length) {
@@ -126,7 +126,7 @@ export async function syncOwnPlayerId() {
     await chrome.storage.local.set({ ownPlayerId: scrapedId });
   }
 
-  const id = scrapedId  ||  (typeof ownPlayerId === 'string' ? ownPlayerId : null);
+  const id = scrapedId  ||  (typeof ownPlayerId === 'string'  ?  ownPlayerId  :  null);
   if (id  &&  id !== knownOwnPlayerId) {
     knownOwnPlayerId = id;
     await mergeOwnAlias(id);
@@ -139,7 +139,7 @@ export async function syncOwnPlayerId() {
 
 
 // Dates are "YYYY-MM-DD" strings, so the later one also compares greater; null is unknown.
-const laterDate = (a, b) => (! a  ||  (b  &&  b > a) ? b : a) ?? null;
+const laterDate = (a, b)  =>  ((! a  ||  (b  &&  b > a))  ?  b  :  a)  ??  null;
 
 
 // Records a try of `score` on `date` (null when unknown). lastTryDate moves to every newer try,
@@ -155,7 +155,7 @@ export function saveScoreTry(scores, playerId, score, date) {
   if (lastTryDate)
     record.lastTryDate = lastTryDate;
 
-  const improved = score > (prev?.bestScore ?? -1);
+  const improved = score > (prev?.bestScore  ??  -1);
   if (improved) {
     record.bestScore = score;
     if (date)
@@ -170,8 +170,8 @@ export function saveScoreTry(scores, playerId, score, date) {
   if (! improved)
     return null;
 
-  const prevScore = prev?.bestScore ?? null;
-  return { prevScore, change: prevScore === null ? 'new' : 'upd' };
+  const prevScore = prev?.bestScore  ??  null;
+  return { prevScore, change: (prevScore === null  ?  'new'  :  'upd') };
 }
 
 
@@ -180,7 +180,7 @@ function mergeScoreRecords(a, b) {
   if (! a  ||  ! b)
     return a  ||  b;
 
-  const best = b.bestScore > a.bestScore ? b : a;
+  const best = (b.bestScore > a.bestScore  ?  b  :  a);
   const record = { bestScore: best.bestScore };
   if (best.bestScoreDate)
     record.bestScoreDate = best.bestScoreDate;
@@ -227,7 +227,7 @@ export async function savePlayerInfo(playerId, pageName, pumbility, ownPlayerId,
     player.name = name;
 
   const who = `${player.name  ||  playerId} (${playerId}) on ${source}`;
-  const prevPumbility = prev.pumbility ?? null;
+  const prevPumbility = prev.pumbility  ??  null;
   if (pumbility === null) {
     logPumbility(`not found for ${who}`);
   } else if (prevPumbility === null) {
@@ -249,19 +249,19 @@ export async function savePlayerInfo(playerId, pageName, pumbility, ownPlayerId,
 
   await chrome.storage.local.set({ players: { ...(players  ||  {}), [playerId]: player } });
   if (isNew) {
-    showPlayerAddedToast(player.name  ||  playerId, playerId, player.pumbility ?? null);
+    showPlayerAddedToast(player.name  ||  playerId, playerId, player.pumbility  ??  null);
   } else if (raised) {
-    const label = playerId === ownPlayerId ? 'You' : player.name  ||  playerId;
+    const label = (playerId === ownPlayerId  ?  'You'  :  player.name  ||  playerId);
     showPumbilityToast(label, pumbility, prevPumbility);
   }
 }
 
 
 export function waitForChange(predicate, description, timeoutMs = 10000) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject)  => {
     const startedAt = Date.now();
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver(()  => {
       if (predicate()) {
         observer.disconnect();
         clearInterval(timerId);
@@ -269,7 +269,7 @@ export function waitForChange(predicate, description, timeoutMs = 10000) {
       }
     });
 
-    const timerId = setInterval(() => {
+    const timerId = setInterval(()  => {
       if (predicate()) {
         observer.disconnect();
         clearInterval(timerId);

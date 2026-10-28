@@ -34,18 +34,18 @@ async function userPlayerId(db: Kysely<Database>, guid: string | null, userId: n
 }
 
 
-export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) => {
+export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db })  => {
   app.addHook('preHandler', requireAdmin);
 
 
-  app.get('/admin/users', async (): Promise<AdminUsersResponse> => {
+  app.get('/admin/users', async (): Promise<AdminUsersResponse>  => {
     const rivalCounts = new Map((await db.selectFrom('user_rivals')
       .select(['user_id', sql<number>`COUNT(*)`.as('rivals'), sql<number>`SUM(hidden)`.as('off')])
       .groupBy('user_id')
-      .execute()).map((row) => [row.user_id, row]));
+      .execute()).map((row)  =>  [row.user_id, row]));
 
     return {
-      users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt }) => {
+      users: (await loadUsers(db)).map(({ user, createdAt, lastLoginAt })  => {
         const counts = rivalCounts.get(user.id);
         return { ...user, createdAt, lastLoginAt, rivals: Number(counts?.rivals  ??  0), rivalsOff: Number(counts?.off  ??  0) };
       }),
@@ -53,7 +53,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
   });
 
 
-  app.get('/admin/users/:id', { schema: { params: IdParams } }, async (request): Promise<AdminUserResponse> => {
+  app.get('/admin/users/:id', { schema: { params: IdParams } }, async (request): Promise<AdminUserResponse>  => {
     const { id } = request.params;
     const [loaded] = await loadUsers(db, [id]);
     if (! loaded)
@@ -62,7 +62,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
     const rivals = await loadRivals(db, id);
     const { user, createdAt, lastLoginAt } = loaded;
     return {
-      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((rival) => rival.hidden).length },
+      user: { ...user, createdAt, lastLoginAt, rivals: rivals.length, rivalsOff: rivals.filter((rival)  =>  rival.hidden).length },
       rivals,
       preferences: await loadPreferences(db, id),
       snoozes: (await loadChartPreferences(db, id)).length,
@@ -72,7 +72,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
 
   app.post('/admin/users', {
     schema: { body: Type.Object({ email: Type.String({ format: 'email', maxLength: 191 }), ...UserFields }) },
-  }, async (request): Promise<{ user: User }> => {
+  }, async (request): Promise<{ user: User }>  => {
     const email = request.body.email.trim().toLowerCase();
     if (await db.selectFrom('users').select('id').where('email', '=', email).executeTakeFirst())
       throw new HttpError(409, `${email} is already a user`);
@@ -83,7 +83,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
         email,
         display_name: request.body.displayName  ??  null,
         player_id: playerId,
-        is_admin: request.body.isAdmin ? 1 : 0,
+        is_admin: (request.body.isAdmin  ?  1  :  0),
       })
       .executeTakeFirstOrThrow();
 
@@ -93,7 +93,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
 
   app.patch('/admin/users/:id', {
     schema: { params: IdParams, body: Type.Object(UserFields) },
-  }, async (request): Promise<{ user: User }> => {
+  }, async (request): Promise<{ user: User }>  => {
     const { id } = request.params;
     const { displayName, playerId, isAdmin } = request.body;
     if (! await loadUser(db, id))
@@ -102,15 +102,15 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
     if (id === sessionUser(request).id  &&  isAdmin === false)
       throw new HttpError(409, "You can't remove your own admin rights");
 
-    const newPlayerId = playerId !== undefined ? await userPlayerId(db, playerId?.toLowerCase()  ??  null, id) : undefined;
+    const newPlayerId = (playerId !== undefined  ?  await userPlayerId(db, playerId?.toLowerCase()  ??  null, id)  :  undefined);
     const changes = {
-      ...(displayName !== undefined ? { display_name: displayName } : {}),
-      ...(newPlayerId !== undefined ? { player_id: newPlayerId } : {}),
-      ...(isAdmin !== undefined ? { is_admin: isAdmin ? 1 : 0 } : {}),
+      ...(displayName !== undefined  ?  { display_name: displayName }  :  {}),
+      ...(newPlayerId !== undefined  ?  { player_id: newPlayerId }  :  {}),
+      ...(isAdmin !== undefined  ?  { is_admin: (isAdmin  ?  1  :  0) }  :  {}),
     };
 
     if (Object.keys(changes).length) {
-      await db.transaction().execute(async (trx) => {
+      await db.transaction().execute(async (trx)  => {
         await trx.updateTable('users').set(changes).where('id', '=', id).execute();
         // Your own player can't stay in your rival list.
         if (newPlayerId)
@@ -122,7 +122,7 @@ export const adminUserRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, {
   });
 
 
-  app.delete('/admin/users/:id', { schema: { params: IdParams } }, async (request) => {
+  app.delete('/admin/users/:id', { schema: { params: IdParams } }, async (request)  => {
     if (request.params.id === sessionUser(request).id)
       throw new HttpError(409, "You can't delete yourself");
 

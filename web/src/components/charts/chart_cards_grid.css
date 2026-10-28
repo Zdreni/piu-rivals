@@ -1,0 +1,30 @@
+/* The scrolling body of a score view, and its grid of chart cards (see ChartCardsGrid), with group titles over them. */
+
+/* --results-pad is the room on the sides of the cards' results, and --card-gap the room under them (see
+   chart_card.css); their backgrounds span both. */
+.rivals .dlg-body { --results-pad: 16px; --card-gap: 20px; overflow-y: auto; overflow-x: hidden; padding: 12px 0 0; flex: 1;
+                    scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+.rivals .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
+.rivals .empty { padding: 24px; text-align: center; color: #9AB3A3; }
+
+/* The cards' grid: as many columns as fit. */
+/* The narrowest card leaves 126px for a name: 321px (plus the room on its sides) less borders, row padding, score,
+   arrow (20px) and diff (6ch at 16px); with the rivals in, the cards get narrower (see the tablets below). Results
+   narrower than a card get one card as wide as they are, and the names make do with less. The cards meet, so there are no gaps; a row's cards are as tall
+   as its tallest one. */
+.rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px + 2 * var(--results-pad), 100%), 1fr));
+                      align-items: stretch; }
+/* Cards without diffs: the names get as much room as above, less the arrow and diff columns. */
+.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(min(248px + 2 * var(--results-pad), 100%), 1fr)); }
+.rivals .group-title { grid-column: 1 / -1; margin: 6px var(--results-pad) 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
+                       color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
+.rivals .group-title:not(:first-child) { margin-top: 14px; }
+
+@media (max-width: 1000px) {
+  .rivals .dlg-body { --results-pad: 6px; overflow: visible; padding-top: 8px; }
+}
+
+@media (max-width: 600px) {
+  .rivals .dlg-body { --results-pad: 4px; --card-gap: 14px; padding-top: 8px; }
+  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+}

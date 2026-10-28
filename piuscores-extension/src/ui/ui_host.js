@@ -48,4 +48,4 @@ export function useStyles(name, css) {
 
 
 // The bottom-left stack shared by the RIVALS and grab scores buttons.
-export const buttonStack = () => uiRoot().querySelector('.buttons');
+export const buttonStack = ()  =>  uiRoot().querySelector('.buttons');

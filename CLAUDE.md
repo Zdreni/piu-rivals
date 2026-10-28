@@ -1,5 +1,9 @@
 # piu-rivals
 
+## Code
+
+- Follow the coding rules for all code in the repo (site, server, shared types, extensions): @CODING_RULES.md
+
 ## Database and architecture decisions
 
 - ALWAYS ask for confirmation before adding a database migration or changing the schema. First explain why the change is needed, and why the data already there isn't enough. Then wait for a yes.
@@ -10,7 +14,7 @@
 
 ## Site's score cache
 
-- When a change needs browsers to reload cached scores (e.g. a new field from the API, a changed stored shape), raise `DB_VERSION` in `web/src/pages/rivals/bests_cache.ts`. Never lower it, not even when reverting a change: browsers that loaded the higher version would then run without a cache, or keep rows of the wrong shape once the version goes back up. Raising it a few times during one task is fine.
+- When a change needs browsers to reload cached scores (e.g. a new field from the API, a changed stored shape), raise `DB_VERSION` in `web/src/data/bests_cache.ts`. Never lower it, not even when reverting a change: browsers that loaded the higher version would then run without a cache, or keep rows of the wrong shape once the version goes back up. Raising it a few times during one task is fine.
 
 - When the API and the site change together in local development, the API must be restarted before the site reloads, or the cache fills with the old API's rows. If that happened, raise `DB_VERSION` again once the API is restarted. Never ask the user to clear the cache by hand. (Production deploys the server before the site.)
 

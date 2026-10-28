@@ -56,7 +56,7 @@ async function dropForeignKey(db: Db, table: string, name: string) {
 async function addForeignKey(db: Db, table: string, [name, column, target, onDelete]: ForeignKey) {
   await sql`
     ALTER TABLE ${sql.table(table)} ADD CONSTRAINT ${sql.id(name)} FOREIGN KEY (${sql.id(column)})
-    REFERENCES ${sql.table(target)} (id) ${onDelete ? sql.raw(`ON DELETE ${onDelete.toUpperCase()}`) : sql``}`.execute(db);
+    REFERENCES ${sql.table(target)} (id) ${(onDelete  ?  sql.raw(`ON DELETE ${onDelete.toUpperCase()}`)  :  sql``)}`.execute(db);
 }
 
 
@@ -81,8 +81,8 @@ async function copyWithPlayerColumn(
   await sql`CREATE TABLE ${copy} LIKE ${t}`.execute(db);
   await sql`ALTER TABLE ${copy} MODIFY player_id ${direction.type} NOT NULL ${change}`.execute(db);
   await sql`
-    INSERT INTO ${copy} (player_id, ${sql.join([...columns, ...values].map((c) => sql.id(c)))})
-    SELECT p.${sql.id(direction.to)}, ${sql.join(columns.map((c) => sql`old.${sql.id(c)}`))}${values.length ? sql`, ${sql.join(values.map(() => sql`NULL`))}` : sql``}
+    INSERT INTO ${copy} (player_id, ${sql.join([...columns, ...values].map((c)  =>  sql.id(c)))})
+    SELECT p.${sql.id(direction.to)}, ${sql.join(columns.map((c)  =>  sql`old.${sql.id(c)}`))}${(values.length  ?  sql`, ${sql.join(values.map(()  =>  sql`NULL`))}`  :  sql``)}
     FROM ${t} old JOIN players p ON p.${sql.id(direction.from)} = old.player_id`.execute(db);
 
   await sql`DROP TABLE ${t}`.execute(db);
@@ -96,14 +96,14 @@ async function convertRunPlayerLists(db: Db, direction: Direction) {
   const players = await sql<{ from: string | number; to: string | number }>`
     SELECT ${sql.id(direction.from)} AS \`from\`, ${sql.id(direction.to)} AS \`to\` FROM players`.execute(db);
 
-  const lookup = new Map(players.rows.map((p) => [String(p.from), p.to]));
+  const lookup = new Map(players.rows.map((p)  =>  [String(p.from), p.to]));
   const runs = await sql<{ id: number; player_ids: (string | number)[] }>`
     SELECT id, player_ids FROM scrape_runs WHERE player_ids IS NOT NULL`.execute(db);
 
   for (const run of runs.rows) {
-    const converted = direction === TO_ID
-      ? run.player_ids.map((guid) => lookup.get(String(guid))  ??  0)
-      : run.player_ids.map((id) => lookup.get(String(id))).filter((guid) => guid !== undefined);
+    const converted = (direction === TO_ID
+      ?  run.player_ids.map((guid)  =>  lookup.get(String(guid))  ??  0)
+      :  run.player_ids.map((id)  =>  lookup.get(String(id))).filter((guid)  =>  guid !== undefined));
 
     await sql`UPDATE scrape_runs SET player_ids = ${JSON.stringify(converted)} WHERE id = ${run.id}`.execute(db);
   }
@@ -114,7 +114,7 @@ export async function up(db: Db): Promise<void> {
   // players.id can only change once nothing points at it.
   await dropForeignKey(db, 'users', 'users_player_fk');
   for (const { table, foreignKeys } of COPIED_TABLES)
-    await dropForeignKey(db, table, foreignKeys.find(([, column]) => column === 'player_id')![0]);
+    await dropForeignKey(db, table, foreignKeys.find(([, column])  =>  column === 'player_id')![0]);
 
   await dropForeignKey(db, 'plays', 'plays_scrape_run_id_fk');
 
@@ -141,7 +141,7 @@ export async function up(db: Db): Promise<void> {
   await convertRunPlayerLists(db, TO_ID);
 
   for (const { table, columns } of COPIED_TABLES)
-    await copyWithPlayerColumn(db, table, columns, TO_ID, table === 'plays' ? sql`, DROP COLUMN scrape_run_id` : sql``);
+    await copyWithPlayerColumn(db, table, columns, TO_ID, (table === 'plays'  ?  sql`, DROP COLUMN scrape_run_id`  :  sql``));
 
   for (const { table, foreignKeys } of COPIED_TABLES) {
     for (const foreignKey of foreignKeys)
@@ -158,7 +158,7 @@ export async function down(db: Db): Promise<void> {
     await dropForeignKey(db, table, foreignKey[0]);
 
   for (const { table, foreignKeys } of COPIED_TABLES)
-    await dropForeignKey(db, table, foreignKeys.find(([, column]) => column === 'player_id')![0]);
+    await dropForeignKey(db, table, foreignKeys.find(([, column])  =>  column === 'player_id')![0]);
 
   await sql`ALTER TABLE users DROP INDEX users_player_id_unique`.execute(db);
   for (const { table, column } of ALTERED_COLUMNS)
@@ -170,7 +170,7 @@ export async function down(db: Db): Promise<void> {
   for (const { table, columns } of COPIED_TABLES) {
     const plays = table === 'plays';
     await copyWithPlayerColumn(db, table, columns, TO_GUID,
-      plays ? sql`, ADD COLUMN scrape_run_id int NULL AFTER played_on` : sql``, plays ? ['scrape_run_id'] : []);
+      (plays  ?  sql`, ADD COLUMN scrape_run_id int NULL AFTER played_on`  :  sql``), (plays  ?  ['scrape_run_id']  :  []));
   }
 
   await sql`

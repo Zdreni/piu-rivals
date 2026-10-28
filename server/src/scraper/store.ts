@@ -12,16 +12,16 @@ export interface StoredSessionResult {
 type Db = Kysely<Database>;
 type Trx = Transaction<Database>;
 
-const chartKey = (songKey: string, chartType: string, level: number) => `${songKey}|${chartType}|${level}`;
+const chartKey = (songKey: string, chartType: string, level: number)  =>  `${songKey}|${chartType}|${level}`;
 
 
-export const loadPlayer = (db: Db, playerId: number) =>
+export const loadPlayer = (db: Db, playerId: number)  =>
   db.selectFrom('players').selectAll().where('id', '=', playerId).executeTakeFirst();
 
 
 export function playerCheckpoint(player: Player): Checkpoint {
-  const session = (title: string | null, timestamp: string | null) =>
-    title !== null  &&  timestamp !== null ? { title, timestamp } : null;
+  const session = (title: string | null, timestamp: string | null)  =>
+    ((title !== null  &&  timestamp !== null)  ?  { title, timestamp }  :  null);
 
   return {
     latest: session(player.last_session_title, player.last_session_timestamp),
@@ -33,11 +33,11 @@ export function playerCheckpoint(player: Player): Checkpoint {
 // PUMBILITY never decreases, so a lower value is ignored.
 export async function savePlayerInfo(db: Db, playerId: number, name: string | null, pumbility: number | null) {
   await db.updateTable('players')
-    .set((eb) => ({
-      ...(name ? { name } : {}),
+    .set((eb)  =>  ({
+      ...(name  ?  { name }  :  {}),
       ...(pumbility !== null
-        ? { pumbility: sql<number>`GREATEST(COALESCE(${eb.ref('pumbility')}, 0), ${pumbility})` }
-        : {}),
+        ?  { pumbility: sql<number>`GREATEST(COALESCE(${eb.ref('pumbility')}, 0), ${pumbility})` }
+        :  {}),
       last_scraped_at: sql<string>`CURRENT_TIMESTAMP`,
     }))
     .where('id', '=', playerId)
@@ -47,7 +47,7 @@ export async function savePlayerInfo(db: Db, playerId: number, name: string | nu
 
 // For a rescan: forgets the player's plays, best results and checkpoint.
 export async function resetPlayer(db: Db, playerId: number) {
-  await db.transaction().execute(async (trx) => {
+  await db.transaction().execute(async (trx)  => {
     await trx.deleteFrom('best_results').where('player_id', '=', playerId).execute();
     await trx.deleteFrom('plays').where('player_id', '=', playerId).execute();
     await trx.updateTable('players')
@@ -70,27 +70,27 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
     return ids;
 
   // A new track's short title starts as its title.
-  const songs = [...new Map(plays.map((p) => [p.songKey, p.songTitle])).entries()];
+  const songs = [...new Map(plays.map((p)  =>  [p.songKey, p.songTitle])).entries()];
   await trx.insertInto('tracks')
-    .values(songs.map(([songKey, title]) => ({ song_key: songKey, title, short_title: title })))
+    .values(songs.map(([songKey, title])  =>  ({ song_key: songKey, title, short_title: title })))
     .ignore()
     .execute();
 
   const trackIds = new Map((await trx.selectFrom('tracks')
     .select(['id', 'song_key'])
-    .where('song_key', 'in', songs.map(([songKey]) => songKey))
-    .execute()).map((row) => [row.song_key, row.id]));
+    .where('song_key', 'in', songs.map(([songKey])  =>  songKey))
+    .execute()).map((row)  =>  [row.song_key, row.id]));
 
-  const unique = [...new Map(plays.map((p) => [chartKey(p.songKey, p.chartType, p.level), p])).values()];
+  const unique = [...new Map(plays.map((p)  =>  [chartKey(p.songKey, p.chartType, p.level), p])).values()];
   await trx.insertInto('charts')
-    .values(unique.map((p) => ({ track_id: trackIds.get(p.songKey)!, chart_type: p.chartType, level: p.level })))
+    .values(unique.map((p)  =>  ({ track_id: trackIds.get(p.songKey)!, chart_type: p.chartType, level: p.level })))
     .ignore()
     .execute();
 
   const rows = await trx.selectFrom('charts as c')
     .innerJoin('tracks as t', 't.id', 'c.track_id')
     .select(['c.id', 't.song_key', 'c.chart_type', 'c.level'])
-    .where((eb) => eb.or(unique.map((p) => eb.and([
+    .where((eb)  =>  eb.or(unique.map((p)  =>  eb.and([
       eb('c.track_id', '=', trackIds.get(p.songKey)!),
       eb('c.chart_type', '=', p.chartType),
       eb('c.level', '=', p.level),
@@ -132,9 +132,9 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
     .select(['b.chart_id', 'b.play_id', 'b.last_played_on', 'b.tries', 'p.score'])
     .where('b.player_id', '=', playerId)
     .where('b.chart_id', 'in', chartIdList)
-    .execute()).map((row) => [row.chart_id, row]));
+    .execute()).map((row)  =>  [row.chart_id, row]));
 
-  const changed = fresh.filter((row) => {
+  const changed = fresh.filter((row)  => {
     const old = stored.get(row.chart_id);
     return ! old  ||  Number(old.play_id) !== Number(row.play_id)  ||  old.last_played_on !== row.last_played_on
       ||  old.tries !== Number(row.tries);
@@ -143,7 +143,7 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
   for (const row of changed) {
     const values = {
       play_id: Number(row.play_id),
-      improvement: row.improvement === null ? null : Number(row.improvement),
+      improvement: (row.improvement === null  ?  null  :  Number(row.improvement)),
       last_played_on: row.last_played_on,
       tries: Number(row.tries),
       updated_at: sql<string>`CURRENT_TIMESTAMP(3)`,
@@ -155,7 +155,7 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
       .execute();
   }
 
-  return changed.filter((row) => row.score > (stored.get(row.chart_id)?.score  ??  -1)).length;
+  return changed.filter((row)  =>  row.score > (stored.get(row.chart_id)?.score  ??  -1)).length;
 }
 
 
@@ -170,14 +170,14 @@ export async function storeSession(db: Db, options: {
   grown: boolean;
 }): Promise<StoredSessionResult> {
   const { playerId, card, date, plays, grown } = options;
-  return db.transaction().execute(async (trx) => {
+  return db.transaction().execute(async (trx)  => {
     const player = await trx.selectFrom('players').selectAll().where('id', '=', playerId).forUpdate().executeTakeFirst();
     if (! player)
       throw new Error(`Player ${playerId} is not stored`);
 
-    const sessionNo = grown ? player.last_session_no : player.last_session_no + 1;
+    const sessionNo = (grown  ?  player.last_session_no  :  player.last_session_no + 1);
     const ids = await chartIds(trx, plays);
-    const scanned = plays.map((p) => ({
+    const scanned = plays.map((p)  =>  ({
       ...p,
       chartId: ids.get(chartKey(p.songKey, p.chartType, p.level))!,
     }));
@@ -190,19 +190,19 @@ export async function storeSession(db: Db, options: {
         .where('session_no', '=', sessionNo)
         .execute();
 
-      toInsert = newTries(stored.map((t) => ({ ...t, passed: !! t.passed })), scanned);
+      toInsert = newTries(stored.map((t)  =>  ({ ...t, passed: !! t.passed })), scanned);
     }
 
     if (toInsert.length) {
       await trx.insertInto('plays')
-        .values(toInsert.map((p): NewPlay => ({
+        .values(toInsert.map((p): NewPlay  =>  ({
           player_id: playerId,
           chart_id: p.chartId,
           session_no: sessionNo,
           played_on: date,
           score: p.score,
           grade: p.grade,
-          passed: p.passed ? 1 : 0,
+          passed: (p.passed  ?  1  :  0),
           plate: p.plate,
           perfect: p.perfect,
           great: p.great,
@@ -214,7 +214,7 @@ export async function storeSession(db: Db, options: {
         .execute();
     }
 
-    const bestsImproved = await updateBests(trx, playerId, [...new Set(toInsert.map((p) => p.chartId))]);
+    const bestsImproved = await updateBests(trx, playerId, [...new Set(toInsert.map((p)  =>  p.chartId))]);
     await moveCheckpoint(trx, player, card, grown, sessionNo);
     return { playsAdded: toInsert.length, bestsImproved };
   });
@@ -224,7 +224,8 @@ export async function storeSession(db: Db, options: {
 // Moves the player's checkpoint to a session of another mix, whose plays aren't stored.
 export async function skipSession(db: Db, options: { playerId: number; card: SessionCard; grown: boolean }) {
   const { playerId, card, grown } = options;
-  await db.transaction().execute(async (trx) => {
+
+  await db.transaction().execute(async (trx)  => {
     const player = await trx.selectFrom('players').selectAll().where('id', '=', playerId).forUpdate().executeTakeFirst();
     if (! player)
       throw new Error(`Player ${playerId} is not stored`);
@@ -238,14 +239,14 @@ export async function skipSession(db: Db, options: { playerId: number; card: Ses
 async function moveCheckpoint(trx: Trx, player: Player, card: SessionCard, grown: boolean, sessionNo: number) {
   const latest = { last_session_title: card.title, last_session_timestamp: card.timestamp };
   await trx.updateTable('players')
-    .set(grown
-      ? latest
-      : {
+    .set((grown
+      ?  latest
+      :  {
         ...latest,
         last_session_no: sessionNo,
         anchor_session_title: player.last_session_title,
         anchor_session_timestamp: player.last_session_timestamp,
-      })
+      }))
     .where('id', '=', player.id)
     .execute();
 }
