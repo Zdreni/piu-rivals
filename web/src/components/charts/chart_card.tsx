@@ -13,15 +13,15 @@ export interface Keep {
 }
 
 // Cards list this many rival scores, besides yours, until expanded: unplayed ones the lowest, lost and hidden ones
-// the biggest losses, won ones the closest below yours. Phones keep fewer.
-const keeps = (rivals: number)  =>  ({
+// the biggest losses (`lostRivals` of them), won ones the closest below yours. Phones keep fewer.
+const keeps = (rivals: number, lostRivals = rivals)  =>  ({
   unplayed: { top: 0, bottom: rivals } as Keep,
-  lost: { top: rivals, bottom: 1 } as Keep,
+  lost: { top: lostRivals, bottom: 1 } as Keep,
   won: { top: 1 + rivals, bottom: 0 } as Keep,
 });
 
 const KEEP_DESKTOP = keeps(6);
-const KEEP_PHONE = keeps(4);
+const KEEP_PHONE = keeps(4, 3);
 
 type Keeps = ReturnType<typeof keeps>;
 
@@ -120,7 +120,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
       onClick={onToggle}>
       <div className="chart-card-title">
         <span className="track" title={chart.trackTitle}>{(unrolled  ||  maximized)  ?  chart.trackTitle  :  chart.track}</span>
-        <ChartBall chart={chart.chart} />
+        <span className="chart-slot"><ChartBall chart={chart.chart} /></span>
         {maximized  &&  (
           <button className="card-close" type="button" aria-label="Close" title="Close" onClick={press(()  =>  onClose?.())}>
             <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" /></svg>

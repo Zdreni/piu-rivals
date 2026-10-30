@@ -1,13 +1,20 @@
 /* Chart cards (see ChartCard). */
-/* No frame: the track bar is in the page's colour, and from under it to the next card's, around the results and in
-   the room under them, the background darkens down to the results' bottom edge and lightens back. The results have a
-   line on top and rounded corners at the bottom. */
+/* Terraced, lit from above: the page's colour around the cards is the ground, the results stand on it, with rounded
+   corners at the bottom and a shadow on the ground, and the track bar, the highest and lightest, stands on them, with
+   rounded corners, a lit edge at the top and a shadow on the results. The bar and the results are as wide, with the
+   room on their sides between them and the next card's. The bar's shadow falls over the results, and its snooze menu,
+   while open, over the cards below. */
 .rivals .chart-card { display: flex; flex-direction: column; }
-.rivals .chart-card-head { padding: 10px calc(var(--results-pad) + 12px); background: #14201A; cursor: pointer; }
+.rivals .chart-card-head { position: relative; z-index: 1; margin: 0 var(--results-pad); padding: 10px 12px; background: #2D3D34;
+                           border-top: 1px solid #4B6556; border-radius: 6px; box-shadow: 0 4px 6px rgba(0, 0, 0, .6);
+                           cursor: pointer; }
+.rivals .chart-card-head.menu-open { z-index: 2; }
 .rivals .chart-card-title { display: flex; align-items: baseline; gap: 10px; }
-.rivals .chart-card-body { flex: 1; padding: 0 var(--results-pad) var(--card-gap);
-                           background: linear-gradient(#14201A, #0E1612 calc(100% - var(--card-gap)), #14201A); }
-.rivals .chart-card-box { overflow: hidden; background: #1A2820; border-top: 1px solid #2B4034; border-radius: 0 0 6px 6px; }
+.rivals .chart-card-body { flex: 1; padding: 0 var(--results-pad) var(--card-gap); }
+/* The results are a little narrower than the bar, lined up with its right end, and go up under it, their top edge
+   hidden. */
+.rivals .chart-card-box { overflow: hidden; margin: -7px 0 0 12px; padding-top: 6px; background: #17241D; border-top: 1px solid #2B4034;
+                          border-radius: 0 0 6px 6px; box-shadow: 0 3px 6px rgba(0, 0, 0, .3); }
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
 /* The chart's level in a ball of its type's colour (see ChartBall), not growing the line it's on: a dark core glowing
@@ -22,6 +29,12 @@
                                    radial-gradient(circle, var(--ball-core) 35%, var(--ball-deep) 70%, var(--ball) 92%) padding-box,
                                    linear-gradient(160deg, var(--ring), var(--ring-mid) 50%, var(--ring)) border-box;
                        box-shadow: 0 0 2.5px var(--ball-deep); }
+/* In the track bar, the ball is in a slot at its right end, from its top to its bottom edge (with the snooze line rolled
+   out under it, to the title's bottom), and glows wide in its colour. */
+.rivals .chart-card-title > .chart-slot { align-self: stretch; display: flex; align-items: center; margin: -10px -12px -10px 0;
+                                          padding: 0 7px; }
+.rivals .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
+.rivals .chart-card-title .chart-label { box-shadow: 0 0 2.5px var(--ball-deep), 0 0 14px 1px color-mix(in srgb, var(--ball) 15%, transparent); }
 .rivals .chart-label.single { --ball: #FF6A45; --ball-deep: #A3200A; --ball-core: #5A150A; --ring: #FFD2B0; --ring-mid: #A8653F; }
 .rivals .chart-label.double { --ball: #4FEA6E; --ball-deep: #138A33; --ball-core: #0D4D20; --ring: #C5F5CF; --ring-mid: #559762; }
 /* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
@@ -100,14 +113,19 @@
    cards get narrower: 265px leaves names about as much room as the narrowest card above, so two fit in 554px. */
 @media (min-width: 601px) {
   @container (max-width: 719px) {
-    .rivals .side-open .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
+    .rivals .side-open .chart-card-head { padding: 7px 8px; }
     .rivals .side-open .chart-card-title { gap: 6px; }
+    .rivals .side-open .chart-card-title > .chart-slot { margin: -7px -8px -7px 0; padding: 0 5px; }
+    .rivals .side-open .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
   }
 }
 
 @media (max-width: 600px) {
-  .rivals .chart-card-head { padding: 7px calc(var(--results-pad) + 8px); }
+  .rivals .chart-card-head { padding: 7px 8px; }
   .rivals .chart-card-title { gap: 6px; }
+  .rivals .chart-card-title > .chart-slot { margin: -7px -8px -7px 0; padding: 0 5px; }
+  .rivals .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
+  .rivals .chart-card-box { margin-left: 8px; }
   .rivals .snooze-button { height: 40px; }
   .rivals .chart-card-head .track { font-size: 16px; }
   .rivals .show-others { font-size: 12px; }

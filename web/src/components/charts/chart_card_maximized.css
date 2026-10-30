@@ -10,9 +10,10 @@
                                    background: #14201A; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
 .rivals.card-overlay.in-place .chart-card { position: absolute; left: var(--card-left); top: var(--card-top); width: var(--card-width);
                                             max-height: calc(100% - 32px); }
-.rivals.card-overlay .chart-card-head { flex-shrink: 0; padding: 10px 12px 10px 14px; }
+.rivals.card-overlay .chart-card-head { flex-shrink: 0; margin: 0; padding: 10px 12px 10px 14px; border-top: none; border-radius: 0; }
 .rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; }
 .rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
+.rivals.card-overlay .chart-card-title > .chart-slot { margin: 0; padding: 0; background: none; }
 .rivals.card-overlay:not(.in-place) .chart-card-head .track { font-size: 18px; }
 .rivals .card-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
                       margin: -6px -6px -6px 0; color: #9AB3A3; cursor: pointer; }
@@ -21,4 +22,4 @@
 .rivals.card-overlay .snooze { gap: 10px; font-size: 15px; }
 .rivals.card-overlay .snooze-button { height: 40px; padding: 0 12px; }
 .rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
-.rivals.card-overlay .chart-card-box { border-radius: 0; }
+.rivals.card-overlay .chart-card-box { margin: 0; padding-top: 0; border-radius: 0; box-shadow: none; }
