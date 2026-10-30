@@ -81,6 +81,8 @@
 .rivals .chart-card .show-others :is(.neg, .pos, .blue) { opacity: .6; }
 .rivals .chart-card .show-others:hover :is(.neg, .pos, .blue) { opacity: 1; }
 .rivals .chart-card .show-others:last-child { padding-bottom: 4px; }
+/* At the top of the results, the band goes up under the bar, over the room above the rows. */
+.rivals .chart-card-results > .show-others:first-child { margin-top: -10px; padding-top: 12px; }
 .rivals .show-others .neg { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
 .rivals .show-others .neg.muted { color: color-mix(in srgb, #B86A5C 50%, #EAF5EC); }
 .rivals .show-others .pos { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }

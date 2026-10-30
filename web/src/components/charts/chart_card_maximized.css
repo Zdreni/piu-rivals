@@ -23,3 +23,5 @@
 .rivals.card-overlay .snooze-button { height: 40px; padding: 0 12px; }
 .rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
 .rivals.card-overlay .chart-card-box { margin: 0; padding-top: 0; border-radius: 0; box-shadow: none; }
+.rivals.card-overlay .chart-card-results > .show-others:first-child { margin-top: -4px; padding-top: 6px; }
+.rivals.card-overlay:not(.in-place) .chart-card-results > .show-others:first-child { margin-top: -6px; padding-top: 8px; }
