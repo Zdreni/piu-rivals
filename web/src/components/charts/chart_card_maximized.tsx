@@ -106,6 +106,9 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
     }
 
     overlay.animate({ backgroundColor: [BACKDROP_CLEAR, getComputedStyle(overlay).backgroundColor] }, { duration: GROW_MS });
+
+    // Run again (as React does in development), it measures the card where it's laid out, not where it's growing from.
+    return ()  =>  [card, overlay].forEach((element)  =>  element.getAnimations().forEach((animation)  =>  animation.cancel()));
   }, []);
 
   // Shrinks it back into its card, then closes it and calls `then`.
