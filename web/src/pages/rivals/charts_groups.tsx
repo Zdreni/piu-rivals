@@ -83,7 +83,7 @@ export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePan
   const levels = sortedLevels(charts);
   const stats: Stats = {};
   for (const level of levels)
-    stats[level] = levelStats(charts.filter((c)  =>  c.chart === level));
+    stats[level] = levelStats(charts.filter((c)  =>  c.chart === level), showTies);
 
   // A level's heat grows with the square of its losses, relative to the level with the most.
   const maxLose = Math.max(1, ...levels.map((level)  =>  stats[level]![countBy].lose));

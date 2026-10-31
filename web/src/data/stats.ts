@@ -21,6 +21,9 @@ export const TABS: TabId[] = ['rivals-win', 'not-played', 'you-win', 'tie', 'hid
 // The stat each tab counts.
 export const TIER_STAT = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win', tie: 'tie', hidden: 'hidden' } as const;
 
+// The tab of each stat.
+const STAT_TAB: Record<Stat, TabId> = { lose: 'rivals-win', unplayed: 'not-played', win: 'you-win', tie: 'tie', hidden: 'hidden' };
+
 
 // How a rival's result compares with yours, judged on the real scores. Only a loss is then checked against the
 // score cap: if the cap evens it out, it's hidden.
@@ -84,15 +87,25 @@ export function realCounts(charts: ChartRow[]): Map<string, Counts> {
 }
 
 
-// Like tierCounts, but counts rival results instead of charts, whatever the chart's tier. On a snoozed chart, losses
-// and non-matches are hidden, as the score cap hides losses; wins and ties stay what they are.
-export function resultCounts(charts: ChartRow[]): Counts {
+// The tab a rival's result on `chart` goes to, counted by results. On a snoozed chart, losses and non-matches are
+// hidden, as the score cap hides losses; wins and ties stay what they are. Ties are won, but with `ties` (the solo
+// view) they get their own tab.
+export function resultTab(chart: ChartRow, rival: RivalResult, ties = false): TabId {
+  const stat = resultStat(rival);
+  if (chart.snoozedUntil !== null  &&  (stat === 'lose'  ||  stat === 'unplayed'))
+    return 'hidden';
+
+  return ((stat === 'tie'  &&  ! ties)  ?  'you-win'  :  STAT_TAB[stat]);
+}
+
+
+// Like tierCounts, but counts rival results instead of charts, whatever the chart's tier. Ties are won, but with
+// `ties` (the solo view) they're counted on their own.
+export function resultCounts(charts: ChartRow[], ties = false): Counts {
   const counts = { ...NO_COUNTS };
   for (const chart of charts) {
-    for (const rival of chart.rivals) {
-      const stat = resultStat(rival);
-      counts[(chart.snoozedUntil !== null  &&  (stat === 'lose'  ||  stat === 'unplayed'))  ?  'hidden'  :  stat]++;
-    }
+    for (const rival of chart.rivals)
+      counts[TIER_STAT[resultTab(chart, rival, ties)]]++;
   }
 
   return counts;
@@ -100,12 +113,12 @@ export function resultCounts(charts: ChartRow[]): Counts {
 
 
 // Totals counted the `countBy` way.
-export const countCharts = (charts: ChartRow[], countBy: CountBy)  =>
-  (countBy === 'charts'  ?  tierCounts(charts)  :  resultCounts(charts));
+export const countCharts = (charts: ChartRow[], countBy: CountBy, ties = false)  =>
+  (countBy === 'charts'  ?  tierCounts(charts)  :  resultCounts(charts, ties));
 
 
 // Both countings of a level.
-export const levelStats = (charts: ChartRow[])  =>  ({ charts: tierCounts(charts), results: resultCounts(charts) });
+export const levelStats = (charts: ChartRow[], ties = false)  =>  ({ charts: tierCounts(charts), results: resultCounts(charts, ties) });
 
 
 export const levelType = (level: string)  =>  (level.match(/^[A-Za-z-]+/)  ??  [level])[0];

@@ -10,7 +10,7 @@ import { autoLevels, type Preferences, resolveLevels } from '../../data/preferen
 import { buildCharts, byTargetWeight, type ChartRow, targetWeight, withRivalsOrNull } from '../../data/model.ts';
 import { PreferencesPanel } from './preferences_panel.tsx';
 import { RivalList } from './rival_list.tsx';
-import { chartTier, countCharts, levelStats, sortedLevels, type TabId } from '../../data/stats.ts';
+import { chartTier, countCharts, levelStats, resultTab, sortedLevels, type TabId } from '../../data/stats.ts';
 import { readUiState, saveUiState, type UiState } from './ui_state.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
@@ -199,15 +199,24 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         return ((until !== undefined  &&  until > now)  ?  { ...c, snoozedUntil: until }  :  c);
       });
 
+    // Counted by results, the hidden charts keep only their hidden results.
+    const hiddenResultsOrNull = (chart: ChartRow)  =>
+      (countBy === 'charts'  ?  chart  :  withRivalsOrNull(chart, (r)  =>  resultTab(chart, r) === 'hidden'));
+
     // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
     // listed as snoozed, the soonest to wake first.
-    const capHiddenCharts = charts.filter((c)  =>  c.snoozedUntil === null  &&  chartTier(c) === 'hidden')
+    const capHiddenCharts = charts
+      .filter((c)  =>  c.snoozedUntil === null  &&  (countBy === 'results'  ||  chartTier(c) === 'hidden'))
+      .map(hiddenResultsOrNull)
+      .filter((c): c is ChartRow  =>  c !== null)
       .map((c)  =>  ({ ...c, weight: targetWeight(c.rivals.map((r)  =>  r.realDelta)) }));
 
     const snoozedCharts = charts.filter((c)  =>  c.snoozedUntil !== null)
+      .map(hiddenResultsOrNull)
+      .filter((c): c is ChartRow  =>  c !== null)
       .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
     return { charts, capHiddenCharts, snoozedCharts, levels: sortedLevels(charts) };
-  }, [allCharts, rivals, soloRivalId, npMinimalRivals, snoozes, now]);
+  }, [allCharts, rivals, soloRivalId, countBy, npMinimalRivals, snoozes, now]);
 
   const { charts, capHiddenCharts, snoozedCharts, levels } = view;
   const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
@@ -217,8 +226,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       changeUi({ selectedLevel });
   }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
 
-  const totals = countCharts(charts, countBy);
-  const myStats = levelStats(charts);
+  const totals = countCharts(charts, countBy, !! soloRivalId);
+  const myStats = levelStats(charts, !! soloRivalId);
   const atLevel = (chart: ChartRow)  =>  chart.chart === selectedLevel;
   const emptyMessage = (! rivals.length
     ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'

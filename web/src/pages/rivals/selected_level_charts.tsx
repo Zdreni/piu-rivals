@@ -5,9 +5,10 @@ import { ChartCardsGrid, type ChartCardsGroup } from '../../components/charts/ch
 import { ChartCardMaximized } from '../../components/charts/chart_card_maximized.tsx';
 import { REDUCED_MOTION } from '../../components/media.ts';
 import { tabsClass, useTabsFit } from './layout.ts';
-import { byLeadWeight, byTargetWeight, type ChartRow } from '../../data/model.ts';
+import type { ChartRow } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
-import { chartTier, resultCounts, STAT_WORDS, TABS, type TabId, TIER_STAT } from '../../data/stats.ts';
+import { chartTier, STAT_WORDS, TABS, type TabId, TIER_STAT } from '../../data/stats.ts';
+import { tabCharts } from '../../data/tab_charts.ts';
 
 export interface HiddenGroup {
   label: string;
@@ -27,14 +28,12 @@ const MOVE_MS = 300;
 const flipRects = (container: HTMLElement | null)  =>
   new Map([...container?.querySelectorAll<HTMLElement>('[data-flip]')  ??  []].map((el)  =>  [el.dataset.flip!, el.getBoundingClientRect()]));
 
-const byRivalCount = (a: ChartRow, b: ChartRow)  =>  b.rivals.length - a.rivals.length  ||  a.track.localeCompare(b.track);
-
 
 // The results column: tabs splitting the charts of the selected level, and a grid of their cards.
-// `levelCharts` are the charts of the selected level, each in the tab of its tier by `countBy`. `hiddenGroups` are
-// its charts in the "Hidden" tab, which lists them group by group. `emptyMessage` replaces the per-tab message when
-// there is nothing to show at all. Counted by results, the tabs show the level's result counts instead of their
-// chart counts. `ties` (the solo view) adds a "Tied" tab and colours the true ties. `scoreCap` is named in the
+// `levelCharts` are the charts of the selected level. Counted by charts, each is in the tab of its tier; counted by
+// results, a chart is in each tab one of its results goes to, with only those results, and the tabs show result
+// counts instead of chart counts. `hiddenGroups` are its charts in the "Hidden" tab, which lists them group by group.
+// `emptyMessage` replaces the per-tab message when there is nothing to show at all. `ties` (the solo view) adds a "Tied" tab and colours the true ties. `scoreCap` is named in the
 // tooltip of diffs that the cap turns into ties. The "Snooze..." button in a card's unrolled header opens a menu of
 // lengths, and dims the card; a length snoozes its chart with `onSnooze`, and a click anywhere else only closes it.
 // Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
@@ -110,7 +109,8 @@ export function SelectedLevelCharts({
         setFlash((previousFlash)  =>  ({ tab: into, n: (previousFlash?.n  ??  0) + 1 }));
     };
 
-    if (REDUCED_MOTION.matches) {
+    // Counted by results, a chart woken in "Won" or "Tied" stays there, so its card doesn't fade out.
+    if (REDUCED_MOTION.matches  ||  (days === null  &&  tab !== 'hidden'  &&  ! canSnooze)) {
       send();
       return;
     }
@@ -146,11 +146,11 @@ export function SelectedLevelCharts({
 
   const keep = useKeeps();
   const groups = hiddenGroups.filter(({ charts })  =>  charts.length);
-  const tabCounts = Object.fromEntries(TABS.map((id)  =>  [
-    id, id === 'hidden'
-      ?  groups.reduce((acc, { charts })  =>  acc + charts.length, 0)
-      :  levelCharts.filter((c)  =>  chartTier(c, ties) === id).length,
-  ])) as Record<TabId, number>;
+  const chartsByTab = Object.fromEntries(TABS.map((id)  =>  [
+    id, (id === 'hidden'  ?  groups.flatMap(({ charts })  =>  charts)  :  tabCharts(levelCharts, id, countBy, ties)),
+  ])) as Record<TabId, ChartRow[]>;
+
+  const tabCounts = Object.fromEntries(TABS.map((id)  =>  [id, chartsByTab[id].length])) as Record<TabId, number>;
 
   // The "Hidden" tab only shows up when there is something hidden, and "Tied" only in the solo view;
   // if a missing one was open, "Lost" takes over.
@@ -163,15 +163,17 @@ export function SelectedLevelCharts({
       onSelectTab('rivals-win');
   }, [tabGone, onSelectTab]);
 
-  const results = (countBy === 'results'  ?  resultCounts(levelCharts)  :  null);
-  const tabNumber = (id: TabId)  =>  (results  ?  results[TIER_STAT[id]]  :  tabCounts[id]);
+  const tabNumber = (id: TabId)  =>  (countBy === 'results'
+    ?  chartsByTab[id].reduce((acc, c)  =>  acc + c.rivals.length, 0)
+    :  tabCounts[id]);
   const tabBar = useRef<HTMLDivElement>(null);
   const tabsFit = useTabsFit(tabBar, [tabs.map((id)  =>  `${id} ${tabNumber(id)}`).join()]);
   // Tabs are named after what their numbers count.
   const tabWord = (id: TabId)  =>  STAT_WORDS[countBy][TIER_STAT[id]];
 
-  // Charts in the "Hidden" tab are hidden already.
-  const canSnooze = tab !== 'hidden';
+  // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses and non-matches,
+  // so it isn't offered where it would leave the card in place.
+  const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win'  ||  tab === 'not-played');
   const folding = tabFolding(tab, keep);
   const card = (chart: ChartRow)  =>  (
     <ChartCard
@@ -205,9 +207,7 @@ export function SelectedLevelCharts({
   if (tab === 'hidden') {
     listedGroups = groups.map(({ label, charts })  =>  ({ key: label, title: `${label} · ${charts.length}`, charts }));
   } else {
-    const visibleCharts = levelCharts.filter((c)  =>  chartTier(c, ties) === tab);
-    visibleCharts.sort({ 'you-win': byLeadWeight, 'not-played': byRivalCount, 'rivals-win': byTargetWeight, tie: byRivalCount }[tab]);
-    listedGroups = [{ key: tab, title: null, charts: visibleCharts }];
+    listedGroups = [{ key: tab, title: null, charts: chartsByTab[tab] }];
   }
 
   // A card stays maximized only while its chart is listed in the open tab.
@@ -234,7 +234,7 @@ export function SelectedLevelCharts({
       <ChartCardsGrid
         ref={bodyRef}
         role="tabpanel"
-        emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${STAT_WORDS.charts[TIER_STAT[tab]]} charts at this level.`  :  null)}
+        emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${tabWord(tab)} ${countBy} at this level.`  :  null)}
         // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
         narrow={tab === 'not-played'}
         groups={listedGroups}
