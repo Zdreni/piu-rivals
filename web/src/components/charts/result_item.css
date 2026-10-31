@@ -16,6 +16,10 @@
 .rivals .result .delta-tie { display: inline-block; width: 6ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
 .rivals .result.mine .num { color: #C9A44A; }
+/* Your score's rise over your previous best is on a dark rounded patch like the result stats. The patch takes no room
+   of its own, so the rise lines up with the diffs and the row keeps its height, and it stays off the card's edge even
+   on phones. */
+.rivals .gain { margin: 0 -4px; padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,.4); }
 .rivals .won { opacity: .4; }
 /* A click on a row unrolls it (see ResultItem); an unrolled rival isn't dimmed. */
 .rivals .result { cursor: pointer; }

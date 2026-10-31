@@ -48,12 +48,14 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
 
 
 // How much your best score rose over your previous one, e.g. "+12,345" in your score's colour, in the diff column of
-// your row.
+// your row, on a patch of its own (see .gain). Drawn like the rivals' diffs (see Delta).
 export function Gain({ value }: { value: number }) {
   const sign = <span className="delta-sign">+</span>;
   return (
     <span className="num delta" title="Over your previous best">
-      {value < 1000  ?  <span className="tail-dim">{sign}{value}</span>  :  <>{sign}<Score value={value} tailClass="tail-dim" /></>}
+      <span className="gain">
+        {value < 1000  ?  <span className="tail-dim">{sign}{value}</span>  :  <>{sign}<Score value={value} tailClass="tail-dim" /></>}
+      </span>
     </span>
   );
 }
