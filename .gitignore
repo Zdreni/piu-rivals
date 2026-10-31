@@ -3,3 +3,5 @@ node_modules/
 server/.env
 server/dist/
 web/dist/
+# Vite's dependency cache, rebuilt automatically.
+web/.vite/
