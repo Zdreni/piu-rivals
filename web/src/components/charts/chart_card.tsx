@@ -13,11 +13,12 @@ export interface Keep {
 }
 
 // Cards list this many rival scores, besides yours, until expanded: unplayed ones the lowest, lost and hidden ones
-// the biggest losses (`lostRivals` of them), won ones the closest below yours. Phones keep fewer.
-const keeps = (rivals: number, lostRivals = rivals)  =>  ({
+// the biggest losses, won ones the closest below yours. Lost and won ones list `playedRivals` of them. Phones keep
+// fewer.
+const keeps = (rivals: number, playedRivals = rivals)  =>  ({
   unplayed: { top: 0, bottom: rivals } as Keep,
-  lost: { top: lostRivals, bottom: 1 } as Keep,
-  won: { top: 1 + rivals, bottom: 0 } as Keep,
+  lost: { top: playedRivals, bottom: 1 } as Keep,
+  won: { top: 1 + playedRivals, bottom: 0 } as Keep,
 });
 
 const KEEP_DESKTOP = keeps(6);

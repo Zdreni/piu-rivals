@@ -39,7 +39,7 @@ const flipRects = (container: HTMLElement | null)  =>
 // Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
 // the time snoozed charts have left.
 // A click on a card maximizes it (see ChartCardMaximized), so its header doesn't unroll here, nor its Snooze... menu
-// open; a snooze or a wake there closes it, and the card behind fades out. A card stays maximized only while its
+// open; maximized, it lists all its chart's results. A snooze or a wake there closes it, and the card behind fades out. A card stays maximized only while its
 // chart is listed in the open tab. The tab a snoozed or woken chart goes into splashes once it's there.
 export function SelectedLevelCharts({
   levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, now, onSelectTab, onSnooze,
@@ -243,7 +243,8 @@ export function SelectedLevelCharts({
       {maximizedChart  &&  (
         <ChartCardMaximized
           key={maximizedChart.id}
-          chart={maximizedChart}
+          // Counted by results, its card lists only the results of the open tab; maximized, it lists them all.
+          chart={levelCharts.find((c)  =>  c.id === maximizedChart.id)  ??  maximizedChart}
           myName={myName}
           folding={folding}
           markTies={ties}

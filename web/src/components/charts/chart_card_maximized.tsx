@@ -1,14 +1,9 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChartCard, type Folding } from './chart_card.tsx';
+import { ChartCard, type Folding, NONE_SHOWN } from './chart_card.tsx';
 import { REDUCED_MOTION, usePhone } from '../media.ts';
 import type { ChartRow } from '../../data/model.ts';
-
-// A maximized card lists this many of the rivals who beat you, the highest ones, and of the rivals you beat, the closest
-// ones; unplayed, it lists as many of the lowest scores as both.
-const MAXIMIZED_ABOVE = 10;
-const MAXIMIZED_BELOW = 2;
 
 // A maximized card grows out of its card this long, and shrinks back into it this long, as the page dims and brightens.
 const GROW_MS = 260;
@@ -34,14 +29,13 @@ let openCount = 0;
 
 
 // A chart's card maximized over the page: as wide as the screen on phones, and centred on wider ones, with more of its
-// rivals' scores and their diffs, its header unrolled and the snooze lengths in a row: it folds the rivals you beat
-// (and, but with `markTies`, tie with) past the closest MAXIMIZED_BELOW, and those who beat you past the highest
-// MAXIMIZED_ABOVE, and colours and dims its rows by `folding` (see ChartCard). It grows out of its card in the grid
-// (`source`), and shrinks back into it; wider than phones, it keeps its card's width and place, and only gets longer. A
+// rivals' scores and their diffs, its header unrolled and the snooze lengths in a row: it lists all its scores, none
+// folded, scrolled so yours is in the middle when they don't fit, and colours and dims its rows by `folding` (see
+// ChartCard). It grows out of its card in the grid (`source`), and shrinks back into it; wider than phones, it keeps its card's width and place, and only gets longer. A
 // click outside it, its close button, Escape or the back button shrinks it back, then calls `onClose`; a resize calls
 // it at once, since its place is its card's, measured once. A snooze or a wake shrinks it back too, then calls
-// `onClose` and `onSnooze` (null for a wake). While it's open, the page behind it doesn't scroll. What's unrolled and
-// shown in it is kept apart from its card in the grid, and starts afresh each time it opens.
+// `onClose` and `onSnooze` (null for a wake). While it's open, the page behind it doesn't scroll. What's unrolled in
+// it is kept apart from its card in the grid, and starts afresh each time it opens.
 export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap, canSnooze, now, source, onClose, onSnooze }: {
   chart: ChartRow;
   myName: string;
@@ -55,7 +49,6 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
   onSnooze: (days: SnoozeDays | null) => void;
 }) {
   const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
-  const [shownRows, setShownRows] = useState({ folded: MAXIMIZED_BELOW, higher: 0 });
   const phone = usePhone();
   const overlayRef = useRef<HTMLDivElement>(null);
   // Set while it shrinks back, so it isn't closed twice.
@@ -78,6 +71,11 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
   };
 
   useLayoutEffect(()  => {
+    const body = overlayRef.current?.querySelector<HTMLElement>('.chart-card-body');
+    const myRow = body?.querySelector('.result.mine')?.getBoundingClientRect();
+    if (body  &&  myRow)
+      body.scrollTop += myRow.top - body.getBoundingClientRect().top - (body.clientHeight - myRow.height) / 2;
+
     const grow = measureGrowth();
     if (! grow)
       return;
@@ -185,13 +183,9 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
       <ChartCard
         chart={chart}
         myName={myName}
-        folding={{
-          ...folding,
-          fold: (markTies  ?  ['win']  :  ['win', 'tie']),
-          keep: (chart.mine === null  ?  { top: 0, bottom: MAXIMIZED_ABOVE + MAXIMIZED_BELOW }  :  { top: MAXIMIZED_ABOVE, bottom: 1 }),
-        }}
-        shownRows={shownRows}
-        onShow={setShownRows}
+        folding={{ ...folding, fold: [], keep: null }}
+        shownRows={NONE_SHOWN}
+        onShow={()  =>  {}}
         markTies={markTies}
         scoreCap={scoreCap}
         canSnooze={canSnooze}
