@@ -8,6 +8,12 @@ export interface ChartCardsGroup {
   // The title's own class, e.g. "day".
   className?: string;
   charts: ChartRow[];
+  // Given, the title is a button that rolls the cards up or unrolls them, like a folder; rolled up, they aren't drawn.
+  // Unrolled, the title stays at the top while the cards scroll under it.
+  onToggle?: () => void;
+  unrolled?: boolean;
+  // A folder's note at the right end of its title, e.g. how many cards it holds.
+  note?: string;
 }
 
 
@@ -29,12 +35,29 @@ export function ChartCardsGrid({ ref, role, emptyMessage = null, narrow = false,
         ?  <div className="empty">{emptyMessage}</div>
         :  (
           <div className={`chart-grid${(narrow  ?  ' narrow'  :  '')}`}>
-            {groups.map(({ key, title, className, charts })  =>  (
-              <Fragment key={key}>
-                {title !== null  &&  <h3 className={`group-title${(className  ?  ` ${className}`  :  '')}`} data-flip={`group ${key}`}>{title}</h3>}
-                {charts.map(card)}
-              </Fragment>
-            ))}
+            {groups.map(({ key, title, className, charts, onToggle, unrolled = true, note })  =>  {
+              const titleClass = `group-title${(className  ?  ` ${className}`  :  '')}`;
+              // A folder gets a box of its own, so its title sticks to the top only while its cards scroll under it.
+              if (onToggle)
+                return (
+                  <div key={key} className="group-folder">
+                    <h3 className={titleClass} data-flip={`group ${key}`}>
+                      <button className={`group-toggle${(unrolled  ?  ' unrolled'  :  '')}`} type="button" aria-expanded={unrolled} onClick={onToggle}>
+                        {title}
+                        {note  &&  <span className="group-note">{note}</span>}
+                      </button>
+                    </h3>
+                    {unrolled  &&  charts.map(card)}
+                  </div>
+                );
+
+              return (
+                <Fragment key={key}>
+                  {title !== null  &&  <h3 className={titleClass} data-flip={`group ${key}`}>{title}</h3>}
+                  {charts.map(card)}
+                </Fragment>
+              );
+            })}
             {footer}
           </div>
         )}

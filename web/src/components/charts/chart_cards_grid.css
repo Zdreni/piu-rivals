@@ -19,6 +19,30 @@
 .rivals .group-title { grid-column: 1 / -1; margin: 6px var(--results-pad) 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
+/* A folder: a row of the grid, with a grid of its own, whose title sticks to the top while its cards scroll under it.
+   Its cards are indented by --folder-indent, so they fit the grid's columns in the room left, and its title isn't. The title is padded rather than spaced from the sides and above, and its shadows paint the room on its sides and a
+   strip above it (phones round where it sticks, leaving a pixel), so the cards don't show around it. The body has no
+   padding on top, which the cards would show through; the first folder has it instead. */
+.rivals .dlg-body:has(.group-folder) { padding-top: 0; }
+.rivals .group-folder { --folder-indent: 20px; grid-column: 1 / -1; display: grid; grid-template-columns: inherit;
+                        align-items: stretch; padding-left: var(--folder-indent); }
+.rivals .group-folder:first-child { padding-top: 12px; }
+.rivals .group-folder:not(:first-child) { margin-top: 6px; }
+.rivals .group-folder > .group-title { position: sticky; top: 0; z-index: 2; padding: 0; user-select: none;
+                                       margin: 0 var(--results-pad) 0 calc(var(--results-pad) - var(--folder-indent));
+                                       background: #14201A;
+                                       box-shadow: calc(-1 * var(--results-pad)) 0 #14201A, var(--results-pad) 0 #14201A, 0 -3px #14201A,
+                                                   calc(-1 * var(--results-pad)) -3px #14201A, var(--results-pad) -3px #14201A; }
+/* Some room between an unrolled folder's title and its cards. */
+.rivals .group-folder > .group-title:not(:last-child) { margin-bottom: 10px; }
+/* A title that rolls its cards up or unrolls them, with an arrow pointing right, or down when unrolled. It fills the
+   title, padding included, so a click anywhere on the title hits it rather than the text around it. */
+.rivals .group-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 0 6px; color: inherit; background: none;
+                        border: 0; cursor: pointer; font: inherit; text-align: left; }
+.rivals .group-toggle::before { content: '▸'; display: inline-block; width: 1ch; font-size: 1.4em; line-height: 0.8; transition: transform 0.15s; }
+.rivals .group-toggle.unrolled::before { transform: rotate(90deg); }
+.rivals .group-note { margin-left: auto; font-size: 0.8em; opacity: 0.75; }
+@media (hover: hover) { .rivals .group-toggle:hover { color: #EAF5EC; } }
 
 @media (max-width: 1000px) {
   .rivals .dlg-body { --results-pad: 6px; overflow: visible; padding-top: 8px; }
@@ -27,4 +51,5 @@
 @media (max-width: 600px) {
   .rivals .dlg-body { --results-pad: 4px; --card-gap: 18px; padding-top: 8px; }
   .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+  .rivals .group-folder { --folder-indent: 12px; }
 }
