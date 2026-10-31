@@ -13,6 +13,10 @@ Name functions and write comments in the project's own terms (open session, newe
 PUMBILITY, rivals), not in the scraped site's markup terms. Words like "ceremony" or "hero"
 from its `data-testid` values and CSS classes stay in selectors only.
 
+Before naming an entity with a new noun, one that isn't used in the code yet and that the user
+hasn't used either (for example "judgment"), ask whether it's the right term or should be
+named something else. Use it only once it's confirmed.
+
 Name a collection after the entity it holds (`hiddenPlayers`, `soloRivals`, `newCharts`),
 not with an adjective alone such as `hidden`.
 
