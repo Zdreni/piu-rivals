@@ -1,7 +1,7 @@
 import type { PlayerSummary, Rival } from '@piu-rivals/shared';
 import { useEffect, useMemo, useRef } from 'react';
 import { tabsClass, useTabsFit } from './layout.ts';
-import { type ChartRow, displayName, type PlayerBests } from '../../data/model.ts';
+import { type Chartboard, displayName, type PlayerBests } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { OtherPlayers, usePlayers } from './other_players.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
@@ -17,15 +17,12 @@ const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
 });
 
 
-// The rivals column: its My rivals tab removes rivals, toggles which are compared, and focuses one to show its
-// details; its Others tab adds rivals.
-// Each rival shows how many of their charts you lose / haven't played / win, judged on the real scores, with none
-// of the settings applied. `soloStats`, given in solo mode, replace the solo rival's stats; they are named by
-// `countBy`. Your own row shows `myStats`, your totals against the compared rivals, counted both ways.
-export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, soloRivalId, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
+// The rivals column: your rivals, and other players to add in the Others tab. Rivals' stats are judged on the real
+//  scores, with no settings applied; `soloStats` replace the solo rival's. Your row shows `myStats`.
+export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloRivalId, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
   onRemove, onAdd }: {
   tab: RivalTab;
-  charts: ChartRow[];
+  chartboards: Chartboard[];
   me: PlayerSummary;
   rivals: Rival[];
   bests: Map<string, PlayerBests>;
@@ -43,7 +40,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, sol
 }) {
   const container = useRef<HTMLDivElement>(null);
   const { players: allPlayers, error: playersError } = usePlayers();
-  const rivalStats = useMemo(()  =>  realCounts(charts), [charts]);
+  const rivalStats = useMemo(()  =>  realCounts(chartboards), [chartboards]);
 
   // You and your rivals by PUMBILITY (highest first); those without one follow alphabetically.
   const players = [me, ...rivals].map(toListedPlayer).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
@@ -51,10 +48,10 @@ export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, sol
 
   const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
   const rivalIds = new Set(rivals.map((r)  =>  r.id));
-  const othersCount = allPlayers  &&  allPlayers.filter((p)  =>  p.id !== me.id  &&  ! rivalIds.has(p.id)).length;
+  const otherPlayerCount = allPlayers  &&  allPlayers.filter((p)  =>  p.id !== me.id  &&  ! rivalIds.has(p.id)).length;
 
   // A newly added rival is focused; it's brought into view once you're back on My rivals. A rival unrolls as it's
-  // focused, so it's brought into view again once it has.
+  //  focused, so it's brought into view again once it has.
   useEffect(()  => {
     const row = container.current?.querySelector('.rival.focused');
     if (! row)
@@ -77,9 +74,9 @@ export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, sol
   };
 
   const tabBar = useRef<HTMLDivElement>(null);
-  const tabsFit = useTabsFit(tabBar, [rivals.length, othersCount]);
+  const tabsFit = useTabsFit(tabBar, [rivals.length, otherPlayerCount]);
 
-  const tabButton = (id: RivalTab, label: string, count: number | null)  =>  (
+  const renderTabButton = (id: RivalTab, label: string, count: number | null)  =>  (
     <button type="button" role="tab" aria-selected={tab === id} className="rival-tab" onClick={()  =>  onTab(id)}>
       {label}{count !== null  &&  <span className="tab-count">{count}</span>}
     </button>
@@ -88,11 +85,11 @@ export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, sol
   return (
     <div className="rival-list" aria-label="Rivals">
       <div className={`rival-tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist">
-        {tabButton('mine', 'My rivals', rivals.length)}
-        {tabButton('others', 'Others', othersCount)}
+        {renderTabButton('mine', 'My rivals', rivals.length)}
+        {renderTabButton('others', 'Others', otherPlayerCount)}
       </div>
       {tab === 'others'
-        ?  <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivals={rivalIds} onAdd={add} />
+        ?  <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds} onAdd={add} />
         :  (
           <div className="rival-scroll" ref={container}>
             {players.map((player)  => {
@@ -111,7 +108,7 @@ export function RivalList({ tab, charts, me, rivals, bests, focusedPlayerId, sol
                   stats={(isSolo  &&  soloStats)  ||  rivalStats.get(player.playerId)  ||  NO_COUNTS}
                   statsWords={STAT_WORDS[(isSolo  &&  soloStats)  ?  countBy  :  'results']}
                   totals={(isMe  ?  myStats  :  null)}
-                  ties={!! soloRivalId}
+                  treatTieAsWin={! soloRivalId}
                   best={playerBests.length}
                   scores={playerBests.reduce((acc, best)  =>  acc + best.tries, 0)}
                   onFocus={()  =>  onFocus(player.playerId)}

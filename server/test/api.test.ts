@@ -15,7 +15,7 @@ import { takePlayer } from '../src/scraper/runs.ts';
 import { savePlayerInfo, storeSession } from '../src/scraper/store.ts';
 
 // Runs the API against a real MySQL database, which it EMPTIES first: set TEST_DATABASE_URL to a
-// database meant for tests. Skipped without it.
+//  database meant for tests. Skipped without it.
 const url = process.env.TEST_DATABASE_URL;
 const skip = (url  ?  false  :  'TEST_DATABASE_URL is not set');
 
@@ -418,7 +418,7 @@ test('added players join an active run, which takes them while it runs', { skip 
   const secondAdd = await add(NEW_2);
   assert.equal(secondAdd.run.id, runId);
   assert.deepEqual(secondAdd.players.map((p)  =>  p.id), [NEW_1, NEW_2]);
-  assert.equal(secondAdd.run.playersTotal, 2);
+  assert.equal(secondAdd.run.playerCount, 2);
   // A player still waiting isn't added twice; a stored player selected for scraping joins too.
   assert.equal((await add(NEW_1)).players.length, 2);
   assert.deepEqual((await add(RIVAL, 'selected')).players.map((p)  =>  p.id), [NEW_1, NEW_2, RIVAL]);

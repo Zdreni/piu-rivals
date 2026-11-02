@@ -23,7 +23,7 @@ export const adminTrackRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, 
 
 
   // An empty short title puts the title back. A short title can't be another track's title or short title; the
-  // comparison ignores case and accents, as the column's collation does.
+  //  comparison ignores case and accents, as the column's collation does.
   app.patch('/admin/tracks/:id', {
     schema: { params: IdParams, body: Type.Object({ shortTitle: Type.String({ maxLength: 255 }) }) },
   }, async (request): Promise<{ track: AdminTrack }>  => {

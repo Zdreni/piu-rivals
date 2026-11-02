@@ -19,13 +19,13 @@ export function RunStatus({ run }: { run: ScrapeRun }) {
 
 
 export function RunProgress({ run }: { run: ScrapeRun }) {
-  const share = (run.playersTotal  ?  run.playersDone / run.playersTotal  :  0);
+  const share = (run.playerCount  ?  run.donePlayerCount / run.playerCount  :  0);
   return (
-    <div className="progress" title={`${run.playersDone} of ${run.playersTotal} players`}>
-      <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={run.playersTotal} aria-valuenow={run.playersDone}>
+    <div className="progress" title={`${run.donePlayerCount} of ${run.playerCount} players`}>
+      <div className="progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={run.playerCount} aria-valuenow={run.donePlayerCount}>
         <div className="progress-fill" style={{ width: `${Math.round(share * 100)}%` }} />
       </div>
-      <span className="muted small">{run.playersDone} / {run.playersTotal}</span>
+      <span className="muted small">{run.donePlayerCount} / {run.playerCount}</span>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import type { SessionCard } from './session_page.ts';
 
 // Decides which sessions of a player to scan, from the stored checkpoint and the session cards
-// read so far (newest first, across pages). Only the newest session can gain plays: when more
-// scores are imported, they land in it and its timestamp moves later. So the latest stored
-// session may be gone from the page, while the anchor (the one before it) never changes.
+//  read so far (newest first, across pages). Only the newest session can gain plays:
+//  on subsequent scans, the latest stored session grows and its timestamp moves later.
+//  Only the anchor (the session before this one) never changes.
 // Sessions of every mix count the same here, as a player can play Phoenix again after Phoenix 2;
-// only Phoenix 2 ones have their plays read. Paging stops at the first session from before
-// Phoenix 2 came out.
+//  only Phoenix 2 ones have their plays read. Paging stops at the first session from before
+//  Phoenix 2 came out.
 
 export interface StoredSession {
   title: string;
@@ -47,8 +47,8 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 
 // Dates the cards of a history, read newest first. Card times have no year ("Sun 11 Oct · 7:43 PM"),
-// so each card gets the latest year, no later than the card before it, in which its day falls on
-// its weekday. Returns the card's day as a UTC timestamp, or null when the format is different.
+//  so each card gets the latest year, no later than the card before it, in which its day falls on
+//  its weekday. Returns the card's day as a UTC timestamp, or null when the format is different.
 export function cardDates(now = Date.now()) {
   // A day of slack for piuscores' time zone.
   let notAfter = now + DAY_MS;
@@ -90,19 +90,19 @@ export function stepCard(checkpoint: Checkpoint, card: SessionCard, date: number
 
 
 // `collected` are the cards above the stop point, newest first. `stop` is the step that ended the
-// paging, or null when the history ran out of pages.
+//  paging, or null when the history ran out of pages.
 export function planScan(checkpoint: Checkpoint, collectedCards: SessionCard[], stop: CardStep | null): ScanPlan {
   const oldestFirst = [...collectedCards].reverse();
   if (stop?.kind === 'latest-found'  ||  ! checkpoint.latest)
     return { grown: null, fresh: oldestFirst };
 
   // The latest stored session isn't on the page as stored, so it has grown. It's taken to be the
-  // oldest Phoenix 2 card above the anchor, or in the history when it was the player's only one;
-  // cards of other mixes below that one need nothing stored. This also covers checkpoints stored
-  // before sessions of other mixes were tracked, which can have Phoenix sessions between the anchor
-  // and the latest one. When the latest one was a Phoenix session, a newer Phoenix 2 session is
-  // taken as grown: its plays get the previous Phoenix 2 session's number, which only matters for
-  // telling re-imported tries apart. With no Phoenix 2 card, the oldest card is the grown one.
+  //  oldest Phoenix 2 card above the anchor, or in the history when it was the player's only one;
+  //  cards of other mixes below that one need nothing stored. This also covers checkpoints stored
+  //  before sessions of other mixes were tracked, which can have Phoenix sessions between the anchor
+  //  and the latest one. When the latest one was a Phoenix session, a newer Phoenix 2 session is
+  //  taken as grown: its plays get the previous Phoenix 2 session's number, which only matters for
+  //  telling re-imported tries apart. With no Phoenix 2 card, the oldest card is the grown one.
   const latestSession = checkpoint.latest;
   const reachedHistoryStart = stop?.kind !== 'anchor-found';
   if (reachedHistoryStart  &&  checkpoint.anchor)

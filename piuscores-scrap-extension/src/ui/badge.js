@@ -1,6 +1,6 @@
 // The piu-rivals status box on piuscores player pages, in its own shadow root so the page's
-// styles don't leak in. It sits top right, clear of the old extension's buttons (bottom left)
-// and toasts (bottom right).
+//  styles don't leak in. It sits top right, clear of the old extension's buttons (bottom left)
+//  and toasts (bottom right).
 const styles = `
   .box { position: fixed; top: 72px; right: 16px; z-index: 2147483647; max-width: 300px;
          background: #14201A; color: #EAF5EC; border-left: 4px solid #4FE33F; border-radius: 6px;
@@ -55,20 +55,20 @@ function runText(run) {
 
 
 // The player's own state in the run. A run can hold other players too (players added one after
-// another are scraped together); its counts then cover them all, so they're shown only for a run
-// of this player alone.
+//  another are scraped together); its counts then cover them all, so they're shown only for a run
+//  of this player alone.
 function playerText(run, runPlayer) {
-  const solo = run.playersTotal <= 1;
-  const others = run.playersTotal - 1;
+  const solo = run.playerCount <= 1;
+  const others = run.playerCount - 1;
   switch (runPlayer.state) {
     case 'waiting': {
-      const playersAhead = runPlayer.index - run.playersDone;
+      const playersAhead = runPlayer.index - run.donePlayerCount;
       return ['Queued for scraping', (run.status === 'queued'  ||  playersAhead <= 0)
         ?  'Waiting for the scrape worker…'
         :  `${playersAhead} player${(playersAhead === 1  ?  ''  :  's')} ahead in the run…`];
     }
     case 'running':
-      return ['Scraping', solo  ?  `${counts(run)} so far…`  :  `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run…`];
+      return ['Scraping', solo  ?  `${counts(run)} so far…`  :  `Player ${runPlayer.index + 1} of ${run.playerCount} in the run…`];
     case 'done':
       return ['Scraped', solo  ?  counts(run)  :  `Scraped in a run with ${others} other player${(others === 1  ?  ''  :  's')}`];
     case 'failed':
@@ -84,7 +84,7 @@ const ADDED_LABEL = 'Already in piu-rivals';
 
 
 // The button that adds and scrapes the player. Nothing is scraped without it; it is disabled while
-// a scrape of the player is under way and once the player is in piu-rivals.
+//  a scrape of the player is under way and once the player is in piu-rivals.
 function buttonFor(view) {
   if (view.run)
     return { label: 'Scraping…', enabled: false };
@@ -94,7 +94,7 @@ function buttonFor(view) {
 
 
 // What the box says for a view: { state, player, run, runPlayer, finished, name, message }, where
-// finished is { run, runPlayer } of the run that last scraped the player.
+//  finished is { run, runPlayer } of the run that last scraped the player.
 function describe(view) {
   if (view.state === 'error')
     return { kind: 'error', title: 'piu-rivals', detail: view.message, button: null };

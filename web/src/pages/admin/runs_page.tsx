@@ -113,7 +113,7 @@ export function RunsPage() {
   };
 
   const shownRuns = (tab === 'current'  ?  currentRuns  :  previousRuns);
-  const tabButton = (id: RunsTab, label: string, count?: number)  =>  (
+  const renderTabButton = (id: RunsTab, label: string, count?: number)  =>  (
     <button type="button" role="tab" aria-selected={tab === id} onClick={()  =>  setSearchParams((id === 'previous'  ?  { tab: id }  :  {}))}>
       {label}{count !== undefined  &&  <span className="tab-count"> {count}</span>}
     </button>
@@ -135,8 +135,8 @@ export function RunsPage() {
       {(error  ??  shownRuns.error)  &&  <p className="error" role="alert">{error  ??  shownRuns.error}</p>}
 
       <div className="page-tabs" role="tablist" aria-label="Scraping">
-        {tabButton('current', 'Current', currentRuns.data?.runs.length)}
-        {tabButton('previous', 'Previous', previousRuns.data?.total)}
+        {renderTabButton('current', 'Current', currentRuns.data?.runs.length)}
+        {renderTabButton('previous', 'Previous', previousRuns.data?.total)}
       </div>
 
       <div role="tabpanel">

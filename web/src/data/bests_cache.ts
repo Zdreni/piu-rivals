@@ -1,7 +1,7 @@
 import type { BestResult, Chart } from '@piu-rivals/shared';
 
 // Best results kept in IndexedDB between visits, so a visit only downloads what changed since the last one.
-// It's a cache of public scores, shared by everyone signed in on this browser; anything can be loaded again.
+//  It's a cache of public scores, shared by everyone signed in on this browser; anything can be loaded again.
 // A new DB_VERSION drops everything stored, e.g. after the stored shapes change.
 const DB_NAME = 'piu-rivals-cache';
 // 2: charts have songShortTitle. 5: bests have improvement (3 and 4 were only used in development).
@@ -45,7 +45,7 @@ const transactionDone = (tx: IDBTransaction)  =>  new Promise<void>((resolve, re
 
 
 // A new version waits for every tab to close the old one. A blocked open gets an event, but an open queued behind
-// it gets none and would wait forever, so after OPEN_TIMEOUT_MS the scores are loaded without the cache.
+//  it gets none and would wait forever, so after OPEN_TIMEOUT_MS the scores are loaded without the cache.
 const OPEN_TIMEOUT_MS = 3000;
 
 

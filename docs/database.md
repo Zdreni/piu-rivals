@@ -77,8 +77,8 @@ scrape_runs
   created_at                DATETIME
   started_at                DATETIME NULL
   finished_at               DATETIME NULL
-  players_total             INT
-  players_done              INT
+  players_total             INT                    -- to rename player_count with the table's next migration
+  players_done              INT                    -- to rename done_player_count with the table's next migration
   current_player_id         INT NULL FK players
   sessions_added            INT
   plays_added               INT

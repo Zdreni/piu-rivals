@@ -45,7 +45,7 @@ export interface ChartPreference {
 }
 
 // How long a snooze lasts, in whole days from 1 to 365: N days end (N - 1) * 24 + 12 hours after the snooze is set.
-// The site picks which lengths it offers.
+//  The site picks which lengths it offers.
 export type SnoozeDays = number;
 
 export interface MeResponse {
@@ -118,7 +118,7 @@ export interface BestsResponse {
   charts: Chart[];
   bests: BestResult[];
   // How many best results each requested player has in all, changed or not. A cache holding a different
-  // number has missed a deletion (e.g. a rescan) and should load that player in full.
+  //  number has missed a deletion (e.g. a rescan) and should load that player in full.
   counts: Record<string, number>;
 }
 
@@ -200,8 +200,8 @@ export interface ScrapeRun {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
-  playersTotal: number;
-  playersDone: number;
+  playerCount: number;
+  donePlayerCount: number;
   currentPlayer: PlayerSummary | null;
   sessionsAdded: number;
   playsAdded: number;
@@ -212,7 +212,7 @@ export interface ScrapeRun {
 
 export interface ScrapeRunsResponse {
   // Current runs (queued, running) in the order the worker takes them; previous (finished) ones newest
-  // first, up to the asked limit.
+  //  first, up to the asked limit.
   runs: ScrapeRun[];
   // There are older finished runs beyond the limit.
   hasMore: boolean;

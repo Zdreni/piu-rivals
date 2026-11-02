@@ -10,14 +10,14 @@ function Stat({ className, value }: { className: string; value: number }) {
 const STAT_CLASSES: Record<keyof Counts, string> = { lose: 'neg', unplayed: 'blue', win: 'pos', tie: 'tie', hidden: '' };
 
 
-// "3 lost, 5 non-matched, 9 won", in the words of `words`; `ties` (the solo view) adds ", 2 tied".
-export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results, ties = false }: {
+// "3 lost, 5 non-matched, 9 won", in the words of `words`; unless `treatTieAsWin`, with ", 2 tied".
+export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results, treatTieAsWin = true }: {
   counts: Counts;
   separator?: string;
   words?: Record<keyof Counts, string>;
-  ties?: boolean;
+  treatTieAsWin?: boolean;
 }) {
-  const stats: (keyof Counts)[] = (ties  ?  ['lose', 'unplayed', 'win', 'tie']  :  ['lose', 'unplayed', 'win']);
+  const stats: (keyof Counts)[] = (treatTieAsWin  ?  ['lose', 'unplayed', 'win']  :  ['lose', 'unplayed', 'win', 'tie']);
   return stats.map((stat, i)  =>  (
     <Fragment key={stat}>
       {i > 0  &&  separator}

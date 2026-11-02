@@ -25,11 +25,9 @@ export function Count({ value, label }: { value: number; label: string }) {
 }
 
 
-// One rival row: the name and PUMBILITY, then (while focused) the visibility toggle and solo, the score
-// counts, the results against them, and their links. `me` marks your own row, `on` a rival checked for the stats,
-// `solo` the solo rival, `faded` everyone else left out while a rival is solo (covered with a fader). Your row shows
-// your `totals` instead, by results (with ties while any rival is solo, `ties`) and by charts.
-export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, totals, ties, best, scores, onFocus,
+// One row of the rivals column: a rival, or you (`me`), with your `totals` instead of stats. `on` marks a rival
+//  compared on the charts, `solo` the solo rival, `faded` the others while one is solo.
+export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, totals, treatTieAsWin, best, scores, onFocus,
   onUnfocus, onToggle, onSolo, onRemove }: {
   player: ListedPlayer;
   me: boolean;
@@ -40,7 +38,7 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
   stats: Counts;
   statsWords: Record<keyof Counts, string>;
   totals: { results: Counts; charts: Counts } | null;
-  ties: boolean;
+  treatTieAsWin: boolean;
   best: number;
   scores: number;
   onFocus: () => void;
@@ -89,13 +87,13 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
             </div>
             {! me  &&  (
               <div className="rival-stats" title={(solo  ?  statsSoloTip  :  statsTip)}>
-                <StatWords counts={stats} separator=" · " words={statsWords} ties={solo} />
+                <StatWords counts={stats} separator=" · " words={statsWords} treatTieAsWin={! solo} />
               </div>
             )}
             {totals  &&  (
               <>
                 <div className="rival-stats" title={resultsTip}>
-                  <span className="stats-label">Results:</span> <StatWords counts={totals.results} separator=" · " ties={ties} />
+                  <span className="stats-label">Results:</span> <StatWords counts={totals.results} separator=" · " treatTieAsWin={treatTieAsWin} />
                 </div>
                 <div className="rival-stats" title={chartsTip}>
                   <span className="stats-label">Charts:</span> <StatWords counts={totals.charts} separator=" · " words={STAT_WORDS.charts} />

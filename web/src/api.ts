@@ -13,7 +13,7 @@ export class ApiError extends Error {
 
 
 // Browser storage can be unavailable (private windows, blocked site data); then the session
-// lasts only until the page is reloaded.
+//  lasts only until the page is reloaded.
 let memoryToken: string | null = null;
 
 

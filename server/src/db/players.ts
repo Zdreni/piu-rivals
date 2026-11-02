@@ -27,7 +27,7 @@ export async function playerGuidsById(db: Db, ids: number[]): Promise<Map<number
 
 
 // Creates the players that aren't stored yet, with only their GUID: the rest comes with their first
-// scrape. Returns the players' ids, in the order of `guids`.
+//  scrape. Returns the players' ids, in the order of `guids`.
 export async function ensurePlayers(db: Db, guids: string[], createdByUserId: number | null = null): Promise<number[]> {
   if (! guids.length)
     return [];

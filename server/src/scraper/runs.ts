@@ -29,9 +29,9 @@ const JOINABLE_KINDS: readonly ScrapeRunKind[] = ['register', 'selected'];
 
 
 // Adds the players to an active register or selected run, so players added one after another are
-// scraped together, or queues a new run when there is none. A player still waiting in an active run
-// (an "all" run too) isn't added twice. Locks the active runs, like takePlayer, so a run the worker
-// is finishing either takes the players or is seen finished.
+//  scraped together, or queues a new run when there is none. A player still waiting in an active run
+//  (an "all" run too) isn't added twice. Locks the active runs, like takePlayer, so a run the worker
+//  is finishing either takes the players or is seen finished.
 export async function joinOrQueueRun(db: Db, kind: 'register' | 'selected', playerIds: number[], userId: number | null = null) {
   return db.transaction().execute(async (trx)  => {
     const runs = await trx.selectFrom('scrape_runs')
@@ -138,9 +138,9 @@ async function finishRun(db: Db, runId: number, status: FinishedStatus) {
 
 
 // Makes the run's player at `index` its current one, or finishes the run when it has no more
-// players or was asked to stop. The run's list can grow while it runs (see joinOrQueueRun), so it's
-// read again each time, under the run's lock: a player added at the same time is either taken here
-// or sees the run finished and goes to a new run.
+//  players or was asked to stop. The run's list can grow while it runs (see joinOrQueueRun), so it's
+//  read again each time, under the run's lock: a player added at the same time is either taken here
+//  or sees the run finished and goes to a new run.
 export async function takePlayer(db: Db, runId: number, index: number): Promise<{ playerId: number } | { finished: FinishedStatus }> {
   return db.transaction().execute(async (trx)  => {
     const run = await trx.selectFrom('scrape_runs')
@@ -168,7 +168,7 @@ export async function takePlayer(db: Db, runId: number, index: number): Promise<
 
 
 // Works through the run's players, including ones added while it runs. A failing player is recorded
-// and skipped; cancelling stops before the next player, after the current one's sessions are stored.
+//  and skipped; cancelling stops before the next player, after the current one's sessions are stored.
 export async function executeRun(db: Db, run: ScrapeRun) {
   if (run.kind === 'all') {
     // An "all" run keeps the players it resolved to, so its page can list them.

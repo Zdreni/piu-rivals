@@ -105,8 +105,8 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
 
 
 // Recomputes the player's best results on `chartIdList`. The best try is the highest score,
-// the earliest one on ties; its improvement is how much it rose over the highest earlier try, by
-// play order. Returns how many best scores were raised or added.
+//  the earliest one on ties; its improvement is how much it rose over the highest earlier try, by
+//  play order. Returns how many best scores were raised or added.
 async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): Promise<number> {
   if (! chartIdList.length)
     return 0;
@@ -160,8 +160,8 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
 
 
 // Stores one scanned session and moves the player's checkpoint to it, all in one transaction.
-// A grown session (the previous latest one, with re-imported tries) only adds the tries not
-// stored from it before; a new session adds all of its tries under the next session number.
+//  A grown session (the previous latest one, with re-imported tries) only adds the tries not
+//  stored from it before; a new session adds all of its tries under the next session number.
 export async function storeSession(db: Db, options: {
   playerId: number;
   card: SessionCard;

@@ -152,15 +152,15 @@
     return [`Scrape ${run.status}`, run.failures ? `${run.failures} failed` : `${counts(run)} before it stopped`];
   }
   function playerText(run, runPlayer) {
-    const solo = run.playersTotal <= 1;
-    const others = run.playersTotal - 1;
+    const solo = run.playerCount <= 1;
+    const others = run.playerCount - 1;
     switch (runPlayer.state) {
       case "waiting": {
-        const playersAhead = runPlayer.index - run.playersDone;
+        const playersAhead = runPlayer.index - run.donePlayerCount;
         return ["Queued for scraping", run.status === "queued" || playersAhead <= 0 ? "Waiting for the scrape worker\u2026" : `${playersAhead} player${playersAhead === 1 ? "" : "s"} ahead in the run\u2026`];
       }
       case "running":
-        return ["Scraping", solo ? `${counts(run)} so far\u2026` : `Player ${runPlayer.index + 1} of ${run.playersTotal} in the run\u2026`];
+        return ["Scraping", solo ? `${counts(run)} so far\u2026` : `Player ${runPlayer.index + 1} of ${run.playerCount} in the run\u2026`];
       case "done":
         return ["Scraped", solo ? counts(run) : `Scraped in a run with ${others} other player${others === 1 ? "" : "s"}`];
       case "failed":

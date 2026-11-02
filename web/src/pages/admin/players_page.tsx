@@ -24,8 +24,7 @@ const compare: Record<SortColumn, (a: AdminPlayer, b: AdminPlayer) => number> = 
 };
 
 
-// The name shown on the site, saved when the field loses focus or on Enter; Escape puts the saved one back. An empty
-// name is the one on PIU Scores again.
+// The name shown on the site, saved as you leave the field. An empty name is the one on PIU Scores again.
 function NameInput({ player, onSave }: { player: AdminPlayer; onSave: (displayName: string | null) => void }) {
   const [name, setName] = useState(player.name  ??  '');
   useEffect(()  =>  setName(player.name  ??  ''), [player.name]);

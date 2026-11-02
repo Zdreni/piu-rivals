@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 // While the page is visible, scores and the rival list are loaded again every few minutes, and when the page
-// comes back into view after a while.
+//  comes back into view after a while.
 const REFRESH_MS = 5 * 60 * 1000;
 const RETURN_REFRESH_MS = 60 * 1000;
 

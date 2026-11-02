@@ -8,8 +8,8 @@ import { formatAgo, formatNumber, formatTime, playerLabel, useLoad } from '../..
 import { MAX_LEVEL, MAX_SCORE_CAP, parsePreferences } from '../../data/preferences.ts';
 
 
-// The user's name, saved when the field loses focus or on Enter; Escape puts the saved name back. An empty name is
-// filled from their Google account at their next sign-in.
+// The user's name, saved as you leave the field. An empty name is filled from their Google account at their next
+//  sign-in.
 function NameInput({ user, onSave }: { user: AdminUser; onSave: (displayName: string | null) => void }) {
   const [name, setName] = useState(user.displayName  ??  '');
   useEffect(()  =>  setName(user.displayName  ??  ''), [user.displayName]);
@@ -41,7 +41,7 @@ function NameInput({ user, onSave }: { user: AdminUser; onSave: (displayName: st
 
 
 // The Rivals view's settings as the user's pages read them: what's missing or invalid shows as its default. Levels
-// that aren't set follow the user's scores, which only their own page works out.
+//  that aren't set follow the user's scores, which only their own page works out.
 function Settings({ data }: { data: AdminUserResponse }) {
   const { scoreCap, npMinimalRivals, countBy, minLevel, maxLevel } = parsePreferences(data.preferences);
   const autoLabel = <span className="muted">auto</span>;

@@ -7,7 +7,7 @@ export const SCORE_CAP_STEP = 1000;
 export const MIN_NP_RIVALS = 1;
 export const MAX_NP_RIVALS = 5;
 // Charts are compared from the minimal level up to the maximal one; MAX_LEVEL is no upper limit. Until they're set,
-// both follow your own scores (see autoLevels); with no scores yet, lower levels are left out, as in the old extension.
+//  both follow your own scores (see autoLevels); with no scores yet, lower levels are left out, as in the old extension.
 export const MIN_LEVEL = 1;
 export const MAX_LEVEL = 28;
 export const DEFAULT_MIN_LEVEL = 10;
@@ -45,8 +45,8 @@ export const levelInRange = (level: number, { minLevel, maxLevel }: LevelRange) 
 
 
 // The level range that follows your scores (`playedLevels`, the level of each chart you have a best score on, singles
-// and doubles alike): from the lowest level you have bests on at least AUTO_MIN_LEVEL_CHARTS charts of (or else the
-// lowest you've played) up to one above the highest you've played.
+//  and doubles alike): from the lowest level you have bests on at least AUTO_MIN_LEVEL_CHARTS charts of (or else the
+//  lowest you've played) up to one above the highest you've played.
 export function autoLevels(playedLevels: number[]): LevelRange {
   if (! playedLevels.length)
     return { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
@@ -63,7 +63,7 @@ export function autoLevels(playedLevels: number[]): LevelRange {
 
 
 // The settings' level range, with what isn't set following your scores. A range set upside down keeps its minimal
-// level, unless only the maximal one is set.
+//  level, unless only the maximal one is set.
 export function resolveLevels({ minLevel, maxLevel }: Preferences, auto: LevelRange): LevelRange {
   const min = minLevel  ??  auto.minLevel, max = maxLevel  ??  auto.maxLevel;
   if (min <= max)

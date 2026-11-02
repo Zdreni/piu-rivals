@@ -21,8 +21,8 @@ async function waitFor(check: () => Promise<boolean>, description: string, timeo
 
 
 // Drives one browser page through piuscores player Sessions pages. piuscores is a Blazor Server
-// app: the HTML only arrives after the page connects, and every click re-renders over that
-// connection, so each step waits for the page to show the expected content.
+//  app: the HTML only arrives after the page connects, and every click re-renders over that
+//  connection, so each step waits for the page to show the expected content.
 export class SessionsBrowser {
   private constructor(private readonly browser: Browser, private readonly page: Page) {}
 
@@ -100,7 +100,7 @@ export class SessionsBrowser {
 
 
   // Opens `card`'s session (on the current page) with all of its plays shown; returns the page HTML
-  // and the card as it reads now: the session may have grown since `card` was read.
+  //  and the card as it reads now: the session may have grown since `card` was read.
   async openSession(found: SessionCard): Promise<{ html: string; card: SessionCard }> {
     const { cards } = await this.readPage();
     const index = cards.findIndex((c)  =>  sameCard(c, found));
@@ -122,21 +122,21 @@ export class SessionsBrowser {
     });
 
     // The "Plays" tally counts every row of the list, stage breaks too, so the session is read only
-    // once that many rows are shown; the button may go away before they all render. Without a
-    // tally, the button going away is all there is to wait for.
+    //  once that many rows are shown; the button may go away before they all render. Without a
+    //  tally, the button going away is all there is to wait for.
     const playsTotal = parseOpenSession(await this.openSessionHtml())?.playsTotal  ??  null;
     const showAll = this.page.locator('[data-testid="session-show-all-plays"]');
     if (await showAll.count())
       await showAll.click();
 
     const rows = this.page.locator('[data-testid="session-all-plays"] [data-testid="session-score-row"]');
-    let shownRows = 0;
+    let shownRowCount = 0;
 
     await waitFor(async ()  => {
-      shownRows = await rows.count();
-      return (playsTotal === null  ?  await showAll.count() === 0  :  shownRows >= playsTotal);
+      shownRowCount = await rows.count();
+      return (playsTotal === null  ?  await showAll.count() === 0  :  shownRowCount >= playsTotal);
     }, `${(playsTotal === null  ?  'all'  :  `all ${playsTotal}`)} plays of "${card.title}" (${card.timestamp}) to load`).catch((error)  => {
-      throw new Error(`${error.message}: ${shownRows} shown`);
+      throw new Error(`${error.message}: ${shownRowCount} shown`);
     });
 
     return { html: await this.page.content(), card };

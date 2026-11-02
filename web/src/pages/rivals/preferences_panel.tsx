@@ -5,7 +5,7 @@ import {
 
 
 // A label above a − value + row, and the title spelled out under them, unless `noHint`
-// (a pair of steppers sharing one hint).
+//  (a pair of steppers sharing one hint).
 function Stepper({ className, label, text, title, off, canLower, canRaise, lowerLabel, raiseLabel, onStep, noHint = false }: {
   className: string;
   label: string;
@@ -37,19 +37,17 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 ];
 
 
-// The preferences panel, in the rivals' place: the score cap, np minimal rivals, level range and count by settings, one
-// under another with their titles spelled out. `levels` is the level range in use, whether set or following your
-// scores. While a rival is `solo`, results are counted whatever the count by setting says, and the setting is locked.
-export function PreferencesPanel({ preferences, levels, solo, onChange }: {
+// The preferences panel, in the rivals' place. `levelRange` is set or follows your scores.
+export function PreferencesPanel({ preferences, levelRange, rivalIsSolo, onChange }: {
   preferences: Preferences;
-  levels: LevelRange;
-  solo: boolean;
+  levelRange: LevelRange;
+  rivalIsSolo: boolean;
   onChange: (changes: Partial<Preferences>) => void;
 }) {
   const { scoreCap, npMinimalRivals } = preferences;
-  const { minLevel, maxLevel } = levels;
-  const countBy = (solo  ?  'results'  :  preferences.countBy);
-  const countByTitle = (solo
+  const { minLevel, maxLevel } = levelRange;
+  const countBy = (rivalIsSolo  ?  'results'  :  preferences.countBy);
+  const countByTitle = (rivalIsSolo
     ?  'Solo: results are always counted'
     :  'Count matches per rival, or per chart');
 
@@ -129,8 +127,8 @@ export function PreferencesPanel({ preferences, levels, solo, onChange }: {
               role="radio"
               aria-checked={value === countBy}
               className={(value === countBy  ?  'on'  :  undefined)}
-              title={(solo  ?  undefined  :  title)}
-              disabled={solo}
+              title={(rivalIsSolo  ?  undefined  :  title)}
+              disabled={rivalIsSolo}
               onClick={()  =>  value !== countBy  &&  onChange({ countBy: value })}
             >
               {label}

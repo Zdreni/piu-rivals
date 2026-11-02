@@ -17,19 +17,19 @@ export const tryKey = (t: TryStats)  =>
 
 
 // A grown session holds the tries stored from it before, plus new ones. Returns the tries of
-// `scanned` that aren't stored yet, counting identical tries: a try stored twice and scanned
-// three times adds one.
+//  `scanned` that aren't stored yet, counting identical tries: a try stored twice and scanned
+//  three times adds one.
 export function newTries<T extends TryStats>(stored: TryStats[], scanned: T[]): T[] {
-  const remaining = new Map<string, number>();
+  const unmatchedTryCounts = new Map<string, number>();
   for (const t of stored)
-    remaining.set(tryKey(t), (remaining.get(tryKey(t))  ??  0) + 1);
+    unmatchedTryCounts.set(tryKey(t), (unmatchedTryCounts.get(tryKey(t))  ??  0) + 1);
 
   return scanned.filter((t)  => {
-    const left = remaining.get(tryKey(t))  ??  0;
-    if (left === 0)
+    const unmatchedTryCount = unmatchedTryCounts.get(tryKey(t))  ??  0;
+    if (unmatchedTryCount === 0)
       return true;
 
-    remaining.set(tryKey(t), left - 1);
+    unmatchedTryCounts.set(tryKey(t), unmatchedTryCount - 1);
     return false;
   });
 }

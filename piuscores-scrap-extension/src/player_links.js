@@ -1,6 +1,5 @@
-// Marks links to player profiles and Sessions pages on piuscores: a green frame for players in
-// piu-rivals, an orange one for players who aren't, with a button after the link to add the player
-// and scrape them. The frame is an outline, so the page's layout doesn't move.
+// Marks links to players on piuscores by whether they're in piu-rivals, with a button to add and scrape those who
+//  aren't. The mark is an outline, so the page's layout doesn't move.
 const MARK = 'data-piu-rivals';
 const BUTTON_CLASS = 'piu-rivals-scrape';
 const STYLE_ID = 'piu-rivals-player-links';
@@ -32,7 +31,7 @@ function addStyle() {
 
 
 // What a player's button shows for the scrape request made from it: none yet, being sent,
-// requested, or failed with a message.
+//  requested, or failed with a message.
 function buttonState(request) {
   if (request?.state === 'sending')
     return { label: '…', title: 'Adding to piu-rivals', enabled: false };
@@ -48,7 +47,7 @@ function buttonState(request) {
 
 
 // playerIdOf gives the player a link's path leads to, or null. onScrape(playerId) asks for the
-// player to be added and scraped, and answers as the background's register message does.
+//  player to be added and scraped, and answers as the background's register message does.
 export function createPlayerLinks({ playerIdOf, onScrape }) {
   // Scrape requests made from the buttons, by player ID: { state, message }.
   const requests = new Map();

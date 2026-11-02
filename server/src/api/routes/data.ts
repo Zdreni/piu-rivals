@@ -47,8 +47,8 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
 
 
   // Best results of the given players. With `since` (a serverTime from an earlier response), only
-  // rows changed at or after it; a row may then come again, which is harmless to merge. Deleted rows
-  // (a rescan, a deleted player) never come as changes; `counts` lets the site notice them.
+  //  rows changed at or after it; a row may then come again, which is harmless to merge. Deleted rows
+  //  (a rescan, a deleted player) never come as changes; `counts` lets the site notice them.
   app.get('/bests', {
     schema: { querystring: Type.Object({ players: Type.String({ minLength: 1 }), since: Type.Optional(Type.String()) }) },
   }, async (request): Promise<BestsResponse>  => {

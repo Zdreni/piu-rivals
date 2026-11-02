@@ -2,10 +2,8 @@ import { TAG, TOKEN_KEY } from './config.js';
 import { createPlayerLinks } from './player_links.js';
 import { createBadge } from './ui/badge.js';
 
-// Runs on piuscores: on a player's profile or Sessions page, shows whether the player is in
-// piu-rivals and offers to add and scrape one that isn't, and on every page marks the links to
-// players by whether they're in piu-rivals, with a button to add and scrape the ones who aren't. Shows nothing unless you're signed in to piu-rivals
-// as an admin.
+// Runs on piuscores: marks whether players are in piu-rivals, with buttons to add and scrape those who aren't. Shows
+//  nothing unless you're signed in to piu-rivals as an admin.
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RUN_POLL_MS = 3000;
 const LINKS_POLL_MS = 10_000;
@@ -33,7 +31,7 @@ const accountUsername = ()  =>  text(document.querySelector('.shell-menu-caption
 
 
 // The player of a profile (/Player/<id>) or Sessions (/Player/<id>/Sessions) path. Your own pages
-// can also be addressed by your username, e.g. /Player/Dino.
+//  can also be addressed by your username, e.g. /Player/Dino.
 function playerIdOf(pathname) {
   const segment = pathname.match(/^\/Player\/([^/]+)(?:\/Sessions)?\/?$/)?.[1];
   if (! segment)
@@ -114,7 +112,7 @@ let marksTimer = null;
 
 
 // While a player requested from a link isn't in piu-rivals yet, the marks are checked again now and
-// then, so the link turns green once the player is scraped.
+//  then, so the link turns green once the player is scraped.
 async function markLinks() {
   const request = ++marksRequest;
   clearTimeout(marksTimer);

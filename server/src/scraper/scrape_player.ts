@@ -32,8 +32,8 @@ const MAX_PAGES = 500;
 
 
 // Scrapes a player's sessions newer than their checkpoint, oldest first, storing each session as
-// soon as it's read, so an interrupted scrape keeps everything up to that point. Sessions of other
-// mixes than Phoenix 2 aren't opened: they only move the checkpoint.
+//  soon as it's read, so an interrupted scrape keeps everything up to that point. Sessions of other
+//  mixes than Phoenix 2 aren't opened: they only move the checkpoint.
 export async function scrapePlayer(
   browser: SessionsBrowser,
   playerId: string,
@@ -45,11 +45,11 @@ export async function scrapePlayer(
   let page = await browser.readPage();
 
   // The open session shows PUMBILITY as of that session, so it is current only for the newest one,
-  // which is open when the page loads. A Phoenix session shows Phoenix's PUMBILITY, so it's read
-  // only when the newest session is Phoenix 2.
+  //  which is open when the page loads. A Phoenix session shows Phoenix's PUMBILITY, so it's read
+  //  only when the newest session is Phoenix 2.
   const newestCard = (page.hasNewerPage  ?  undefined  :  page.cards[0]);
-  const newestOpen = !! newestCard?.isOpen  &&  newestCard.mix === 'Phoenix 2';
-  const pumbility = (newestOpen  ?  await browser.readOpenPumbility()  :  null);
+  const newestSessionIsOpen = !! newestCard?.isOpen  &&  newestCard.mix === 'Phoenix 2';
+  const pumbility = (newestSessionIsOpen  ?  await browser.readOpenPumbility()  :  null);
   await sink.savePlayerInfo(page.playerName, pumbility);
 
   const result: PlayerScrapeResult = { name: page.playerName, sessions: 0, playsAdded: 0, bestsImproved: 0 };

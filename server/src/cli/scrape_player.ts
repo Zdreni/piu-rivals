@@ -6,7 +6,7 @@ import { scrapePlayer } from '../scraper/scrape_player.ts';
 import { databaseSink, dryRunSink } from '../scraper/sinks.ts';
 
 // Scrapes one player right away, without a scrape run, for testing:
-//   npm run scrape -- <player GUID or piuscores link> [--dry-run]
+//     npm run scrape -- <player GUID or piuscores link> [--dry-run]
 // --dry-run prints every Phoenix 2 session and play instead of storing them, and needs no database.
 
 const args = process.argv.slice(2);

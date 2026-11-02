@@ -8,7 +8,7 @@ import { runsTabPath } from './runs_page.tsx';
 
 const POLL_MS = 3000;
 // Only the players this close to the current one are listed (failed ones always are); the rest hide behind buttons.
-const PLAYERS_AROUND = 10;
+const LISTED_PLAYER_COUNT_AROUND_CURRENT = 10;
 
 
 const PLAYER_STATES: Record<ScrapeRunPlayerState, { mark: string; title: string }> = {
@@ -61,8 +61,8 @@ export function RunPage() {
   const navigate = useNavigate();
   const details = useLoad(()  =>  api<ScrapeRunResponse>('GET', `/admin/scrape-runs/${id}`), [id]);
   const [error, setError] = useState<string | null>(null);
-  const [allBeforeShown, setAllBeforeShown] = useState(false);
-  const [allAfterShown, setAllAfterShown] = useState(false);
+  const [allPlayersBeforeAreShown, setAllPlayersBeforeAreShown] = useState(false);
+  const [allPlayersAfterAreShown, setAllPlayersAfterAreShown] = useState(false);
   const run = details.data?.run;
   const active = (run  ?  isActive(run)  :  false);
 
@@ -91,11 +91,11 @@ export function RunPage() {
   }
 
   const players = details.data?.players  ??  [];
-  // The worker takes the players in order: the first playersDone are finished, the next one is current.
-  const currentIndex = Math.min(run.playersDone, players.length);
+  // The worker takes the players in order: the first donePlayerCount are finished, the next one is current.
+  const currentIndex = Math.min(run.donePlayerCount, players.length);
   const isHidden = (player: ScrapeRunPlayer, index: number)  =>  player.state !== 'failed'  &&  (index < currentIndex
-    ?  ! allBeforeShown  &&  index < currentIndex - PLAYERS_AROUND
-    :  ! allAfterShown  &&  index > currentIndex + PLAYERS_AROUND);
+    ?  ! allPlayersBeforeAreShown  &&  index < currentIndex - LISTED_PLAYER_COUNT_AROUND_CURRENT
+    :  ! allPlayersAfterAreShown  &&  index > currentIndex + LISTED_PLAYER_COUNT_AROUND_CURRENT);
 
   const shownPlayers = players.filter((p, index)  =>  ! isHidden(p, index));
   const hiddenBefore = players.filter((p, index)  =>  index < currentIndex  &&  isHidden(p, index)).length;
@@ -112,8 +112,8 @@ export function RunPage() {
   const runFailures = failures.filter((failure)  =>  ! failure.playerId);
   const { previousRunId, nextRunId } = details.data!;
   // Stopping after the last player would change nothing.
-  const onLastPlayer = run.status === 'running'  &&  run.playersTotal > 0  &&  run.playersDone >= run.playersTotal - 1;
-  const stepButton = (runId: number | null, label: string)  =>  (
+  const onLastPlayer = run.status === 'running'  &&  run.playerCount > 0  &&  run.donePlayerCount >= run.playerCount - 1;
+  const renderStepButton = (runId: number | null, label: string)  =>  (
     <button type="button" className="secondary" disabled={! runId} title={(runId  ?  `Run #${runId}`  :  undefined)}
             onClick={()  =>  navigate(`/admin/runs/${runId}`)}>
       {label}
@@ -132,8 +132,8 @@ export function RunPage() {
               {run.status === 'queued'  ?  'Cancel'  :  'Stop after current player'}
             </button>
           )}
-          {stepButton(previousRunId, '← Previous')}
-          {stepButton(nextRunId, 'Next →')}
+          {renderStepButton(previousRunId, '← Previous')}
+          {renderStepButton(nextRunId, 'Next →')}
         </div>
       </div>
 
@@ -161,11 +161,11 @@ export function RunPage() {
       {players.length > 0  &&  (
         <>
           <h2>Players</h2>
-          {showButton(hiddenBefore, 'previous', ()  =>  setAllBeforeShown(true))}
+          {showButton(hiddenBefore, 'previous', ()  =>  setAllPlayersBeforeAreShown(true))}
           <ul className="run-players">
             {shownPlayers.map((p)  =>  <RunPlayer key={p.id} player={p} errors={playerErrors(p.id)} />)}
           </ul>
-          {showButton(hiddenAfter, 'next', ()  =>  setAllAfterShown(true))}
+          {showButton(hiddenAfter, 'next', ()  =>  setAllPlayersAfterAreShown(true))}
         </>
       )}
 

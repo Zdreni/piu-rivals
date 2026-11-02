@@ -3,15 +3,14 @@ import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { api, errorText } from '../../api.ts';
 import { formatNumber } from '../../util.ts';
 import { StatWords } from './stat_words.tsx';
-import { buildCharts, DEFAULT_LEVELS, displayName, type PlayerBests } from '../../data/model.ts';
+import { buildChartboards, DEFAULT_LEVELS, displayName, type PlayerBests } from '../../data/model.ts';
 import { MAX_SCORE_CAP } from '../../data/preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, realCounts } from '../../data/stats.ts';
 
 // The Others tab lists this many players above you and below you at first; each click on a "more" button lists
-// SHOW_STEP more.
-const SHOWN_ABOVE = 10;
-const SHOWN_BELOW = 5;
+//  SHOW_STEP more.
+const LISTED_PLAYER_COUNTS = { above: 10, below: 5 };
 const SHOW_STEP = 10;
 
 let playersLoad: Promise<ListedPlayer[]> | null = null;
@@ -89,43 +88,39 @@ function useOtherStats(playerId: string | null, me: string, myBests: PlayerBests
       return loaded.data;
 
     const bests = new Map([[me, myBests  ??  new Map()], [playerId, loaded.data.bests]]);
-    const charts = buildCharts(loaded.data.charts, bests, me, [{ id: playerId, name: playerId }], MAX_SCORE_CAP, DEFAULT_LEVELS);
-    return realCounts(charts).get(playerId)  ??  NO_COUNTS;
+    const chartboards = buildChartboards(loaded.data.charts, bests, me, [{ id: playerId, name: playerId }], MAX_SCORE_CAP, DEFAULT_LEVELS);
+    return realCounts(chartboards).get(playerId)  ??  NO_COUNTS;
   }, [playerId, loaded, me, myBests]);
 }
 
 
-// The Others tab: every registered player that isn't your rival, by PUMBILITY, each with a button to add them as
-// a rival. You're listed among them too, to compare with, and stay listed whatever the name filter. Without a name
-// filter, only the SHOWN_ABOVE players above you and SHOWN_BELOW below you are listed, the others folded into "more" buttons.
-// Clicking a player unrolls how much of them is scraped, their results against yours (loaded then, judged like a
-// rival's) and a link to their Sessions page. `myBests` are your best results, `players` all registered players
-// (null while loading), `rivals` your current rivals' ids.
-export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
+// The Others tab: registered players who aren't your rivals (`rivalIds`), by PUMBILITY and folded around you,
+//  to add as rivals. `players` is null while loading.
+export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
   me: PlayerSummary;
   myBests: PlayerBests | undefined;
   players: ListedPlayer[] | null;
   error: string | null;
-  rivals: Set<string>;
+  rivalIds: Set<string>;
   onAdd: (player: PlayerSummary) => void;
 }) {
   const [query, setQuery] = useState('');
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
-  const [shownAbove, setShownAbove] = useState(SHOWN_ABOVE);
-  const [shownBelow, setShownBelow] = useState(SHOWN_BELOW);
+  const [listedPlayerCountAbove, setListedPlayerCountAbove] = useState(LISTED_PLAYER_COUNTS.above);
+  const [listedPlayerCountBelow, setListedPlayerCountBelow] = useState(LISTED_PLAYER_COUNTS.below);
   const openStats = useOtherStats((openPlayerId !== me.id  ?  openPlayerId  :  null), me.id, myBests);
 
   const words = query.trim().toLowerCase();
   const otherPlayers: (PlayerSummary | ListedPlayer)[] = [players?.find((p)  =>  p.id === me.id)  ??  me,
     ...(players  ??  []).filter((p)  =>  p.id !== me.id)]
     .filter((p)  =>  p.id === me.id
-      ||  (! rivals.has(p.id)  &&  (! words  ||  (p.name  ??  p.id).toLowerCase().includes(words))))
+      ||  (! rivalIds.has(p.id)  &&  (! words  ||  (p.name  ??  p.id).toLowerCase().includes(words))))
     .sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
 
   const meAt = otherPlayers.findIndex((p)  =>  p.id === me.id);
-  const fromIndex = (words  ?  0  :  Math.max(0, meAt - shownAbove));
-  const toIndex = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + shownBelow));
+  const fromIndex = (words  ?  0  :  Math.max(0, meAt - listedPlayerCountAbove));
+  const toIndex = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + listedPlayerCountBelow));
 
   return (
     <>
@@ -146,7 +141,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
           <div className="muted rival-hint">{words  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
         )}
         {fromIndex > 0  &&  (
-          <button className="show-others top" type="button" onClick={()  =>  setShownAbove(shownAbove + SHOW_STEP)}>
+          <button className="show-others top" type="button" onClick={()  =>  setListedPlayerCountAbove(listedPlayerCountAbove + SHOW_STEP)}>
             ...{fromIndex} more...
           </button>
         )}
@@ -210,7 +205,7 @@ export function OtherPlayers({ me, myBests, players, error, rivals, onAdd }: {
           );
         })}
         {toIndex < otherPlayers.length  &&  (
-          <button className="show-others" type="button" onClick={()  =>  setShownBelow(shownBelow + SHOW_STEP)}>
+          <button className="show-others" type="button" onClick={()  =>  setListedPlayerCountBelow(listedPlayerCountBelow + SHOW_STEP)}>
             ...{otherPlayers.length - toIndex} more...
           </button>
         )}

@@ -5,7 +5,7 @@ import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_
 export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
 
 // The result stats of a best score: its perfect, great, good, bad and miss counts, and its max combo if known; null
-// when its play has no counts (some older imports).
+//  when its play has no counts (some older imports).
 export interface ResultStats {
   perfect: number;
   great: number;
@@ -34,13 +34,14 @@ export interface RivalResult {
   realDelta: number | null;
 }
 
-export interface ChartRow {
+// A chart's leaderboard of you and your rivals: your best score and theirs, compared.
+export interface Chartboard {
   id: number;
   // The track's short name; `trackTitle` is its full one.
   track: string;
   trackTitle: string;
   // Chart type and level, e.g. "D24".
-  chart: string;
+  chartLabel: string;
   mine: number | null;
   // The day you set your best score, if known, and its result stats.
   myDate: string | null;
@@ -73,22 +74,22 @@ export const targetWeight = (diffs: (number | null)[])  =>
   diffs.reduce<number>((acc, d)  =>  acc + ((d !== null  &&  d < 0)  ?  Math.sqrt(-d)  :  0), 0);
 
 
-export const byTargetWeight = (a: ChartRow, b: ChartRow)  =>
+export const byTargetWeight = (a: Chartboard, b: Chartboard)  =>
   b.weight - a.weight  ||  Number(b.unplayed) - Number(a.unplayed)  ||  a.track.localeCompare(b.track);
 
 
-export const leadWeight = (chart: ChartRow)  =>
-  chart.rivals.reduce((acc, r)  =>  acc + ((r.delta !== null  &&  r.delta > 0)  ?  Math.sqrt(r.delta)  :  0), 0);
+export const leadWeight = (chartboard: Chartboard)  =>
+  chartboard.rivals.reduce((acc, r)  =>  acc + ((r.delta !== null  &&  r.delta > 0)  ?  Math.sqrt(r.delta)  :  0), 0);
 
 
-export const byLeadWeight = (a: ChartRow, b: ChartRow)  =>  leadWeight(b) - leadWeight(a)  ||  a.track.localeCompare(b.track);
+export const byLeadWeight = (a: Chartboard, b: Chartboard)  =>  leadWeight(b) - leadWeight(a)  ||  a.track.localeCompare(b.track);
 
 
 
 
 // Every chart in the `levels` range that at least one of `rivals` has a score on, with your score and theirs. With
-// `ownCharts`, also the ones only you have a score on.
-export function buildCharts(
+//  `ownCharts`, also the ones only you have a score on.
+export function buildChartboards(
   charts: Map<number, Chart>,
   bests: Map<string, PlayerBests>,
   ownPlayerId: string,
@@ -96,7 +97,7 @@ export function buildCharts(
   scoreCap: number,
   levels: LevelRange,
   ownCharts = false,
-): ChartRow[] {
+): Chartboard[] {
   const ownBests = bests.get(ownPlayerId);
   const chartIds = new Set<number>((ownCharts  ?  ownBests?.keys()  :  []));
   for (const rival of rivals) {
@@ -104,7 +105,7 @@ export function buildCharts(
       chartIds.add(chartId);
   }
 
-  const rows: ChartRow[] = [];
+  const chartboards: Chartboard[] = [];
   for (const chartId of chartIds) {
     const chart = charts.get(chartId);
     if (! chart  ||  ! levelInRange(chart.level, levels))
@@ -120,11 +121,11 @@ export function buildCharts(
         :  []);
     }).sort((a, b)  =>  b.score - a.score);
 
-    rows.push({
+    chartboards.push({
       id: chartId,
       track: chart.songShortTitle,
       trackTitle: chart.songTitle,
-      chart: `${chart.chartType}${chart.level}`,
+      chartLabel: `${chart.chartType}${chart.level}`,
       mine,
       myDate: myBest?.bestPlayedOn  ??  null,
       myResultStats: (myBest  ?  resultStatsOrNull(myBest)  :  null),
@@ -136,18 +137,18 @@ export function buildCharts(
     });
   }
 
-  return rows;
+  return chartboards;
 }
 
 
 // Returns the chart limited to rivals passing `keep`, or null when none remain.
-export function withRivalsOrNull(chart: ChartRow, keep: (rival: RivalResult) => boolean): ChartRow | null {
-  const rivals = chart.rivals.filter(keep);
-  if (rivals.length === chart.rivals.length)
-    return chart;
+export function withRivalsOrNull(chartboard: Chartboard, keep: (rival: RivalResult) => boolean): Chartboard | null {
+  const rivals = chartboard.rivals.filter(keep);
+  if (rivals.length === chartboard.rivals.length)
+    return chartboard;
 
   if (! rivals.length)
     return null;
 
-  return { ...chart, rivals, weight: targetWeight(rivals.map((r)  =>  r.delta)) };
+  return { ...chartboard, rivals, weight: targetWeight(rivals.map((r)  =>  r.delta)) };
 }

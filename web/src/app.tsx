@@ -13,21 +13,20 @@ import { SessionProvider, useSession } from './session.tsx';
 
 
 // Outline icons in the text's colour, before the menu bar's links.
-const icon = (children: ReactNode)  =>  <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true">{children}</svg>;
+const renderIcon = (children: ReactNode)  =>  <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true">{children}</svg>;
 // Two people: you and your rivals.
-const RIVALS_ICON = icon(<>
+const RIVALS_ICON = renderIcon(<>
   <circle cx="5.5" cy="5.5" r="2.5" /><path d="M1 14c0-2.5 2-4.3 4.5-4.3S10 11.5 10 14" />
   <circle cx="11" cy="4.5" r="2" /><path d="M11.5 8.6c2 .2 3.5 1.9 3.5 4" />
 </>);
 
 // A line going up: your scores rising.
-const HISTORY_ICON = icon(<path d="M1.5 12.5l4-4 3 3 6-6M10.5 5.5h4v4" />);
+const HISTORY_ICON = renderIcon(<path d="M1.5 12.5l4-4 3 3 6-6M10.5 5.5h4v4" />);
 // A head and shoulders: your account.
-const ACCOUNT_ICON = icon(<><circle cx="8" cy="5.5" r="3" /><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /></>);
+const ACCOUNT_ICON = renderIcon(<><circle cx="8" cy="5.5" r="3" /><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /></>);
 
 
-// The user's pages on the left: Rivals (the home page until signed in), then History; the admin menu in the middle;
-// the account on the right, opening the home page.
+// The menu bar: your pages, the admin menu and your account. Rivals is the home page until you sign in.
 function Header() {
   const { status, me } = useSession();
   const signedIn = status === 'signed-in'  &&  me;
@@ -76,7 +75,7 @@ function AdminOnly({ children }: { children: ReactNode }) {
 
 
 // The Rivals view and the History page fill the whole window below the menu bar; the other pages keep to a
-// readable width, with the footer below them.
+//  readable width, with the footer below them.
 const FULL_PAGES = ['/rivals', '/history'];
 
 

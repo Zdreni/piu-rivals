@@ -1,8 +1,8 @@
 import type { ScrapeRunKind, ScrapeRunStatus } from '@piu-rivals/shared';
 import type { ColumnType, Generated, Insertable, Selectable } from 'kysely';
 
-// Dates come back as strings (the pool uses dateStrings): DATE as "YYYY-MM-DD",
-// DATETIME as "YYYY-MM-DD HH:MM:SS" (UTC).
+// Dates come back as strings (the pool uses dateStrings):
+//  DATE as "YYYY-MM-DD", DATETIME as "YYYY-MM-DD HH:MM:SS" (UTC).
 type CreatedAt = ColumnType<string, string | undefined, never>;
 
 export interface PlayersTable {
@@ -18,8 +18,8 @@ export interface PlayersTable {
   created_by_user_id: number | null;
   last_scraped_at: string | null;
   // Checkpoint: the two latest scanned sessions of any mix, as shown on their cards. The anchor
-  // (second latest) never changes, while the latest one may grow and move later.
-  // last_session_no counts Phoenix 2 sessions only: it's the session_no of the latest one.
+  //  (second latest) never changes, while the latest one may grow and move later.
+  //  last_session_no counts Phoenix 2 sessions only: it's the session_no of the latest one.
   last_session_no: Generated<number>;
   last_session_title: string | null;
   last_session_timestamp: string | null;

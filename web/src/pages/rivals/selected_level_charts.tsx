@@ -1,18 +1,20 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChartCard, NONE_SHOWN, type ShownRows, tabFolding, useKeeps } from '../../components/charts/chart_card.tsx';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChartCard } from '../../components/charts/chart_card.tsx';
 import { ChartCardsGrid, type ChartCardsGroup } from '../../components/charts/chart_cards_grid.tsx';
 import { ChartCardMaximized } from '../../components/charts/chart_card_maximized.tsx';
-import { REDUCED_MOTION } from '../../components/media.ts';
+import { REDUCED_MOTION, useMobileView } from '../../components/media.ts';
 import { tabsClass, useTabsFit } from './layout.ts';
-import type { ChartRow } from '../../data/model.ts';
+import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
+import { foldChartboard, type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
+import { rivalsFolding } from '../../data/rivals_folding.ts';
 import { chartTier, STAT_WORDS, TABS, type TabId, TIER_STAT } from '../../data/stats.ts';
-import { tabCharts } from '../../data/tab_charts.ts';
+import { tabChartboards } from '../../data/tab_charts.ts';
 
 export interface HiddenGroup {
   label: string;
-  charts: ChartRow[];
+  chartboards: Chartboard[];
 }
 
 
@@ -29,35 +31,27 @@ const flipRects = (container: HTMLElement | null)  =>
   new Map([...container?.querySelectorAll<HTMLElement>('[data-flip]')  ??  []].map((el)  =>  [el.dataset.flip!, el.getBoundingClientRect()]));
 
 
-// The results column: tabs splitting the charts of the selected level, and a grid of their cards.
-// `levelCharts` are the charts of the selected level. Counted by charts, each is in the tab of its tier; counted by
-// results, a chart is in each tab one of its results goes to, with only those results, and the tabs show result
-// counts instead of chart counts. `hiddenGroups` are its charts in the "Hidden" tab, which lists them group by group.
-// `emptyMessage` replaces the per-tab message when there is nothing to show at all. `ties` (the solo view) adds a "Tied" tab and colours the true ties. `scoreCap` is named in the
-// tooltip of diffs that the cap turns into ties. The "Snooze..." button in a card's unrolled header opens a menu of
-// lengths, and dims the card; a length snoozes its chart with `onSnooze`, and a click anywhere else only closes it.
-// Wake calls `onSnooze` at once. Either way the card fades out first, and the others move into its place. `now` counts down
-// the time snoozed charts have left.
-// A click on a card maximizes it (see ChartCardMaximized), so its header doesn't unroll here, nor its Snooze... menu
-// open; maximized, it lists all its chart's results. A snooze or a wake there closes it, and the card behind fades out. A card stays maximized only while its
-// chart is listed in the open tab. The tab a snoozed or woken chart goes into splashes once it's there.
+// The results column: the selected level's charts (`levelChartboards`) in tabs, as a grid of cards, with snoozing
+//  (`onSnooze`, with null days for a wake) and maximizing. Counted by results, a chart is in each tab one of its results
+//  goes to. `hiddenGroups` are the Hidden tab's charts, by group; `emptyMessage` replaces the tab's message when there's
+//  nothing at all.
 export function SelectedLevelCharts({
-  levelCharts, hiddenGroups, selectedTab, myName, emptyMessage, countBy, ties, scoreCap, now, onSelectTab, onSnooze,
+  levelChartboards, hiddenGroups, selectedTab, myName, emptyMessage, countBy, treatTieAsWin, scoreCap, snoozesCheckedAt, onSelectTab, onSnooze,
 }: {
-  levelCharts: ChartRow[];
+  levelChartboards: Chartboard[];
   hiddenGroups: HiddenGroup[];
   selectedTab: TabId;
   myName: string;
   emptyMessage: string | null;
   countBy: CountBy;
-  ties: boolean;
+  treatTieAsWin: boolean;
   scoreCap: number;
-  now: number;
+  snoozesCheckedAt: number;
   onSelectTab: (tab: TabId) => void;
   onSnooze: (chartId: number, days: SnoozeDays | null) => void;
 }) {
   // By chart, how many of its folded scores were shown (see ChartCard).
-  const [shownRowsByChart, setShownRowsByChart] = useState<Map<number, ShownRows>>(new Map());
+  const [unfoldedRivalCountsByChart, setUnfoldedRivalCountsByChart] = useState<Map<number, UnfoldedRivalCounts>>(new Map());
   // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
   const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
   // The chart whose snooze menu is open. Another level starts without it.
@@ -91,7 +85,7 @@ export function SelectedLevelCharts({
   });
 
   // Snoozes (days) or wakes (null) the chart once its card has faded out; the header rolls back and the snooze menu
-  // closes with it, so the length picked stays lit while the card fades.
+  //  closes with it, so the length picked stays lit while the card fades.
   const leave = (chartId: number, days: SnoozeDays | null)  => {
     const send = ()  => {
       if (! REDUCED_MOTION.matches)
@@ -103,8 +97,8 @@ export function SelectedLevelCharts({
       onSnooze(chartId, days);
 
       // A woken chart goes into the tab of its scores.
-      const chart = [...levelCharts, ...hiddenGroups.flatMap(({ charts })  =>  charts)].find(({ id })  =>  id === chartId);
-      const into = (days !== null  ?  'hidden'  :  chart  &&  chartTier({ ...chart, snoozedUntil: null }, ties));
+      const chartboard = [...levelChartboards, ...hiddenGroups.flatMap(({ chartboards })  =>  chartboards)].find(({ id })  =>  id === chartId);
+      const into = (days !== null  ?  'hidden'  :  chartboard  &&  chartTier({ ...chartboard, snoozedUntil: null }, treatTieAsWin));
       if (into)
         setFlash((previousFlash)  =>  ({ tab: into, n: (previousFlash?.n  ??  0) + 1 }));
     };
@@ -120,7 +114,7 @@ export function SelectedLevelCharts({
   };
 
   // While a snooze menu is open, a click anywhere but in it, or on its button, does nothing else than close it: it's
-  // caught on the window, before the page sees it. Escape closes it too.
+  //  caught on the window, before the page sees it. Escape closes it too.
   useEffect(()  => {
     if (menu === null)
       return;
@@ -144,17 +138,20 @@ export function SelectedLevelCharts({
     };
   }, [menu]);
 
-  const keep = useKeeps();
-  const groups = hiddenGroups.filter(({ charts })  =>  charts.length);
-  const chartsByTab = Object.fromEntries(TABS.map((id)  =>  [
-    id, (id === 'hidden'  ?  groups.flatMap(({ charts })  =>  charts)  :  tabCharts(levelCharts, id, countBy, ties)),
-  ])) as Record<TabId, ChartRow[]>;
+  const inMobileView = useMobileView();
+  const { groups, chartboardsByTab, tabCounts } = useMemo(()  => {
+    const groups = hiddenGroups.filter(({ chartboards })  =>  chartboards.length);
+    const chartboardsByTab = Object.fromEntries(TABS.map((id)  =>  [
+      id, (id === 'hidden'  ?  groups.flatMap(({ chartboards })  =>  chartboards)  :  tabChartboards(levelChartboards, id, countBy, treatTieAsWin)),
+    ])) as Record<TabId, Chartboard[]>;
 
-  const tabCounts = Object.fromEntries(TABS.map((id)  =>  [id, chartsByTab[id].length])) as Record<TabId, number>;
+    const tabCounts = Object.fromEntries(TABS.map((id)  =>  [id, chartboardsByTab[id].length])) as Record<TabId, number>;
+    return { groups, chartboardsByTab, tabCounts };
+  }, [levelChartboards, hiddenGroups, countBy, treatTieAsWin]);
 
-  // The "Hidden" tab only shows up when there is something hidden, and "Tied" only in the solo view;
-  // if a missing one was open, "Lost" takes over.
-  const tabs = TABS.filter((id)  =>  (id !== 'hidden'  ||  tabCounts.hidden)  &&  (id !== 'tie'  ||  ties));
+  // The "Hidden" tab only shows up when there is something hidden, and "Tied" only when ties aren't treated as wins;
+  //  if a missing one was open, "Lost" takes over.
+  const tabs = TABS.filter((id)  =>  (id !== 'hidden'  ||  tabCounts.hidden)  &&  (id !== 'tie'  ||  ! treatTieAsWin));
   const tabGone = ! tabs.includes(selectedTab);
   const tab = (tabGone  ?  'rivals-win'  :  selectedTab);
 
@@ -164,7 +161,7 @@ export function SelectedLevelCharts({
   }, [tabGone, onSelectTab]);
 
   const tabNumber = (id: TabId)  =>  (countBy === 'results'
-    ?  chartsByTab[id].reduce((acc, c)  =>  acc + c.rivals.length, 0)
+    ?  chartboardsByTab[id].reduce((acc, cb)  =>  acc + cb.rivals.length, 0)
     :  tabCounts[id]);
   const tabBar = useRef<HTMLDivElement>(null);
   const tabsFit = useTabsFit(tabBar, [tabs.map((id)  =>  `${id} ${tabNumber(id)}`).join()]);
@@ -172,51 +169,61 @@ export function SelectedLevelCharts({
   const tabWord = (id: TabId)  =>  STAT_WORDS[countBy][TIER_STAT[id]];
 
   // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses and non-matches,
-  // so it isn't offered where it would leave the card in place.
+  //  so it isn't offered where it would leave the card in place.
   const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win'  ||  tab === 'not-played');
-  const folding = tabFolding(tab, keep);
-  const card = (chart: ChartRow)  =>  (
-    <ChartCard
-      key={chart.id}
-      chart={chart}
-      myName={myName}
-      folding={folding}
-      shownRows={shownRowsByChart.get(chart.id)  ??  NONE_SHOWN}
-      onShow={(more)  =>  setShownRowsByChart(new Map(shownRowsByChart).set(chart.id, more))}
-      markTies={ties}
-      scoreCap={scoreCap}
-      now={now}
-      unrolledRowId={(unrolledRowId?.startsWith(`${chart.id} `)  ?  unrolledRowId.slice(`${chart.id} `.length)  :  null)}
-      onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chart.id} ${playerId}`))}
-      canSnooze={canSnooze}
-      menuOpen={menu === chart.id}
-      onMenu={()  =>  setMenu((menu === chart.id  ?  null  :  chart.id))}
-      onSnooze={(days)  =>  leave(chart.id, days)}
-      // A wake needs no undo: the card goes back to its tab at once.
-      leaving={leavingChartId === chart.id}
-      onWake={()  =>  leave(chart.id, null)}
-      onMaximize={()  => {
-        setMenu(null);
-        setMaximizedChartId(chart.id);
-      }}
-    />
+  // The open tab's cards, folded once it's opened. Counted by results, a tab's charts have only its results, so the
+  //  cards are folded from the full chartboards, to list the rivals they need (see rivalsFolding).
+  const listedGroups = useMemo(()  => {
+    const fullChartboards = new Map(levelChartboards.map((cb)  =>  [cb.id, cb]));
+    const folding = rivalsFolding(tab, { countBy, treatTieAsWin, inMobileView });
+    const fold = (chartboards: Chartboard[])  =>  chartboards.map((cb)  =>  foldChartboard(fullChartboards.get(cb.id)  ??  cb, folding));
+    // The "Hidden" tab lists its charts group by group, each under a title.
+    return (tab === 'hidden'
+      ?  groups.map(({ label, chartboards }): ChartCardsGroup  =>  ({ key: label, title: `${label} · ${chartboards.length}`, foldedChartboards: fold(chartboards) }))
+      :  [{ key: tab, title: null, foldedChartboards: fold(chartboardsByTab[tab]) }]);
+  }, [levelChartboards, groups, chartboardsByTab, tab, countBy, treatTieAsWin, inMobileView]);
+
+  const renderCard = (foldedChartboard: FoldedChartboard)  => {
+    const chartId = foldedChartboard.chartboard.id;
+    return (
+      <ChartCard
+        key={chartId}
+        foldedChartboard={foldedChartboard}
+        myName={myName}
+        unfoldedRivalCounts={unfoldedRivalCountsByChart.get(chartId)  ??  NO_UNFOLDED_RIVALS}
+        onShow={(counts)  =>  setUnfoldedRivalCountsByChart(new Map(unfoldedRivalCountsByChart).set(chartId, counts))}
+        scoreCap={scoreCap}
+        snoozesCheckedAt={snoozesCheckedAt}
+        unrolledRowId={(unrolledRowId?.startsWith(`${chartId} `)  ?  unrolledRowId.slice(`${chartId} `.length)  :  null)}
+        onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chartId} ${playerId}`))}
+        canSnooze={canSnooze}
+        menuIsOpen={menu === chartId}
+        onMenu={()  =>  setMenu((menu === chartId  ?  null  :  chartId))}
+        onSnooze={(days)  =>  leave(chartId, days)}
+        // A wake needs no undo: the card goes back to its tab at once.
+        leaving={leavingChartId === chartId}
+        onWake={()  =>  leave(chartId, null)}
+        onMaximize={()  => {
+          setMenu(null);
+          setMaximizedChartId(chartId);
+        }}
+      />
+    );
+  };
+
+  // A card stays maximized only while its chart is listed in the open tab. Maximized, it lists all the chart's rivals.
+  const maximizedChartboard = listedGroups.flatMap(({ foldedChartboards })  =>  foldedChartboards)
+    .find(({ chartboard })  =>  chartboard.id === maximizedChartId)?.chartboard;
+
+  const maximizedFoldedChartboard = useMemo(
+    ()  =>  maximizedChartboard  &&  foldChartboard(maximizedChartboard, rivalsFolding(tab, { countBy, treatTieAsWin, inMobileView, maximized: true })),
+    [maximizedChartboard, tab, countBy, treatTieAsWin, inMobileView],
   );
 
-  // The "Hidden" tab lists its charts group by group, each under a title.
-  let listedGroups: ChartCardsGroup[];
-  if (tab === 'hidden') {
-    listedGroups = groups.map(({ label, charts })  =>  ({ key: label, title: `${label} · ${charts.length}`, charts }));
-  } else {
-    listedGroups = [{ key: tab, title: null, charts: chartsByTab[tab] }];
-  }
-
-  // A card stays maximized only while its chart is listed in the open tab.
-  const maximizedChart = listedGroups.flatMap(({ charts })  =>  charts).find((c)  =>  c.id === maximizedChartId);
-
   useEffect(()  => {
-    if (maximizedChartId !== null  &&  ! maximizedChart)
+    if (maximizedChartId !== null  &&  ! maximizedChartboard)
       setMaximizedChartId(null);
-  }, [maximizedChartId, maximizedChart]);
+  }, [maximizedChartId, maximizedChartboard]);
 
   return (
     <div className="score-content">
@@ -238,22 +245,19 @@ export function SelectedLevelCharts({
         // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
         narrow={tab === 'not-played'}
         groups={listedGroups}
-        card={card}
+        renderCard={renderCard}
       />
-      {maximizedChart  &&  (
+      {maximizedChartboard  &&  maximizedFoldedChartboard  &&  (
         <ChartCardMaximized
-          key={maximizedChart.id}
-          // Counted by results, its card lists only the results of the open tab; maximized, it lists them all.
-          chart={levelCharts.find((c)  =>  c.id === maximizedChart.id)  ??  maximizedChart}
+          key={maximizedChartboard.id}
+          foldedChartboard={maximizedFoldedChartboard}
           myName={myName}
-          folding={folding}
-          markTies={ties}
           scoreCap={scoreCap}
           canSnooze={canSnooze}
-          now={now}
-          source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximizedChart.id}"]`)  ??  null}
+          snoozesCheckedAt={snoozesCheckedAt}
+          source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximizedChartboard.id}"]`)  ??  null}
           onClose={()  =>  setMaximizedChartId(null)}
-          onSnooze={(days)  =>  leave(maximizedChart.id, days)}
+          onSnooze={(days)  =>  leave(maximizedChartboard.id, days)}
         />
       )}
     </div>

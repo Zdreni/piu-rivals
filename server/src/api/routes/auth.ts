@@ -11,7 +11,7 @@ import { loadUser } from '../mappers.ts';
 
 export const authRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db, verifyGoogleToken })  => {
   // Only users added by an admin can sign in. Emails in ADMIN_EMAILS, and the very first sign-in
-  // while there are no users, become admins.
+  //  while there are no users, become admins.
   app.post('/auth/google', {
     schema: { body: Type.Object({ idToken: Type.String({ minLength: 1 }) }) },
   }, async (request): Promise<LoginResponse>  => {

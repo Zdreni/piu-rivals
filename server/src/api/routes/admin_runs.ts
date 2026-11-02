@@ -49,8 +49,8 @@ const toRun = (row: RunRow, guids: Map<number, string>): ScrapeRun  =>  ({
   createdAt: toIso(row.created_at),
   startedAt: toIsoOrNull(row.started_at),
   finishedAt: toIsoOrNull(row.finished_at),
-  playersTotal: row.players_total,
-  playersDone: row.players_done,
+  playerCount: row.players_total,
+  donePlayerCount: row.players_done,
   currentPlayer: (row.player_guid
     ?  playerSummary({ piuscores_guid: row.player_guid, name: row.player_name, pumbility: row.player_pumbility, last_scraped_at: row.player_last_scraped_at })
     :  null),
@@ -101,7 +101,7 @@ async function loadRuns(db: Kysely<Database>, state: 'current' | 'previous', lim
 
 
 // The worker takes the players in order, so the first players_done of them are finished. Players
-// deleted since are left out.
+//  deleted since are left out.
 async function runPlayers(db: Kysely<Database>, row: RunRow, failedIds: Set<number | null>): Promise<ScrapeRunPlayer[]> {
   const ids = row.player_ids  ??  [];
   if (! ids.length)
@@ -163,8 +163,8 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
 
 
   // "all" scrapes every stored player; "register" adds players (by GUID or piuscores link) and
-  // scrapes them; "selected" and "rescan" work on stored players. Register and selected players join
-  // an active register or selected run when there is one.
+  //  scrapes them; "selected" and "rescan" work on stored players. Register and selected players join
+  //  an active register or selected run when there is one.
   app.post('/admin/scrape-runs', {
     schema: {
       body: Type.Object({
@@ -184,7 +184,7 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
       const guids = [...new Set(parsedGuids as string[])];
       if (kind === 'register') {
         // Registered players are stored right away, so a run that doesn't get to them (cancelled,
-        // interrupted) still leaves them for the next "all" run, which takes never scraped players first.
+        //  interrupted) still leaves them for the next "all" run, which takes never scraped players first.
         playerIds = await ensurePlayers(db, guids, userId);
       } else {
         const ids = await playerIdsByGuid(db, guids);
@@ -204,7 +204,7 @@ export const adminRunRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { 
 
 
   // `state=current`: queued and running runs; `state=previous`: finished ones, newest first, `limit` of
-  // them (more pages: a higher limit).
+  //  them (more pages: a higher limit).
   app.get('/admin/scrape-runs', {
     schema: {
       querystring: Type.Object({

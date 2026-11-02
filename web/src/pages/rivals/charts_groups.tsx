@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { SidePanel } from './layout.ts';
-import type { ChartRow } from '../../data/model.ts';
+import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { type Counts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from '../../data/stats.ts';
 
@@ -10,16 +10,14 @@ type Stats = Record<string, { charts: Counts; results: Counts }>;
 const plural = (n: number, word: string)  =>  `${n} ${word}${(n === 1  ?  ''  :  's')}`;
 
 
-// One bar, split by the share of wins / ties / not played / hidden / losses. Wins sit next to the level number and
-// losses at the outer end, so singles grow to the left and doubles to the right. Ties get a segment only with
-// `showTies`. The not played segment grows with its count to the power of 1 / 1.5, so many unplayed charts don't
-// crowd out the rest.
-function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSelect }: {
+// One level's bar, split by results, wins next to the level number. The not played segment grows with its count to
+//  the power of 1 / 1.5, so many unplayed charts don't crowd out the rest.
+function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, onSelect }: {
   level: string | undefined;
   side: 'single' | 'double';
   stats: Stats;
   countBy: CountBy;
-  showTies: boolean;
+  treatTieAsWin: boolean;
   selected: boolean;
   heat: (n: number) => string;
   onSelect: (level: string) => void;
@@ -29,14 +27,14 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
 
   const { charts: byCharts, results: byResults } = stats[level]!;
   const counts = stats[level]![countBy];
-  // The hidden segment has no number; its count is in the tooltip, which shows both countings. Charts are never tied.
-  // A segment shows at least 5% of the bar and never less than its label with 5% of the bar, up to 6px, on either side,
-  // so narrow bars keep room for their labels; digits are 1ch each. Unlabeled segments need only their 5%.
-  // CSS can size the labels in % of the bar with --digit and --label-pad, for bars that hide them.
+  // Narrow bars still need room for their labels, so a labelled segment never gets less than its label, plus a little
+  //  padding; any segment gets at least 5% of the bar. Bars that hide their labels size them in % of the bar with
+  //  --digit and --label-pad.
+  // The hidden segment's count is only in its tooltip, which shows both countings. Charts are never tied.
   const labelWidth = (label: number | string)  =>
     (String(label).length  ?  `${String(label).length} * var(--digit, 1ch) + 2 * min(var(--label-pad, 6px), 5%)`  :  '0px');
 
-  const part = (className: string, n: number, label: number | string = n, style: CSSProperties = {}, grow = n)  =>
+  const renderSegment = (className: string, n: number, label: number | string = n, style: CSSProperties = {}, grow = n)  =>
     (n  ?  <span className={className} style={{ flexGrow: grow, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
       {label}
     </span>  :  null);
@@ -44,7 +42,7 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
   const tipLine = (stat: keyof Counts)  =>  `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
     + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;
 
-  const tieLine = (showTies  ?  `\n${plural(byResults.tie, `${STAT_WORDS.results.tie} result`)}`  :  '');
+  const tieLine = (treatTieAsWin  ?  ''  :  `\n${plural(byResults.tie, `${STAT_WORDS.results.tie} result`)}`);
 
   return (
     <button
@@ -56,34 +54,32 @@ function LevelBar({ level, side, stats, countBy, showTies, selected, heat, onSel
       onClick={()  =>  onSelect(level)}
     >
       <span className="level-segs">
-        {part('win', counts.win)}
-        {showTies  &&  part('tie', counts.tie)}
-        {part('unplayed', counts.unplayed, counts.unplayed, {}, counts.unplayed ** (1 / 1.5))}
-        {part('hidden-loss', counts.hidden, '')}
-        {part('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
+        {renderSegment('win', counts.win)}
+        {! treatTieAsWin  &&  renderSegment('tie', counts.tie)}
+        {renderSegment('unplayed', counts.unplayed, counts.unplayed, {}, counts.unplayed ** (1 / 1.5))}
+        {renderSegment('hidden-loss', counts.hidden, '')}
+        {renderSegment('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
       </span>
     </button>
   );
 }
 
 
-// The levels column: one bar per chart level, singles on the left and doubles on the right.
-// What the score cap hides gets its own dark segment. `countBy` picks what sizes and labels the segments;
-// `showTies` gives ties their own segment (counted by results). The top bar's buttons slide the
-// rivals or the preferences in from the left (`sidePanel`, the one that's in) and out again.
-export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePanel, onSelect, onToggleSide }: {
-  charts: ChartRow[];
+// The levels column: a bar per level, singles and doubles, split by results. Its top bar's buttons slide `sidePanel`
+//  in and out.
+export function ChartsGroups({ chartboards, selectedLevel, countBy, treatTieAsWin, sidePanel, onSelect, onToggleSide }: {
+  chartboards: Chartboard[];
   selectedLevel: string | null;
   countBy: CountBy;
-  showTies: boolean;
+  treatTieAsWin: boolean;
   sidePanel: SidePanel | null;
   onSelect: (level: string) => void;
   onToggleSide: (panel: SidePanel) => void;
 }) {
-  const levels = sortedLevels(charts);
+  const levels = sortedLevels(chartboards);
   const stats: Stats = {};
   for (const level of levels)
-    stats[level] = levelStats(charts.filter((c)  =>  c.chart === level), showTies);
+    stats[level] = levelStats(chartboards.filter((cb)  =>  cb.chartLabel === level), treatTieAsWin);
 
   // A level's heat grows with the square of its losses, relative to the level with the most.
   const maxLose = Math.max(1, ...levels.map((level)  =>  stats[level]![countBy].lose));
@@ -97,7 +93,7 @@ export function ChartsGroups({ charts, selectedLevel, countBy, showTies, sidePan
   const nums = (sideLevels.length  ?  Array.from({ length: maxNum - minNum + 1 }, (_, i)  =>  maxNum - i)  :  []);
   const find = (type: string, num: number)  =>  sideLevels.find((level)  =>  levelType(level) === type  &&  levelNum(level) === num);
   const headOn = (type: string)  =>  ((selectedLevel !== null  &&  levelType(selectedLevel) === type)  ?  ' on'  :  '');
-  const bar = { stats, countBy, showTies: showTies  &&  countBy === 'results', heat, onSelect };
+  const bar = { stats, countBy, treatTieAsWin: treatTieAsWin  ||  countBy !== 'results', heat, onSelect };
 
   return (
     <div className="filters">

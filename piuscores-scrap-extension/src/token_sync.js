@@ -1,8 +1,8 @@
 import { REJECTED_TOKEN_KEY, SITE_TOKEN_KEY, TAG, TOKEN_KEY } from './config.js';
 
 // Runs on the piu-rivals site: keeps the extension's copy of the site's login session in step with
-// it, so the background worker can call the API while you're on piuscores. Signing out on the site
-// removes the copy too.
+//  it, so the background worker can call the API while you're on piuscores. Signing out on the site
+//  removes the copy too.
 const CHECK_INTERVAL_MS = 2000;
 
 
@@ -33,7 +33,7 @@ async function sync() {
 const syncLogged = ()  =>  sync().catch((error)  =>  console.error(TAG, error));
 
 // Signing in or out in this tab doesn't fire "storage" events, so the session is also checked
-// every few seconds.
+//  every few seconds.
 window.addEventListener('storage', syncLogged);
 setInterval(syncLogged, CHECK_INTERVAL_MS);
 syncLogged();

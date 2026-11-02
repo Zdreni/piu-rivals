@@ -11,7 +11,7 @@ const snoozeMs = (days: SnoozeDays)  =>  ((days - 1) * 24 + 12) * 3600_000;
 
 
 // The rival list, the Rivals view's settings and the snoozed charts. Every change shows at once and is saved in the
-// background; when a save fails, the error is shown and the page goes back to what the server has.
+//  background; when a save fails, the error is shown and the page goes back to what the server has.
 export interface RivalSettings {
   rivals: Rival[];
   preferences: Preferences;
@@ -30,7 +30,7 @@ export interface RivalSettings {
 
 
 // `onServerRivals` is given each rival list that comes from the server and replaces the shown one: after a change, a
-// refresh or a failed save.
+//  refresh or a failed save.
 export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): RivalSettings {
   const { me, updateMe } = useSession();
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
   }, [updateMe, sendPreferences]);
 
   // Shows `change` at once, then sends `request`. The server's rival list replaces the shown one only when no
-  // other rival change is on its way, since that one may not be in it yet.
+  //  other rival change is on its way, since that one may not be in it yet.
   const changeRivals = useCallback(async (change: (rivals: Rival[]) => Rival[], request: () => Promise<RivalsResponse>)  => {
     updateMe((current)  =>  ({ ...current, rivals: change(current.rivals) }));
     rivalRequests.current++;

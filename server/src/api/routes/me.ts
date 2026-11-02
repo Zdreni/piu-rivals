@@ -15,7 +15,7 @@ import { GUID, IdParams, PlayerIdParams } from './params.ts';
 const MAX_RIVALS = 100;
 const MAX_PREFERENCES_LENGTH = 20000;
 // A snooze of N days ends (N - 1) * 24 + 12 hours after it's set: it outlasts any session, however long, while a 1-day
-// snooze set late in the evening may still hide the chart the next morning. A fixed length doesn't depend on time zones.
+//  snooze set late in the evening may still hide the chart the next morning. A fixed length doesn't depend on time zones.
 const snoozeHours = (days: SnoozeDays)  =>  (days - 1) * 24 + 12;
 const SnoozeDaysBody = Type.Integer({ minimum: 1, maximum: 365 });
 
@@ -68,7 +68,7 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
 
 
   // Changes only the given settings of one chart. `snoozeDays` snoozes it for that long from now, replacing any snooze
-  // it has; null wakes it. Expired snoozes are cleared on the way, and charts left with no settings lose their row.
+  //  it has; null wakes it. Expired snoozes are cleared on the way, and charts left with no settings lose their row.
   app.patch('/me/chart-preferences/:id', {
     schema: {
       params: IdParams,
@@ -122,7 +122,7 @@ export const meRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }) 
 
 
   // Changes only the given preferences; null removes one. Two pages changing different settings at once
-  // don't undo each other's change, as they would by replacing all preferences.
+  //  don't undo each other's change, as they would by replacing all preferences.
   app.patch('/me/preferences', {
     schema: { body: Type.Object({ changes: Type.Record(Type.String(), Type.Unknown()) }) },
   }, async (request): Promise<PreferencesResponse>  => {

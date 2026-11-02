@@ -1,95 +1,36 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { type MouseEvent, type ReactNode, useState } from 'react';
 import { timeLeft } from './format.tsx';
-import { usePhone } from '../media.ts';
-import { type Entry, ResultItem } from './result_item.tsx';
-import type { ChartRow } from '../../data/model.ts';
-import { resultStat, type Stat, type TabId } from '../../data/stats.ts';
-
-// How many of the highest and of the lowest scores a card lists before folding the ones between.
-export interface Keep {
-  top: number;
-  bottom: number;
-}
-
-// Cards list this many rival scores, besides yours, until expanded: unplayed ones the lowest, lost and hidden ones
-// the biggest losses, won ones the closest below yours. Lost and won ones list `playedRivals` of them. Phones keep
-// fewer.
-const keeps = (rivals: number, playedRivals = rivals)  =>  ({
-  unplayed: { top: 0, bottom: rivals } as Keep,
-  lost: { top: playedRivals, bottom: 1 } as Keep,
-  won: { top: 1 + playedRivals, bottom: 0 } as Keep,
-});
-
-const KEEP_DESKTOP = keeps(6);
-const KEEP_PHONE = keeps(4, 3);
-
-type Keeps = ReturnType<typeof keeps>;
-
-// How many rival scores cards keep listed, by result, on this screen.
-export const useKeeps = ()  =>  (usePhone()  ?  KEEP_PHONE  :  KEEP_DESKTOP);
-
-export interface Folding {
-  fold: Stat[];
-  colorByRealDiff: boolean;
-  keep: Keep | null;
-  dimWon: boolean;
-}
-
-// How a card of the tab's charts folds its scores. Lost charts fold the rivals you beat or truly tie with; tied ones
-// only those you beat. Lost, unplayed and won ones also fold the scores between the kept ones. Hidden ones fold like
-// lost ones, with diffs coloured by the real scores, so capped ties show as losses. Only won charts don't dim the
-// rivals you beat, since they are their point.
-export const tabFolding = (tab: TabId, keep: Keeps): Folding  =>  (tab === 'hidden'
-  ?  { fold: ['win', 'tie'], colorByRealDiff: true, keep: keep.lost, dimWon: true }
-  :  {
-    fold: (tab === 'rivals-win'  ?  ['win', 'tie']  :  tab === 'tie'  ?  ['win']  :  []),
-    colorByRealDiff: false,
-    keep: { 'not-played': keep.unplayed, 'rivals-win': keep.lost, 'you-win': keep.won, tie: null }[tab],
-    dimWon: tab !== 'you-win',
-  });
-
-// How many of a card's folded rivals, and of its scores above the lowest ones, were shown.
-export interface ShownRows {
-  folded: number;
-  higher: number;
-}
-
-export const NONE_SHOWN: ShownRows = { folded: 0, higher: 0 };
-
-// Each click on a fold button lists this many more of its scores.
-const SHOW_STEP = 10;
+import { ResultItem } from './result_item.tsx';
+import type { Chartboard } from '../../data/model.ts';
+import { type Entry, type FoldedChartboard, SHOW_STEP, unfold, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
+import { resultStat, type Stat } from '../../data/stats.ts';
 
 // The row unrolled for your own score, and the header unrolled.
 const ME = 'me';
 const HEAD = 'head';
 
-const SNOOZE_DAYS: SnoozeDays[] = [1, 3, 7, 15];
+const SNOOZE_DAYS_OPTIONS: SnoozeDays[] = [1, 3, 7, 15];
 
 const CHART_TYPES: Record<string, [string, string]> = { S: ['single', 'Single'], D: ['double', 'Double'] };
 
 
 // A chart's label, e.g. "D24", as a ball of its type's colour with its level in it.
-function ChartBall({ chart }: { chart: string }) {
-  const [, type = '', level = chart] = /^(\D*?)\s*(\d+)$/.exec(chart)  ??  [];
+function ChartBall({ chartLabel }: { chartLabel: string }) {
+  const [, type = '', level = chartLabel] = /^(\D*?)\s*(\d+)$/.exec(chartLabel)  ??  [];
   const [className, name] = CHART_TYPES[type]  ??  ['other', type];
   return <span className={`chart-label ${className}`} title={`${name} ${level}`}>{level}</span>;
 }
 
 
-// A card's header: the track's short name and the chart. A click unrolls it: the track's full name across the card,
-// then, with `canSnooze`, a "Snooze..." button (see .chart-card-more), with the chart on the right. The button calls
-// `onMenu`, and with `menuOpen` it's red, with a menu of 1, 3, 7 and 15 days under it, which call `onSnooze`. A snoozed
-// chart's header always has that line, on a panel like the maximized card's lengths: how long it's snoozed for, over
-// a "Wake now" button; its chart stays beside the track.
-// A maximized card's header is always unrolled, with the chart and a close button (`onClose`) beside the track, and
-// the lengths are a row of buttons in one rounded block, under a small "Snooze chart to Hidden" on a darker panel.
-function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onToggle, onClose, onMenu, onSnooze, onWake }: {
-  chart: ChartRow;
+// A card's header: the track and the chart, unrolled by a click, with snoozing when `canSnooze` and a close button
+//  when `maximized`.
+function CardHead({ chartboard, unrolled, canSnooze, snoozesCheckedAt, menuIsOpen, maximized, onToggle, onClose, onMenu, onSnooze, onWake }: {
+  chartboard: Chartboard;
   unrolled: boolean;
   canSnooze: boolean;
-  now: number;
-  menuOpen: boolean;
+  snoozesCheckedAt: number;
+  menuIsOpen: boolean;
   maximized: boolean;
   onToggle?: () => void;
   onClose?: () => void;
@@ -97,7 +38,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
   onSnooze: (days: SnoozeDays) => void;
   onWake: () => void;
 }) {
-  const snoozeTimeLeft = (chart.snoozedUntil === null  ?  null  :  timeLeft(chart.snoozedUntil - now));
+  const snoozeTimeLeft = (chartboard.snoozedUntil === null  ?  null  :  timeLeft(chartboard.snoozedUntil - snoozesCheckedAt));
   const more = snoozeTimeLeft !== null  ||  ((unrolled  ||  maximized)  &&  canSnooze);
   // The length picked in the menu, lit while the card fades out.
   const [pickedDays, setPickedDays] = useState<SnoozeDays | null>(null);
@@ -117,11 +58,11 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
   });
 
   return (
-    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(snoozeTimeLeft !== null  ?  ' snoozed'  :  '')}`}
+    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuIsOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(snoozeTimeLeft !== null  ?  ' snoozed'  :  '')}`}
       onClick={onToggle}>
       <div className="chart-card-title">
-        <span className="track" title={chart.trackTitle}>{(unrolled  ||  maximized)  ?  chart.trackTitle  :  chart.track}</span>
-        <span className="chart-slot"><ChartBall chart={chart.chart} /></span>
+        <span className="track" title={chartboard.trackTitle}>{(unrolled  ||  maximized)  ?  chartboard.trackTitle  :  chartboard.track}</span>
+        <span className="chart-slot"><ChartBall chartLabel={chartboard.chartLabel} /></span>
         {maximized  &&  (
           <button className="card-close" type="button" aria-label="Close" title="Close" onClick={press(()  =>  onClose?.())}>
             <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" /></svg>
@@ -136,7 +77,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
                 <span className="snooze snooze-panel">
                   <span className="snooze-title">Snooze chart to Hidden</span>
                   <span className="snooze-lengths" role="group" aria-label="Snooze for">
-                    {SNOOZE_DAYS.map((days)  =>  (
+                    {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
                       <button key={days} type="button" title="Hide this chart for a while" onClick={pick(days)}>
                         {days === 1  ?  '1 day'  :  `${days} days`}
                       </button>
@@ -148,13 +89,13 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
               ?  (
                 <span className="snooze">
                   <span className="snooze-anchor">
-                    <button className={`snooze-button snooze-toggle${(menuOpen  ?  ' on'  :  '')}`} type="button" aria-haspopup="menu"
-                      aria-expanded={menuOpen} title="Hide this chart for a while" onClick={toggleMenu}>
+                    <button className={`snooze-button snooze-toggle${(menuIsOpen  ?  ' on'  :  '')}`} type="button" aria-haspopup="menu"
+                      aria-expanded={menuIsOpen} title="Hide this chart for a while" onClick={toggleMenu}>
                       Snooze…
                     </button>
-                    {menuOpen  &&  (
+                    {menuIsOpen  &&  (
                       <span className="snooze-menu" role="menu">
-                        {SNOOZE_DAYS.map((days)  =>  (
+                        {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
                           <button key={days} className={(pickedDays === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
                             onClick={pick(days)}>
                             {days === 1  ?  '1 day'  :  `${days} days`}
@@ -173,7 +114,7 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
                   </span>
                 </span>
               )}
-            {! maximized  &&  snoozeTimeLeft === null  &&  <ChartBall chart={chart.chart} />}
+            {! maximized  &&  snoozeTimeLeft === null  &&  <ChartBall chartLabel={chartboard.chartLabel} />}
           </div>
         </div>
       )}
@@ -182,57 +123,39 @@ function CardHead({ chart, unrolled, canSnooze, now, menuOpen, maximized, onTogg
 }
 
 
-// A fold button's count, e.g. "↑3", with the arrow and colour of the strongest result folded, e.g. red if any of
-// them beats you. Ties get the tie colour only with `markTies`.
-// Drawn rather than typed: font arrows sit at different heights in every font, while these span the digits exactly.
-const arrow = (d: string)  =>  <svg className="fold-arrow" viewBox="0 0 6 9" aria-hidden="true"><path d={d} /></svg>;
-const upArrow = arrow('M3 8.5V.5M.5 3L3 .5 5.5 3');
-const downArrow = arrow('M3 .5v8M.5 6L3 8.5 5.5 6');
-const FOLD_TONES: [Stat, string, ReactNode][] = [
-  ['lose', 'neg', upArrow], ['hidden', 'neg muted', upArrow], ['unplayed', 'blue', ''], ['win', 'pos', downArrow], ['tie', 'tie', '='],
+// A fold button's count, e.g. "3", in the colour of the strongest result folded, e.g. red if any of them beats you,
+//  with an "=" for ties. Ties get the tie colour unless `treatTieAsWin`.
+const FOLD_TONES: [Stat, string, string][] = [
+  ['lose', 'neg', ''], ['hidden', 'neg muted', ''], ['unplayed', 'blue', ''], ['win', 'pos', ''], ['tie', 'tie', '='],
 ];
 
 
-function FoldCount({ entries, count, markTies }: { entries: Entry[]; count: number; markTies: boolean }) {
+function FoldCount({ entries, count, treatTieAsWin }: { entries: Entry[]; count: number; treatTieAsWin: boolean }) {
   const stats = new Set(entries.flatMap((e)  =>  (e.me  ?  []  :  [resultStat(e)])));
   const tone = FOLD_TONES.find(([stat])  =>  stats.has(stat));
-  const className = ((tone  &&  (tone[0] !== 'tie'  ||  markTies))  ?  tone[1]  :  undefined);
+  const className = ((tone  &&  (tone[0] !== 'tie'  ||  ! treatTieAsWin))  ?  tone[1]  :  undefined);
   return <span className={className}>{tone?.[2]}{count}</span>;
 }
 
 
-// One chart's card: the track and chart in its header, then you and its rivals by score (see ResultItem).
-// Rivals whose result is one of `folding.fold` (e.g. won), when 2 or more, are folded into a "N more..." button;
-// `shownRows.folded` of them, highest first, are listed anyway. With `folding.keep`, only its `top` highest and `bottom`
-// lowest of the other scores are listed, the ones between (when 2 or more) folded into a "N more..." button;
-// `shownRows.higher` of them, highest first, are listed above the button anyway. Each click on a button calls `onShow`
-// with SHOW_STEP more of its scores shown. `folding` also colours and dims the rows (see ResultItem), and `markTies`
-// colours the diffs of true ties. `showGain` puts how much your best score rose over your previous one, if it did, in
-// your row's diff column.
-// A click on a row calls `onUnroll`, and the `unrolledRowId` row (a rival's id, or "me" for yours) unrolls. A click on the
-// header unrolls it ("head"), with the snooze button when `canSnooze`, whose menu (`menuOpen`, toggled by `onMenu`)
-// calls `onSnooze`; `now` counts down a snoozed chart's time left. While the menu is open, the card is dimmed;
-// `leaving`, it fades out. Wake calls `onWake`.
-// With `onMaximize`, a click anywhere on the card but on its header's buttons only calls it (see ChartCardMaximized). A
-// `maximized` card has its header unrolled for good, with a close button calling `onClose`; a click on the header
-// calls it too.
+// One chart's card: its header (see CardHead), then `foldedChartboard`'s scores and folds, with `unfoldedRivalCounts` of each
+//  fold's rivals unfolded. `unrolledRowId` is the unrolled row: a rival's id, "me" or "head". `showGain` shows how much your
+//  best rose; `leaving`, the card fades out. With `onMaximize`, a click on the card only maximizes it.
 export function ChartCard({
-  chart, myName, folding, shownRows, markTies, showGain = false, scoreCap, canSnooze, now, menuOpen, leaving, maximized = false,
+  foldedChartboard, myName, unfoldedRivalCounts, showGain = false, scoreCap, canSnooze, snoozesCheckedAt, menuIsOpen, leaving, maximized = false,
   onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
 }: {
-  chart: ChartRow;
+  foldedChartboard: FoldedChartboard;
   myName: string;
-  folding: Folding;
-  shownRows: ShownRows;
-  markTies: boolean;
+  unfoldedRivalCounts: UnfoldedRivalCounts;
   showGain?: boolean;
   scoreCap: number;
   canSnooze: boolean;
-  now: number;
-  menuOpen: boolean;
+  snoozesCheckedAt: number;
+  menuIsOpen: boolean;
   leaving: boolean;
   maximized?: boolean;
-  onShow: (shownRows: ShownRows) => void;
+  onShow: (unfoldedRivalCounts: UnfoldedRivalCounts) => void;
   unrolledRowId: string | null;
   onUnroll: (playerId: string | null) => void;
   onMenu: () => void;
@@ -241,51 +164,35 @@ export function ChartCard({
   onMaximize?: () => void;
   onClose?: () => void;
 }) {
-  const { fold, keep } = folding;
-
-  const allEntries: Entry[] = [...chart.rivals];
-  if (chart.mine !== null)
-    allEntries.push({ me: true, score: chart.mine });
-
-  allEntries.sort((a, b)  =>  b.score - a.score  ||  Number(!! b.me) - Number(!! a.me));
-
-  const isFolded = (entry: Entry)  =>  ! entry.me  &&  fold.includes(resultStat(entry));
-  // A single folded or higher score is shown rather than folded.
-  const foldableEntries = allEntries.filter(isFolded);
-  const unshownBelowCount = foldableEntries.length - shownRows.folded;
-  const foldedBelowCount = (unshownBelowCount >= 2  ?  unshownBelowCount  :  0);
-  const hiddenBelow = foldableEntries.slice(foldableEntries.length - foldedBelowCount);
-  const keptEntries = allEntries.filter((e)  =>  ! isFolded(e));
-  const firstHidden = (keep?.top  ??  0) + shownRows.higher;
-  const unshownAboveCount = (keep === null  ?  0  :  keptEntries.length - firstHidden - keep.bottom);
-  const foldedAboveCount = (unshownAboveCount >= 2  ?  unshownAboveCount  :  0);
-  // The rivals you don't fold are the top of the list, so the ones after the shown highest are hidden.
-  const hiddenAbove = keptEntries.slice(firstHidden, firstHidden + foldedAboveCount);
-  const hiddenEntries = new Set([...hiddenAbove, ...hiddenBelow]);
-  const shownEntries = allEntries.filter((e)  =>  ! hiddenEntries.has(e));
-
+  const { chartboard, items, colorByRealDiff, dimWon, treatTieAsWin } = foldedChartboard;
   const toggler = (id: string)  =>  ()  =>  onUnroll((unrolledRowId === id  ?  null  :  id));
 
-  // One node per score, so the "more" button for the higher ones goes in by its place in `shownEntries`.
-  const rows: ReactNode[] = shownEntries.map((entry)  => {
+  const renderRow = (entry: Entry)  => {
     const id = (entry.me  ?  ME  :  entry.playerId);
     return (
-      <ResultItem key={id} chart={chart} entry={entry} myName={myName} unrolled={unrolledRowId === id} colorByRealDiff={folding.colorByRealDiff}
-        dimWon={folding.dimWon} markTies={markTies} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
+      <ResultItem key={id} chartboard={chartboard} entry={entry} myName={myName} unrolled={unrolledRowId === id} colorByRealDiff={colorByRealDiff}
+        dimWon={dimWon} treatTieAsWin={treatTieAsWin} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
     );
+  };
+
+  const rows: ReactNode[] = items.flatMap((item)  => {
+    if ('entry' in item)
+      return [renderRow(item.entry)];
+
+    const { id, opensFrom } = item.fold;
+    const { shownRivals, foldedRivals } = unfold(item.fold, unfoldedRivalCounts[id]);
+    const button = foldedRivals.length > 0  &&  (
+      <button key={id} className="show-others" type="button" onClick={()  =>  onShow({ ...unfoldedRivalCounts, [id]: unfoldedRivalCounts[id] + SHOW_STEP })}>
+        ...<FoldCount entries={foldedRivals} count={foldedRivals.length} treatTieAsWin={treatTieAsWin} /> more...
+      </button>
+    );
+
+    return (opensFrom === 'top'  ?  [...shownRivals.map(renderRow), button]  :  [button, ...shownRivals.map(renderRow)]);
   });
 
-  if (foldedAboveCount > 0) {
-    rows.splice(firstHidden, 0, (
-      <button key="higher" className="show-others top" type="button" onClick={()  =>  onShow({ ...shownRows, higher: shownRows.higher + SHOW_STEP })}>
-        ...<FoldCount entries={hiddenAbove} count={foldedAboveCount} markTies={markTies} /> more...
-      </button>
-    ));
-  }
-
   return (
-    <section className={`chart-card${(menuOpen  ?  ' snoozing'  :  '')}${(leaving  ?  ' leaving'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(onMaximize  ?  ' maximizable'  :  '')}`}
-      data-flip={(maximized  ?  undefined  :  `chart ${chart.id}`)}
+    <section className={`chart-card${(menuIsOpen  ?  ' snoozing'  :  '')}${(leaving  ?  ' leaving'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(onMaximize  ?  ' maximizable'  :  '')}`}
+      data-flip={(maximized  ?  undefined  :  `chart ${chartboard.id}`)}
       onClickCapture={onMaximize  &&  ((event)  => {
         // The header's buttons, e.g. Wake on a snoozed chart, do their own thing.
         if ((event.target as Element).closest('.snooze-button, .snooze-lengths'))
@@ -295,17 +202,12 @@ export function ChartCard({
         event.stopPropagation();
         onMaximize();
       })}>
-      <CardHead chart={chart} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze} now={now} menuOpen={menuOpen} maximized={maximized}
+      <CardHead chartboard={chartboard} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze} snoozesCheckedAt={snoozesCheckedAt} menuIsOpen={menuIsOpen} maximized={maximized}
         onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
       <div className="chart-card-body">
         <div className="chart-card-box">
           {/* Without your score there are no diffs, so their columns are dropped. */}
-          <div className={`chart-card-results${(chart.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>
-          {foldedBelowCount > 0  &&  (
-            <button className="show-others" type="button" onClick={()  =>  onShow({ ...shownRows, folded: shownRows.folded + SHOW_STEP })}>
-              ...<FoldCount entries={hiddenBelow} count={foldedBelowCount} markTies={markTies} /> more...
-            </button>
-          )}
+          <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>
         </div>
       </div>
     </section>

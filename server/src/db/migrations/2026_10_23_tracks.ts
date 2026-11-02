@@ -1,7 +1,7 @@
 import { type Kysely, sql } from 'kysely';
 
 // Songs move out of charts into their own table, tracks, which also gets a short title (the title by
-// default) that admins can change. charts point at their track instead of repeating its key and title.
+//  default) that admins can change. charts point at their track instead of repeating its key and title.
 const tableOptions = sql`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`;
 
 

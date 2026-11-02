@@ -5,8 +5,8 @@ import { parsePlayerId } from '../scraper/player_id.ts';
 import { queueRun } from '../scraper/runs.ts';
 
 // Queues a scrape run for the worker, until the admin panel can do it:
-//   npm run queue -- all
-//   npm run queue -- register|selected|rescan <player GUID or link> [...]
+//     npm run queue -- all
+//     npm run queue -- register|selected|rescan <player GUID or link> [...]
 
 const [kind, ...rest] = process.argv.slice(2);
 const kinds: ScrapeRunKind[] = ['all', 'selected', 'register', 'rescan'];

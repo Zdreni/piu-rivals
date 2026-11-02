@@ -7,7 +7,7 @@ import {
 } from '../src/scraper/session_page.ts';
 
 // Fixtures are rendered piuscores Sessions pages (trimmed to <main>), saved on 2026-10-20 with
-// "Show all plays" expanded. sessions_broken is merepoohunk's page with an older session open.
+//  "Show all plays" expanded. sessions_broken is merepoohunk's page with an older session open.
 const fixture = (name: string)  =>  readFileSync(new URL(`fixtures/${name}.html`, import.meta.url), 'utf8');
 
 
@@ -56,9 +56,9 @@ test('matches the open session with its card', ()  => {
 
 
 test('reads plays with grade and result stats, skipping stage breaks', ()  => {
-  const { plays, rows, unreadable } = parseSessionPlays(fixture('sessions_single'));
-  assert.equal(rows, 10);
-  assert.equal(unreadable, 0);
+  const { plays, rowCount, unreadableRowCount } = parseSessionPlays(fixture('sessions_single'));
+  assert.equal(rowCount, 10);
+  assert.equal(unreadableRowCount, 0);
   // One of the ten rows is a stage break without a score.
   assert.equal(plays.length, 9);
   assert.deepEqual(plays[0], {

@@ -17,12 +17,12 @@ export function timeLeft(ms: number) {
 
 
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
-// naming `cap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
+//  naming `scoreCap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
 // Signed from the rival's side: + when the rival is ahead and − when you are.
-export function Delta({ value, outcome = value, cap = null, markTie = false }: {
+export function Delta({ value, outcome = value, scoreCap = null, markTie = false }: {
   value: number | null;
   outcome?: number | null;
-  cap?: number | null;
+  scoreCap?: number | null;
   markTie?: boolean;
 }) {
   if (value === null)
@@ -34,7 +34,7 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
   const tone = outcome  ||  value;
   const capped = ! outcome  &&  value < 0;
   const className = (tone > 0  ?  'pos'  :  tone < 0  ?  'neg'  :  markTie  ?  'tie'  :  '') + (capped  ?  ' muted'  :  '');
-  const capText = (cap === null  ?  'score cap'  :  `${cap / 1000}k score cap`);
+  const capText = (scoreCap === null  ?  'score cap'  :  `${scoreCap / 1000}k score cap`);
   const title = (capped  ?  `Both scores ≥ ${capText}, so this loss is hidden`  :  undefined);
   const abs = Math.abs(value);
   const sign = <span className="delta-sign">{value > 0  ?  '−'  :  '+'}</span>;
@@ -47,9 +47,8 @@ export function Delta({ value, outcome = value, cap = null, markTie = false }: {
 }
 
 
-// How much your best score rose over your previous one, e.g. "+12,345" in your score's colour, in the diff column of
-// your row, on a patch of its own (see .gain). Drawn like the rivals' diffs (see Delta).
-export function Gain({ value }: { value: number }) {
+// How much your best score rose over your previous one, e.g. "+12,345", in your row's diff column.
+export function ScoreGain({ value }: { value: number }) {
   const sign = <span className="delta-sign">+</span>;
   return (
     <span className="num delta" title="Over your previous best">

@@ -3,14 +3,14 @@ import { createSession } from '../api/auth.ts';
 import { createDatabase } from '../db/database.ts';
 
 // Signs in the test user on the local site, for checking changes without Google sign-in:
-//   npm run dev-login
+//     npm run dev-login
 // Creates the test user on first use: an admin with the scraped player with most bests that no
-// user has yet, and the next players by bests as rivals. Prints a link the site's dev server
-// (npm run dev in web/) takes the session from; production builds ignore it.
+//  user has yet, and the next players by bests as rivals. Prints a link the site's dev server
+//  (npm run dev in web/) takes the session from; production builds ignore it.
 
 const TEST_EMAIL = 'dev-test@piu-rivals.local';
 const SITE_URL = 'http://localhost:5173/piu-rivals/';
-const RIVALS = 20;
+const TEST_USER_RIVAL_COUNT = 20;
 const SESSION_DAYS = 1;
 
 
@@ -33,7 +33,7 @@ async function createTestUser(db: ReturnType<typeof createDatabase>): Promise<nu
     .executeTakeFirstOrThrow();
 
   const userId = Number(insertId);
-  let rivals = playersByBests(db).limit(RIVALS);
+  let rivals = playersByBests(db).limit(TEST_USER_RIVAL_COUNT);
   if (player)
     rivals = rivals.where('players.id', '!=', player.id);
 

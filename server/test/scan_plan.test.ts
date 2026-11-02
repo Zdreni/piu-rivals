@@ -9,7 +9,7 @@ const storedSession = (timestamp: string)  =>  ({ title: 'Official Import', time
 
 
 // Pages through `cards` (newest first) like the scraper does, and plans the scan. Cards are dated
-// as of `now` when given; otherwise their made-up timestamps are left undated.
+//  as of `now` when given; otherwise their made-up timestamps are left undated.
 function plan(checkpoint: Checkpoint, cards: SessionCard[], now?: number) {
   const dateOf = (now === undefined  ?  ()  =>  null  :  cardDates(now));
   const collectedCards: SessionCard[] = [];

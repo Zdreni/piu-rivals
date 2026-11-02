@@ -1,9 +1,9 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChartCard, type Folding, NONE_SHOWN } from './chart_card.tsx';
-import { REDUCED_MOTION, usePhone } from '../media.ts';
-import type { ChartRow } from '../../data/model.ts';
+import { ChartCard } from './chart_card.tsx';
+import { REDUCED_MOTION, useMobileView } from '../media.ts';
+import { type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
 
 // A maximized card grows out of its card this long, and shrinks back into it this long, as the page dims and brightens.
 const GROW_MS = 260;
@@ -14,7 +14,7 @@ const BACKDROP_CLEAR = 'rgba(8,12,10,0)';
 const IN_PLACE_MARGIN_PX = 16;
 
 // The transform that puts a card laid out at `to` over `from`, scaled to its size (from its top left corner, see
-// .card-overlay).
+//  .card-overlay).
 const transformFrom = (from: DOMRect, to: DOMRect)  =>
   `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
 
@@ -25,31 +25,24 @@ const clipFrom = (from: DOMRect, to: DOMRect)  =>
 const CLIP_NONE = 'inset(0 round 8px)';
 
 // How many maximized cards are open (see their back button step).
-let openCount = 0;
+let openCardCount = 0;
 
 
-// A chart's card maximized over the page: as wide as the screen on phones, and centred on wider ones, with more of its
-// rivals' scores and their diffs, its header unrolled and the snooze lengths in a row: it lists all its scores, none
-// folded, scrolled so yours is in the middle when they don't fit, and colours and dims its rows by `folding` (see
-// ChartCard). It grows out of its card in the grid (`source`), and shrinks back into it; wider than phones, it keeps its card's width and place, and only gets longer. A
-// click outside it, its close button, Escape or the back button shrinks it back, then calls `onClose`; a resize calls
-// it at once, since its place is its card's, measured once. A snooze or a wake shrinks it back too, then calls
-// `onClose` and `onSnooze` (null for a wake). While it's open, the page behind it doesn't scroll. What's unrolled in
-// it is kept apart from its card in the grid, and starts afresh each time it opens.
-export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap, canSnooze, now, source, onClose, onSnooze }: {
-  chart: ChartRow;
+// A chart's card maximized over the page: it grows out of its card in the grid (`source`), and shrinks back into it
+//  before `onClose` is called. A snooze or a wake closes it too, then calls `onSnooze` (with null days for a wake).
+export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnooze, snoozesCheckedAt, source, onClose, onSnooze }: {
+  foldedChartboard: FoldedChartboard;
   myName: string;
-  folding: Folding;
-  markTies: boolean;
   scoreCap: number;
   canSnooze: boolean;
-  now: number;
+  snoozesCheckedAt: number;
   source: () => HTMLElement | null;
   onClose: () => void;
   onSnooze: (days: SnoozeDays | null) => void;
 }) {
   const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
-  const phone = usePhone();
+  const [unfoldedRivalCounts, setUnfoldedRivalCounts] = useState<UnfoldedRivalCounts>(NO_UNFOLDED_RIVALS);
+  const inMobileView = useMobileView();
   const overlayRef = useRef<HTMLDivElement>(null);
   // Set while it shrinks back, so it isn't closed twice.
   const shrinking = useRef(false);
@@ -57,7 +50,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
   latestOnClose.current = onClose;
 
   // The maximized card, and where its card in the grid is, which it grows from and shrinks back to: on phones the
-  // whole card, wider only its results' box, as wide as it's drawn, from the header's top down.
+  //  whole card, wider only its results' box, as wide as it's drawn, from the header's top down.
   const measureGrowth = ()  => {
     const overlay = overlayRef.current;
     const card = overlay?.firstElementChild as HTMLElement | null | undefined;
@@ -67,7 +60,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
       return null;
 
     const cardRect = from.getBoundingClientRect();
-    return { overlay, card, from: (phone  ?  cardRect  :  new DOMRect(box.left, cardRect.top, box.width, box.bottom - cardRect.top)) };
+    return { overlay, card, from: (inMobileView  ?  cardRect  :  new DOMRect(box.left, cardRect.top, box.width, box.bottom - cardRect.top)) };
   };
 
   useLayoutEffect(()  => {
@@ -81,7 +74,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
       return;
 
     const { overlay, card, from } = grow;
-    if (! phone) {
+    if (! inMobileView) {
       overlay.style.setProperty('--card-left', `${from.left}px`);
       overlay.style.setProperty('--card-width', `${from.width}px`);
 
@@ -93,8 +86,8 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
       return;
 
     // Wider than phones, where it's over its card, it unrolls out of it; on phones it's faded in from its card, which
-    // stays under it, as it leaves it.
-    if (! phone) {
+    //  stays under it, as it leaves it.
+    if (! inMobileView) {
       card.animate([{ clipPath: clipFrom(from, card.getBoundingClientRect()) }, { clipPath: CLIP_NONE }],
         { duration: GROW_MS, easing: 'ease-out' });
     } else {
@@ -136,7 +129,7 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
 
     // Wider than phones it rolls back up into its card.
     const to = card.getBoundingClientRect();
-    card.animate((phone  ?  [{ transform: 'none' }, { transform: transformFrom(from, to) }]  :  [{ clipPath: CLIP_NONE }, { clipPath: clipFrom(from, to) }]),
+    card.animate((inMobileView  ?  [{ transform: 'none' }, { transform: transformFrom(from, to) }]  :  [{ clipPath: CLIP_NONE }, { clipPath: clipFrom(from, to) }]),
       { duration: SHRINK_MS, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' });
     // Faded out into its card once it's nearly there.
     card.animate([{ opacity: 1 }, { opacity: 1, offset: .3 }, { opacity: 0 }], { duration: SHRINK_MS, fill: 'forwards' });
@@ -160,37 +153,35 @@ export function ChartCardMaximized({ chart, myName, folding, markTies, scoreCap,
   }, []);
 
   // The back button (on phones, mostly) closes it rather than leaving the page: opening it adds a step to the
-  // browser's history, which closing it any other way takes back.
+  //  browser's history, which closing it any other way takes back.
   useEffect(()  => {
-    openCount++;
+    openCardCount++;
     if (! window.history.state?.maximized)
       window.history.pushState({ ...window.history.state, maximized: true }, '');
 
     const back = ()  =>  close.current();
     window.addEventListener('popstate', back);
     return ()  => {
-      openCount--;
+      openCardCount--;
       window.removeEventListener('popstate', back);
       // A moment later, so a card opened again at once (as React's strict mode does) keeps its step.
-      window.setTimeout(()  =>  openCount === 0  &&  window.history.state?.maximized  &&  window.history.back());
+      window.setTimeout(()  =>  openCardCount === 0  &&  window.history.state?.maximized  &&  window.history.back());
     };
   }, []);
 
   // Out of the panels, which slide by transforms and so would hold a fixed overlay inside them.
   return createPortal(
-    <div className={`rivals card-overlay${(phone  ?  ''  :  ' in-place')}`} ref={overlayRef} role="dialog" aria-modal="true" aria-label={chart.trackTitle}
+    <div className={`rivals card-overlay${(inMobileView  ?  ''  :  ' in-place')}`} ref={overlayRef} role="dialog" aria-modal="true" aria-label={foldedChartboard.chartboard.trackTitle}
       onClick={(event)  =>  event.target === event.currentTarget  &&  close.current()}>
       <ChartCard
-        chart={chart}
+        foldedChartboard={foldedChartboard}
         myName={myName}
-        folding={{ ...folding, fold: [], keep: null }}
-        shownRows={NONE_SHOWN}
-        onShow={()  =>  {}}
-        markTies={markTies}
+        unfoldedRivalCounts={unfoldedRivalCounts}
+        onShow={setUnfoldedRivalCounts}
         scoreCap={scoreCap}
         canSnooze={canSnooze}
-        now={now}
-        menuOpen={false}
+        snoozesCheckedAt={snoozesCheckedAt}
+        menuIsOpen={false}
         leaving={false}
         maximized
         unrolledRowId={unrolledRowId}

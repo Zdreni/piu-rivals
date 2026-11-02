@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 
 // Reads a rendered piuscores player Sessions page. All functions are pure: they take the page
-// HTML, so they work the same on the live page and on saved fixtures.
+//  HTML, so they work the same on the live page and on saved fixtures.
 
 export interface SessionCard {
   // "Phoenix 2", "Phoenix", or null for other mixes.
@@ -9,7 +9,7 @@ export interface SessionCard {
   // Card text after the mix, e.g. "Official Import · MEREPOOHUNK #8250".
   title: string;
   // Card time, e.g. "Sun 11 Oct · 7:43 PM". Formatted by piuscores' server, so it doesn't depend
-  // on the browser's time zone.
+  //  on the browser's time zone.
   timestamp: string;
   // The card of the session shown below the cards.
   isOpen: boolean;
@@ -56,9 +56,9 @@ export interface ParsedPlay {
 export interface SessionPlays {
   plays: ParsedPlay[];
   // All rows in the "All plays" list, including stage breaks and other mixes.
-  rows: number;
+  rowCount: number;
   // Rows skipped because their chart couldn't be read.
-  unreadable: number;
+  unreadableRowCount: number;
 }
 
 const clean = (value: string)  =>  value.replace(/\s+/g, ' ').trim();
@@ -112,7 +112,7 @@ export function parseSessionsPage(html: string): SessionsPage {
 
 
 // The header reads like "Phoenix 2 · 9/24/2026 8:27 PM · 740 min"; only the date right after the
-// mix is parsed.
+//  mix is parsed.
 export function parseSummaryDate(summary: string): string | null {
   const match = (summary.split('·')[1]  ||  '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/);
   if (! match)
@@ -165,7 +165,7 @@ export function sameSessionTime(cardTimestamp: string, summary: string): boolean
 
 
 // A card's title up to its first "·", e.g. "Play Session" of "Play Session · 77 min". What follows
-// may change: a session's duration grows when more scores are imported into it.
+//  may change: a session's duration grows when more scores are imported into it.
 export const sessionName = (title: string)  =>  clean(title.split('·')[0]  ||  '');
 
 
@@ -206,12 +206,12 @@ const imageName = (src: string | undefined, folder: string)  =>
 
 
 // Reads the open session's "All plays" list. Only Phoenix 2 charts with a score are returned;
-// stage breaks have none.
+//  stage breaks have none.
 export function parseSessionPlays(html: string): SessionPlays {
   const $ = cheerio.load(html);
   const rows = $('[data-testid="session-all-plays"] [data-testid="session-score-row"]').toArray();
   const plays: ParsedPlay[] = [];
-  let unreadableCount = 0;
+  let unreadableRowCount = 0;
 
   for (const element of rows) {
     const row = $(element);
@@ -227,7 +227,7 @@ export function parseSessionPlays(html: string): SessionPlays {
     const songTitle = clean(row.find('[data-testid="session-row-chart"]').first().text());
     const songImage = row.find('img').toArray().map((img)  =>  imageName($(img).attr('src'), 'songs')).find(Boolean);
     if (! chart  ||  ! songTitle) {
-      unreadableCount++;
+      unreadableRowCount++;
       continue;
     }
 
@@ -255,5 +255,5 @@ export function parseSessionPlays(html: string): SessionPlays {
     });
   }
 
-  return { plays, rows: rows.length, unreadable: unreadableCount };
+  return { plays, rowCount: rows.length, unreadableRowCount };
 }

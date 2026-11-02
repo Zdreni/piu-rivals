@@ -1,9 +1,9 @@
 import { type Kysely, sql } from 'kysely';
 
 // Players get an integer key: the piuscores GUID moves to players.piuscores_guid, and every table that
-// pointed at a player by GUID points at the new id instead. plays also loses scrape_run_id, which
-// nothing read. The large tables (plays, best_results, user_rivals) are copied into new ones in one
-// pass instead of being altered column by column.
+//  pointed at a player by GUID points at the new id instead. plays also loses scrape_run_id, which
+//  nothing read. The large tables (plays, best_results, user_rivals) are copied into new ones in one
+//  pass instead of being altered column by column.
 
 type Db = Kysely<any>;
 type ForeignKey = [name: string, column: string, table: string, onDelete: 'cascade' | 'set null' | null];
@@ -72,7 +72,7 @@ async function alterPlayerColumn(db: Db, table: string, column: string, directio
 
 
 // Copies the table into a new one with the player column converted, then replaces it. `change` alters
-// the new, empty table further; `values` gives what the columns missing from the old table get.
+//  the new, empty table further; `values` gives what the columns missing from the old table get.
 async function copyWithPlayerColumn(
   db: Db, table: string, columns: string[], direction: Direction, change = sql``, values: string[] = [],
 ) {
@@ -91,7 +91,7 @@ async function copyWithPlayerColumn(
 
 
 // scrape_runs.player_ids is a JSON list, converted in code. A deleted player becomes 0 (no player) in
-// a list of ids, keeping the list's positions; in a list of GUIDs, that player is gone.
+//  a list of ids, keeping the list's positions; in a list of GUIDs, that player is gone.
 async function convertRunPlayerLists(db: Db, direction: Direction) {
   const players = await sql<{ from: string | number; to: string | number }>`
     SELECT ${sql.id(direction.from)} AS \`from\`, ${sql.id(direction.to)} AS \`to\` FROM players`.execute(db);

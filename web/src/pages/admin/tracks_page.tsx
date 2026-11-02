@@ -16,8 +16,8 @@ const compare: Record<SortColumn, (a: AdminTrack, b: AdminTrack) => number> = {
 };
 
 
-// The short name, saved when the field loses focus or on Enter; Escape puts the saved one back. An empty short name
-// is the name again. A refused one stays in the field, so it can be fixed.
+// The short name, saved as you leave the field. An empty short name is the name again; a refused one stays in the
+//  field, so it can be fixed.
 function ShortTitleInput({ track, onSave }: { track: AdminTrack; onSave: (shortTitle: string) => Promise<boolean> }) {
   const [value, setValue] = useState(track.shortTitle);
   useEffect(()  =>  setValue(track.shortTitle), [track.shortTitle]);

@@ -1,8 +1,8 @@
 import { API_URL, REJECTED_TOKEN_KEY, TAG, TOKEN_KEY } from './config.js';
 
 // Calls the piu-rivals API for the piuscores pages. Requests from content scripts count as coming
-// from piuscores, which the API's CORS doesn't allow; requests from here, with the API in the
-// manifest's host_permissions, aren't limited by CORS.
+//  from piuscores, which the API's CORS doesn't allow; requests from here, with the API in the
+//  manifest's host_permissions, aren't limited by CORS.
 const USER_TTL_MS = 5 * 60_000;
 const PLAYERS_TTL_MS = 60_000;
 const ACTIVE_STATUSES = ['queued', 'running'];
@@ -80,16 +80,16 @@ async function knownPlayers() {
 
 
 // A queued or running scrape run the player is still waiting in or being scraped by. A run's players
-// from playersDone on are the ones not finished yet.
+//  from donePlayerCount on are the ones not finished yet.
 async function activeRunFor(playerId) {
   const { runs } = await api('GET', '/admin/scrape-runs?state=current');
   return runs.find((r)  =>  ACTIVE_STATUSES.includes(r.status)
-    &&  (r.playerIds?.slice(r.playersDone).includes(playerId)  ||  r.currentPlayer?.id === playerId))  ??  null;
+    &&  (r.playerIds?.slice(r.donePlayerCount).includes(playerId)  ||  r.currentPlayer?.id === playerId))  ??  null;
 }
 
 
 // A run response as { run, runPlayer }: runPlayer is the player's entry in the run, { id, name, state,
-// index }, the latest one when the player was added again after being scraped.
+//  index }, the latest one when the player was added again after being scraped.
 function withRunPlayer({ run, players }, playerId) {
   const index = players.findLastIndex((p)  =>  p.id === playerId);
   return { run, runPlayer: (index >= 0  ?  { ...players[index], index }  :  null) };
@@ -102,7 +102,7 @@ async function runDetails(runId, playerId) {
 
 
 // The extension works only for admins; for anyone else the page shows nothing. Gives the state to
-// answer with when the user isn't a signed-in admin, null when they are.
+//  answer with when the user isn't a signed-in admin, null when they are.
 async function notAdminState() {
   if (! await storedToken())
     return { state: 'signed-out' };
@@ -123,7 +123,7 @@ async function playerStatus({ playerId }) {
 
 
 // The server adds the player to an active run when there is one, so players added one after another
-// are scraped together.
+//  are scraped together.
 async function registerPlayer({ playerId }) {
   const response = await api('POST', '/admin/scrape-runs', { kind: 'register', players: [playerId] });
   playersCache = null;

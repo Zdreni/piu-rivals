@@ -1,7 +1,7 @@
 import { type Kysely, sql } from 'kysely';
 
 // Foreign keys are table constraints (addForeignKeyConstraint): MySQL 8 silently ignores
-// REFERENCES written inside a column definition.
+//  REFERENCES written inside a column definition.
 const tableOptions = sql`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`;
 const now = sql`CURRENT_TIMESTAMP`;
 // Case-sensitive, so keys differing only in case stay apart.
