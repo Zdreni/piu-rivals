@@ -35,19 +35,22 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 
 /* Layout */
 
+/* The user's pages and the account on the first line, the admin menu on the next, to the right. */
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1.5rem;
+  gap: 1rem 1.5rem;
   padding: 0.75rem 1rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
-.header-left { display: flex; align-items: center; gap: 1.5rem; min-width: 0; }
+.header-left { flex: 1; display: flex; align-items: center; gap: 1.5rem; min-width: 0; }
 .nav { display: flex; gap: 1rem; }
-.nav-admin { grid-column: 2; }
+.nav-admin { order: 1; flex-basis: 100%; justify-content: flex-end; }
+/* The Rivals view and the History page leave the admin menu out; the user name leads to the home page, which shows it. */
+.app.full .nav-admin { display: none; }
 .nav a { color: var(--muted); text-decoration: none; }
 .nav a.active { color: var(--text); font-weight: 600; }
 /* The user's pages: bold, and like the other menus, grey until open. They fill the room up to the account. History
@@ -59,7 +62,7 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 .nav-main::before { order: 1; flex: 1 1 1.5rem; max-width: 3rem; }
 .nav-main a + a { order: 2; }
 .nav-main::after { order: 3; flex: 1 1 0; }
-.account { grid-column: 3; justify-self: end; display: flex; gap: 0.75rem; align-items: center; min-width: 0; }
+.account { margin-left: auto; display: flex; gap: 0.75rem; align-items: center; min-width: 0; }
 .account a { display: flex; align-items: center; gap: 0.4em; min-width: 0; max-width: 14rem; font-size: 1.1rem; font-weight: 700;
              text-decoration: none; }
 /* Dimmer than their text, so the words lead. */
@@ -67,16 +70,6 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
             opacity: 0.6; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a.active { color: var(--text); }
-
-/* Too narrow for three columns: the user's pages and the account on the first line, the admin menu on the next, except
-   in the Rivals view, which needs the room; the user name leads to the home page, which shows the menu. */
-@media (max-width: 720px) {
-  .header { display: flex; flex-wrap: wrap; }
-  .header-left { flex: 1; }
-  .account { margin-left: auto; }
-  .nav-admin { order: 1; flex-basis: 100%; }
-  .app.full .nav-admin { display: none; }
-}
 
 /* The footer keeps to the bottom of the window, below short pages too. */
 .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
