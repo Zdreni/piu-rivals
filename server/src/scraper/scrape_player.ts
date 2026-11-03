@@ -11,6 +11,8 @@ export interface ScrapeSink {
     Promise<StoredSessionResult>;
   // A session of another mix: only the checkpoint moves.
   skipSession(session: { card: SessionCard; grown: boolean }): Promise<void>;
+  // Called once every new session is stored.
+  markScraped(): Promise<void>;
 }
 
 export interface SessionProgress extends StoredSessionResult {
@@ -53,8 +55,10 @@ export async function scrapePlayer(
   await sink.savePlayerInfo(page.playerName, pumbility);
 
   const result: PlayerScrapeResult = { name: page.playerName, sessions: 0, playsAdded: 0, bestsImproved: 0 };
-  if (! hasSessions)
+  if (! hasSessions) {
+    await sink.markScraped();
     return result;
+  }
 
   // Page back through the history until a stored session or the end of Phoenix 2 history is reached.
   const collectedCards: SessionCard[] = [];
@@ -114,5 +118,6 @@ export async function scrapePlayer(
     await onSession({ ...sessionResult, card, grown, index: result.sessions - 1, total: sessionsTotal });
   }
 
+  await sink.markScraped();
   return result;
 }

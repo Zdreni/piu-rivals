@@ -38,8 +38,16 @@ export async function savePlayerInfo(db: Db, playerId: number, name: string | nu
       ...(pumbility !== null
         ?  { pumbility: sql<number>`GREATEST(COALESCE(${eb.ref('pumbility')}, 0), ${pumbility})` }
         :  {}),
-      last_scraped_at: sql<string>`CURRENT_TIMESTAMP`,
     }))
+    .where('id', '=', playerId)
+    .execute();
+}
+
+
+// Only a player's complete scrape counts as one: scheduled runs retry players whose last one is old.
+export async function markPlayerScraped(db: Db, playerId: number) {
+  await db.updateTable('players')
+    .set({ last_scraped_at: sql<string>`CURRENT_TIMESTAMP` })
     .where('id', '=', playerId)
     .execute();
 }

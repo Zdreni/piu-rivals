@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema.ts';
 import type { ScrapeSink } from './scrape_player.ts';
-import { loadPlayer, playerCheckpoint, savePlayerInfo, skipSession, storeSession } from './store.ts';
+import { loadPlayer, markPlayerScraped, playerCheckpoint, savePlayerInfo, skipSession, storeSession } from './store.ts';
 
 
 export function databaseSink(db: Kysely<Database>, playerId: number): ScrapeSink {
@@ -19,6 +19,8 @@ export function databaseSink(db: Kysely<Database>, playerId: number): ScrapeSink
     storeSession: (session)  =>  storeSession(db, { playerId, ...session }),
 
     skipSession: (session)  =>  skipSession(db, { playerId, ...session }),
+
+    markScraped: ()  =>  markPlayerScraped(db, playerId),
   };
 }
 
@@ -45,5 +47,7 @@ export function dryRunSink(): ScrapeSink {
     },
 
     skipSession: async ()  =>  {},
+
+    markScraped: async ()  =>  {},
   };
 }

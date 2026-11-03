@@ -10,6 +10,7 @@ import * as playerDisplayNames from './2026_10_24_player_display_names.ts';
 import * as userChartPreferences from './2026_10_24_user_chart_preferences.ts';
 import * as bestImprovement from './2026_10_25_best_improvement.ts';
 import * as userLastSeen from './2026_10_28_user_last_seen.ts';
+import * as scheduledRuns from './2026_11_04_scheduled_runs.ts';
 
 // Migrations run in name order; add new ones here.
 const migrations: Record<string, Migration> = {
@@ -23,6 +24,7 @@ const migrations: Record<string, Migration> = {
   '2026_10_24_user_chart_preferences': userChartPreferences,
   '2026_10_25_best_improvement': bestImprovement,
   '2026_10_28_user_last_seen': userLastSeen,
+  '2026_11_04_scheduled_runs': scheduledRuns,
 };
 
 

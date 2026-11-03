@@ -1,8 +1,12 @@
 import { config } from './config.ts';
 import { createDatabase } from './db/database.ts';
 import { claimNextRun, executeRun, markInterruptedRuns } from './scraper/runs.ts';
+import { queueScheduledRunIfDue } from './scraper/schedule.ts';
 
-// The scrape worker: runs queued scrape runs one at a time. Started by pm2 next to the API.
+// The scrape worker: runs queued scrape runs one at a time, and queues scheduled ones when idle.
+//  Started by pm2 next to the API.
+
+const SCHEDULE_CHECK_MS = 60_000;
 
 const db = createDatabase();
 
@@ -19,10 +23,19 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 await markInterruptedRuns(db);
 console.log('Worker started, waiting for scrape runs');
 
+let scheduleCheckedAt = 0;
 while (true) {
   const run = await claimNextRun(db);
-  if (run)
+  if (run) {
     await executeRun(db, run);
-  else
-    await new Promise((resolve)  =>  setTimeout(resolve, config.workerPollMs));
+    continue;
+  }
+
+  if (Date.now() - scheduleCheckedAt >= SCHEDULE_CHECK_MS) {
+    scheduleCheckedAt = Date.now();
+    if (await queueScheduledRunIfDue(db))
+      continue;
+  }
+
+  await new Promise((resolve)  =>  setTimeout(resolve, config.workerPollMs));
 }

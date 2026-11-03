@@ -5,6 +5,7 @@ const KIND_LABELS: Record<ScrapeRun['kind'], string> = {
   selected: 'Selected players',
   register: 'Register players',
   rescan: 'Rescan players',
+  scheduled: 'Scheduled',
 };
 
 export const runKindLabel = (run: ScrapeRun)  =>  KIND_LABELS[run.kind];

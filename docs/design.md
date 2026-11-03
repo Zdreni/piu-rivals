@@ -28,7 +28,7 @@ There is no scraper extension. Scraping runs on the VPS in a background worker, 
 
 ## Scraping
 
-A background worker on the VPS scrapes players' sessions from piuscores with headless Chromium, in runs that admins start and watch from the admin panel. How it finds new sessions, keeps each player's checkpoint and parses plays is in [scraping.md](scraping.md).
+A background worker on the VPS scrapes players' sessions from piuscores with headless Chromium, in runs that admins start and watch from the admin panel, and in scheduled runs every 12 hours. How it finds new sessions, keeps each player's checkpoint and parses plays is in [scraping.md](scraping.md).
 
 ## Database
 
@@ -78,7 +78,7 @@ The History page (`/#/history`, next to Rivals in the menu bar) lists your best 
 
 ### Server (VPS)
 
-- `server/.env` holds `PORT`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`, `CORS_ORIGIN`, `SCRAPE_DELAY_MS`.
+- `server/.env` holds `PORT`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`, `CORS_ORIGIN`, `SCRAPE_DELAY_MS`, `SCRAPE_INTERVAL_HOURS`, `SCRAPE_RETRY_HOURS`.
 - Playwright installs its own Chromium on the VPS (`npx playwright install --with-deps chromium`).
 - Database migrations are Kysely migrations, run with `npm run migrate`.
 - `ecosystem.config.cjs` defines two pm2 apps, `piu-rivals-api` and `piu-rivals-worker`, started with `pm2 start ecosystem.config.cjs`.

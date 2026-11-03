@@ -15,7 +15,7 @@ players
   pumbility                 INT NULL               -- highest seen
   created_at                DATETIME
   created_by_user_id        INT NULL FK users
-  last_scraped_at           DATETIME NULL
+  last_scraped_at           DATETIME NULL          -- when their last complete scrape ended
   -- checkpoint: the two latest scanned sessions of any mix, as shown on their cards
   last_session_no           INT DEFAULT 0          -- session_no of the latest scanned Phoenix 2 session
   last_session_title        VARCHAR NULL
@@ -70,7 +70,7 @@ best_results                                       -- one row per player and cha
 
 scrape_runs
   id                        INT PK AUTO_INCREMENT
-  kind                      ENUM(all, selected, register, rescan)
+  kind                      ENUM(all, selected, register, rescan, scheduled)
   player_ids                JSON NULL              -- player ids, for every kind but "all" (an "all" run fills it in when it starts)
   status                    ENUM(queued, running, done, failed, cancelled, interrupted)
   started_by_user_id        INT NULL FK users

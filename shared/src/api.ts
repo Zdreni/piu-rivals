@@ -171,7 +171,7 @@ export interface AdminTracksResponse {
   tracks: AdminTrack[];
 }
 
-export type ScrapeRunKind = 'all' | 'selected' | 'register' | 'rescan';
+export type ScrapeRunKind = 'all' | 'selected' | 'register' | 'rescan' | 'scheduled';
 export type ScrapeRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled' | 'interrupted';
 
 export interface ScrapeFailure {

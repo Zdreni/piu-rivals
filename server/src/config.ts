@@ -42,4 +42,8 @@ export const config = {
   browserChannel: process.env.SCRAPER_BROWSER_CHANNEL  ||  undefined,
   headless: process.env.SCRAPER_HEADLESS !== 'false',
   workerPollMs: numberOr('WORKER_POLL_MS', 5000),
+  // How often the worker scrapes every player by itself; 0 turns scheduled runs off.
+  scrapeIntervalHours: numberOr('SCRAPE_INTERVAL_HOURS', 12),
+  // The wait after a scheduled run before the players it didn't scrape are tried again.
+  scrapeRetryHours: numberOr('SCRAPE_RETRY_HOURS', 2),
 };

@@ -10,15 +10,25 @@ Session times are formatted by piuscores' own server, not the browser. Renders w
 
 ## Runs
 
-An admin starts a **scrape run** from the admin panel. A run covers one of:
+An admin starts a **scrape run** from the admin panel, or the worker queues a scheduled one by itself (see [Scheduled runs](#scheduled-runs)). A run covers one of:
 - **all players**: each player gets their new sessions since their checkpoint
 - **selected players**: the same, for chosen players only
 - **register player**: paste a piuscores player link or GUID; the player is created (with only the GUID) as soon as it's requested, then fully scraped. If the run doesn't get to them (cancelled, interrupted), the next "all" run does, as it takes never scraped players first
 - **rescan**: chosen players' plays are deleted, their checkpoints cleared and their full history scraped again (for when a checkpoint is broken)
+- **scheduled**: the players due, queued by the worker
 
 The API only inserts a `scrape_runs` row with status `queued`. Register and selected players instead join a register or selected run that is already queued or running, so players added one after another (e.g. from the scrape extension) are scraped together; a player still waiting in an active run isn't added again. The worker reads the run's player list again before each player, under the run's row lock, as does a request adding players, so a run that is finishing either takes the new players or is seen finished and they go to a new run.
 
 The worker (a separate pm2 process) picks up queued runs, one at a time, and scrapes their players in order. It pauses between pages (configurable, default ~2 s) so the load on piuscores is like one person browsing.
+
+### Scheduled runs
+
+Every player is scraped about every 12 hours (`SCRAPE_INTERVAL_HOURS`; 0 turns this off, e.g. for a local worker). `last_scraped_at` is set only when a player's scrape completes, so a player whose scrape failed or wasn't reached keeps their old time. While no run is queued or running, the worker checks every minute:
+- A player is **due** when they were never scraped, or their last complete scrape is 12 hours old. When any player is due, a scheduled run is queued for them and for the players scraped up to 2 hours less long ago, so the players scraped near the end of the previous run go with them instead of splitting off into a small run of their own. The longest unscraped go first.
+- No scheduled run is queued within 2 hours (`SCRAPE_RETRY_HOURS`) of the end of the previous one. After a run that left players unscraped (failed, interrupted, cancelled, or with failing players), those players are still due, so they alone are tried again 2 hours later.
+- A player who failed in 3 scheduled runs since their last complete scrape (in `scrape_failures`) is left out, e.g. a broken checkpoint, until a run started by an admin (such as a rescan) scrapes them. Earlier failures stay, as the history of their runs.
+
+A manual "all players" run brings every player up to date, so no scheduled run is due for 12 hours after it. Players scraped by smaller manual runs become due on their own, in a small extra run.
 
 ## Scraping a player
 
@@ -70,7 +80,7 @@ An admin can **cancel** a running run. The worker finishes the current player fi
 
 The run page shows the status; players done out of the total; sessions and plays added; new best results; the current player; and each of the run's players with its state (waiting, scraping now, scraped, failed, or skipped when the run stopped first). A failed player's error is shown under the player; a failure of the run itself is listed on its own. The page polls `GET /admin/scrape-runs/:id` every few seconds while a run is active. The run list keeps a history of past runs.
 
-**Resources:** one headless Chromium page uses about 300–500 MB of RAM, which is fine on the 8 GB VPS. The first full scrape of all players takes a while; later runs only fetch new sessions. Scheduled runs (e.g. nightly) can be added later on top of the same queue.
+**Resources:** one headless Chromium page uses about 300–500 MB of RAM, which is fine on the 8 GB VPS. The first full scrape of all players takes a while; later runs only fetch new sessions. Scheduled runs use the same queue.
 
 ## Parsing a play row
 
