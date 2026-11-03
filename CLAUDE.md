@@ -4,7 +4,9 @@
 
 - Follow the coding rules for all code in the repo (site, server, shared types, extensions): @CODING_RULES.md
 
-## Database and architecture decisions
+## Discussing changes, database and architecture decisions
+
+- Discuss every large enough change before building it, and wait for a yes. Small changes to the HTML or CSS structure alone may skip that. Changes to many classes or modules of the site, to the API, and above all to the database structure always need it: explain why the change is needed, and why the existing routes or database structure aren't enough.
 
 - ALWAYS ask for confirmation before adding a database migration or changing the schema. First explain why the change is needed, and why the data already there isn't enough. Then wait for a yes.
 
