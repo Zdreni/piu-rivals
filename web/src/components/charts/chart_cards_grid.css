@@ -1,9 +1,11 @@
 /* The scrolling body of a score view, and its grid of chart cards (see ChartCardsGrid), with group titles over them. */
 
 /* --results-pad is the room on the sides of the cards' results, and --card-gap the room under them (see
-   chart_card.css); their backgrounds span both. */
+   chart_card.css); their backgrounds span both.
+   The scrollbar's room is kept even when it's not shown, so the cards don't change columns as the list starts or stops
+   scrolling. */
 .rivals .dlg-body { --results-pad: 16px; --card-gap: 20px; overflow-y: auto; overflow-x: hidden; padding: 12px 0 0; flex: 1;
-                    scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
+                    scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #2B4034 transparent; }
 .rivals .dlg-body:hover { scrollbar-color: #3D5A49 transparent; }
 .rivals .empty { padding: 24px; text-align: center; color: #9AB3A3; }
 
