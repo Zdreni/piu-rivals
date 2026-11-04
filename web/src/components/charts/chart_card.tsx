@@ -10,7 +10,7 @@ import { resultStat, type Stat } from '../../data/stats.ts';
 const ME = 'me';
 const HEAD = 'head';
 
-const SNOOZE_DAYS_OPTIONS: SnoozeDays[] = [1, 3, 7, 15];
+const SNOOZE_DAYS_OPTIONS: SnoozeDays[] = [3, 7, 15, 31];
 
 const CHART_TYPES: Record<string, [string, string]> = { S: ['single', 'Single'], D: ['double', 'Double'] };
 
