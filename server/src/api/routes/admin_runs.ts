@@ -66,9 +66,10 @@ const runGuids = (db: Kysely<Database>, rows: RunRow[])  =>
   playerGuidsById(db, [...new Set(rows.flatMap((row)  =>  row.player_ids  ??  []))]);
 
 
-// When the latest finished "all players" run started, whatever became of it; a running one is left out.
+// When the latest finished "all players" or scheduled run started, whatever became of it; a running one
+//  is left out.
 async function lastAllRunAt(db: Kysely<Database>): Promise<string | null> {
-  const row = await db.selectFrom('scrape_runs').select('started_at').where('kind', '=', 'all').where('started_at', 'is not', null)
+  const row = await db.selectFrom('scrape_runs').select('started_at').where('kind', 'in', ['all', 'scheduled']).where('started_at', 'is not', null)
     .where('status', 'not in', ACTIVE_STATUSES).orderBy('started_at', 'desc').limit(1).executeTakeFirst();
   return toIsoOrNull(row?.started_at  ??  null);
 }
