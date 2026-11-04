@@ -78,7 +78,7 @@ test('scheduled runs take due players, retry the ones left, and leave out failin
   config.scrapeRetryHours = 2;
   const [neverScraped, overdue, nearlyDue, fresh, failing, failedBefore] = await ensurePlayers(db, [1, 2, 3, 4, 5, 6].map(guid));
   await setScrapedHoursAgo(overdue!, 13);
-  await setScrapedHoursAgo(nearlyDue!, 11);
+  await setScrapedHoursAgo(nearlyDue!, 7);
   await setScrapedHoursAgo(fresh!, 1);
   await setScrapedHoursAgo(failing!, 13);
   await addScheduledFailures(failing!, 5, 3);
@@ -89,7 +89,7 @@ test('scheduled runs take due players, retry the ones left, and leave out failin
   config.scrapeIntervalHours = 0;
   assert.equal(await queueScheduledRunIfDue(db), null);
 
-  // Players within the margin join; the longest unscraped come first.
+  // Players over half the interval old join; the longest unscraped come first.
   config.scrapeIntervalHours = 12;
   const runId = await queueScheduledRunIfDue(db);
   assert.ok(runId);
@@ -109,7 +109,7 @@ test('scheduled runs take due players, retry the ones left, and leave out failin
   assert.deepEqual(await runPlayerIds(retryRunId), [overdue, nearlyDue]);
   await finishRun(retryRunId, 3);
 
-  // Players only within the margin aren't due by themselves.
+  // Players only over half the interval old aren't due by themselves.
   await setScrapedHoursAgo(overdue!, 2);
   assert.equal(await queueScheduledRunIfDue(db), null);
 });

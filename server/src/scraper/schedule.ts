@@ -10,9 +10,10 @@ import { queueRun } from './runs.ts';
 
 type Db = Kysely<Database>;
 
-// Players last scraped this much less than the interval ago join a run that's due anyway, so the
-//  players scraped near the end of the previous run don't split off into a small run of their own.
-const DUE_MARGIN_HOURS = 2;
+// Players last scraped over this share of the interval ago join a run that's due anyway. With half,
+//  two groups of players out of step (e.g. after a manual run) always merge within one interval: when
+//  one group is due, the other is either over half the interval old and joins, or becomes due first.
+const JOINING_INTERVAL_SHARE = 0.5;
 // A player failing in this many scheduled runs since their last complete scrape is left out, until a
 //  run started by an admin scrapes them (e.g. a rescan of a broken checkpoint).
 const MAX_SCHEDULED_FAILURES = 3;
@@ -41,7 +42,7 @@ async function duePlayers(db: Db) {
     .select(sql<number>`last_scraped_at IS NULL OR last_scraped_at < ${hoursAgo(intervalHours)}`.as('is_due'))
     .where((eb)  =>  eb.or([
       eb('last_scraped_at', 'is', null),
-      eb('last_scraped_at', '<', hoursAgo(Math.max(0, intervalHours - DUE_MARGIN_HOURS))),
+      eb('last_scraped_at', '<', hoursAgo(intervalHours * JOINING_INTERVAL_SHARE)),
     ]))
     .where((eb)  =>  eb(scheduledFailureCount(eb), '<', MAX_SCHEDULED_FAILURES))
     .orderBy(sql`last_scraped_at IS NOT NULL`)

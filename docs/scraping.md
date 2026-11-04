@@ -24,11 +24,11 @@ The worker (a separate pm2 process) picks up queued runs, one at a time, and scr
 ### Scheduled runs
 
 Every player is scraped about every 12 hours (`SCRAPE_INTERVAL_HOURS`; 0 turns this off, e.g. for a local worker). `last_scraped_at` is set only when a player's scrape completes, so a player whose scrape failed or wasn't reached keeps their old time. While no run is queued or running, the worker checks every minute:
-- A player is **due** when they were never scraped, or their last complete scrape is 12 hours old. When any player is due, a scheduled run is queued for them and for the players scraped up to 2 hours less long ago, so the players scraped near the end of the previous run go with them instead of splitting off into a small run of their own. The longest unscraped go first.
+- A player is **due** when they were never scraped, or their last complete scrape is 12 hours old. When any player is due, a scheduled run is queued for them and for the players last scraped over 6 hours (half the interval) ago. So the players scraped near the end of the previous run go with them, and groups of players out of step (e.g. after a manual run) merge within one interval: when one group is due, the other is either over 6 hours old and joins, or became due first. The longest unscraped go first.
 - No scheduled run is queued within 2 hours (`SCRAPE_RETRY_HOURS`) of the end of the previous one. After a run that left players unscraped (failed, interrupted, cancelled, or with failing players), those players are still due, so they alone are tried again 2 hours later.
 - A player who failed in 3 scheduled runs since their last complete scrape (in `scrape_failures`) is left out, e.g. a broken checkpoint, until a run started by an admin (such as a rescan) scrapes them. Earlier failures stay, as the history of their runs.
 
-A manual "all players" run brings every player up to date, so no scheduled run is due for 12 hours after it. Players scraped by smaller manual runs become due on their own, in a small extra run.
+A manual "all players" run brings every player up to date, so no scheduled run is due for 12 hours after it. Players scraped by smaller manual runs may become due on their own once, in a small extra run, before they join the others.
 
 ## Scraping a player
 
