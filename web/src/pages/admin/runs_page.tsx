@@ -1,20 +1,16 @@
 import type { ScrapeRun, ScrapeRunResponse, ScrapeRunsResponse } from '@piu-rivals/shared';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
 import { formatAgo, formatDuration, formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
-// Finished runs per page; "Show older runs" asks the server for this many more.
-const PAGE_SIZE = 50;
-
-// Current: queued and running runs, in the order the worker takes them. Previous: finished ones, newest first.
-export type RunsTab = 'current' | 'previous';
-
-
-// The run list's address with a tab open; Current is the default.
-export const runsTabPath = (tab: RunsTab)  =>  (tab === 'previous'  ?  '/admin/runs?tab=previous'  :  '/admin/runs');
+// Runs listed on each side of the running one at first; the others are folded.
+const LISTED_RUN_COUNTS = { queued: 5, finished: 5 };
+// Runs each Show more button unfolds.
+const UNFOLDED_RUN_COUNT = 10;
+const COLUMN_COUNT = 9;
 
 
 // "4 min", "1 h 05 min": how long ago `iso` was, for a run still going.
@@ -30,8 +26,51 @@ function StatCell({ value, alert = false }: { value: number; alert?: boolean }) 
 }
 
 
-// Finished runs also show how long they ran.
-function RunsTable({ runs, finished }: { runs: ScrapeRun[]; finished: boolean }) {
+// A row across the table that unfolds more of the `foldedRunCount` runs on its side.
+function FoldRow({ foldedRunCount, onUnfold }: { foldedRunCount: number; onUnfold: ()  =>  void }) {
+  return (
+    <tr className="fold-row">
+      <td colSpan={COLUMN_COUNT}>
+        <button type="button" className="secondary" onClick={onUnfold}>
+          Show {Math.min(UNFOLDED_RUN_COUNT, foldedRunCount)}/{foldedRunCount} more
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+
+function RunRow({ run }: { run: ScrapeRun }) {
+  return (
+    <tr className={(run.status === 'running'  ?  'running-run'  :  undefined)}>
+      <td>
+        <Link to={`/admin/runs/${run.id}`}>#{run.id} {runKindLabel(run)}</Link>
+        {run.startedBy  &&  <div className="muted small">{run.startedBy}</div>}
+      </td>
+      <td><RunStatus run={run} /></td>
+      <td><RunProgress run={run} /></td>
+      <StatCell value={run.sessionsAdded} />
+      <StatCell value={run.playsAdded} />
+      <StatCell value={run.bestsImproved} />
+      <StatCell value={run.failures} alert />
+      <td className="muted">{formatTime(run.startedAt  ??  run.createdAt, { withoutYear: true })}</td>
+      <td className="number muted">{formatDuration(run.startedAt, run.finishedAt)}</td>
+    </tr>
+  );
+}
+
+
+// All runs, newest first: the queued ones (the next to run last), the running one, the finished ones.
+//  The queued and finished ones beyond those listed are folded.
+function RunsTable({ queuedRuns, runningRuns, finishedRuns, foldedQueuedRunCount, foldedFinishedRunCount, onUnfoldQueued, onUnfoldFinished }: {
+  queuedRuns: ScrapeRun[];
+  runningRuns: ScrapeRun[];
+  finishedRuns: ScrapeRun[];
+  foldedQueuedRunCount: number;
+  foldedFinishedRunCount: number;
+  onUnfoldQueued: ()  =>  void;
+  onUnfoldFinished: ()  =>  void;
+}) {
   return (
     <div className="table-wrap">
       <table>
@@ -45,26 +84,13 @@ function RunsTable({ runs, finished }: { runs: ScrapeRun[]; finished: boolean })
             <th className="number">Bests</th>
             <th className="number">Failures</th>
             <th>Started</th>
-            {finished  &&  <th className="number">Duration</th>}
+            <th className="number">Duration</th>
           </tr>
         </thead>
         <tbody>
-          {runs.map((run)  =>  (
-            <tr key={run.id}>
-              <td>
-                <Link to={`/admin/runs/${run.id}`}>#{run.id} {runKindLabel(run)}</Link>
-                {run.startedBy  &&  <div className="muted small">{run.startedBy}</div>}
-              </td>
-              <td><RunStatus run={run} /></td>
-              <td><RunProgress run={run} /></td>
-              <StatCell value={run.sessionsAdded} />
-              <StatCell value={run.playsAdded} />
-              <StatCell value={run.bestsImproved} />
-              <StatCell value={run.failures} alert />
-              <td className="muted">{formatTime(run.startedAt  ??  run.createdAt, { withoutYear: true })}</td>
-              {finished  &&  <td className="number muted">{formatDuration(run.startedAt, run.finishedAt)}</td>}
-            </tr>
-          ))}
+          {foldedQueuedRunCount > 0  &&  <FoldRow foldedRunCount={foldedQueuedRunCount} onUnfold={onUnfoldQueued} />}
+          {[...queuedRuns, ...runningRuns, ...finishedRuns].map((run)  =>  <RunRow key={run.id} run={run} />)}
+          {foldedFinishedRunCount > 0  &&  <FoldRow foldedRunCount={foldedFinishedRunCount} onUnfold={onUnfoldFinished} />}
         </tbody>
       </table>
     </div>
@@ -74,15 +100,15 @@ function RunsTable({ runs, finished }: { runs: ScrapeRun[]; finished: boolean })
 
 export function RunsPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab: RunsTab = (searchParams.get('tab') === 'previous'  ?  'previous'  :  'current');
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [listedQueuedRunCount, setListedQueuedRunCount] = useState(LISTED_RUN_COUNTS.queued);
+  const [listedFinishedRunCount, setListedFinishedRunCount] = useState(LISTED_RUN_COUNTS.finished);
   const currentRuns = useLoad(()  =>  api<ScrapeRunsResponse>('GET', '/admin/scrape-runs?state=current'), []);
-  const previousRuns = useLoad(()  =>  api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?state=previous&limit=${limit}`), [limit]);
+  const previousRuns = useLoad(()  =>  api<ScrapeRunsResponse>('GET', `/admin/scrape-runs?state=previous&limit=${listedFinishedRunCount}`),
+    [listedFinishedRunCount]);
   const [error, setError] = useState<string | null>(null);
   const active = !! currentRuns.data?.runs.length;
 
-  // Refreshes both lists while a run is queued or running: finished runs move from Current to Previous.
+  // Refreshes both lists while a run is queued or running: finished runs move from one to the other.
   useEffect(()  => {
     if (! active)
       return;
@@ -112,12 +138,13 @@ export function RunsPage() {
     }
   };
 
-  const shownRuns = (tab === 'current'  ?  currentRuns  :  previousRuns);
-  const renderTabButton = (id: RunsTab, label: string, count?: number)  =>  (
-    <button type="button" role="tab" aria-selected={tab === id} onClick={()  =>  setSearchParams((id === 'previous'  ?  { tab: id }  :  {}))}>
-      {label}{count !== undefined  &&  <span className="tab-count"> {count}</span>}
-    </button>
-  );
+  // The current runs come in the order the worker takes them.
+  const activeRuns = currentRuns.data?.runs  ??  [];
+  const queuedRuns = activeRuns.filter((r)  =>  r.status === 'queued');
+  const finishedRuns = previousRuns.data?.runs  ??  [];
+  const loadError = currentRuns.error  ??  previousRuns.error;
+  const isLoading = (! currentRuns.data  ||  ! previousRuns.data)  &&  ! loadError;
+  const hasRuns = activeRuns.length > 0  ||  finishedRuns.length > 0;
 
   return (
     <section>
@@ -132,23 +159,20 @@ export function RunsPage() {
         The scrape worker runs one run at a time, in order. Start runs for single players from the Players page.
       </p>
 
-      {(error  ??  shownRuns.error)  &&  <p className="error" role="alert">{error  ??  shownRuns.error}</p>}
-
-      <div className="page-tabs" role="tablist" aria-label="Scraping">
-        {renderTabButton('current', 'Current', currentRuns.data?.runs.length)}
-        {renderTabButton('previous', 'Previous', previousRuns.data?.total)}
-      </div>
-
-      <div role="tabpanel">
-        {shownRuns.data  &&  shownRuns.data.runs.length > 0  &&  <RunsTable runs={shownRuns.data.runs} finished={tab === 'previous'} />}
-        {! shownRuns.data  &&  ! shownRuns.error  &&  <p className="muted">Loading…</p>}
-        {shownRuns.data  &&  ! shownRuns.data.runs.length  &&  (
-          <p className="muted">{tab === 'current'  ?  'Nothing is queued or running.'  :  'No finished runs yet.'}</p>
-        )}
-        {tab === 'previous'  &&  previousRuns.data?.hasMore  &&  (
-          <p><button type="button" className="secondary" onClick={()  =>  setLimit(limit + PAGE_SIZE)}>Show older runs</button></p>
-        )}
-      </div>
+      {(error  ??  loadError)  &&  <p className="error" role="alert">{error  ??  loadError}</p>}
+      {isLoading  &&  <p className="muted">Loading…</p>}
+      {! isLoading  &&  ! hasRuns  &&  <p className="muted">No runs yet.</p>}
+      {! isLoading  &&  hasRuns  &&  (
+        <RunsTable
+          queuedRuns={queuedRuns.slice(0, listedQueuedRunCount).reverse()}
+          runningRuns={activeRuns.filter((r)  =>  r.status === 'running')}
+          finishedRuns={finishedRuns}
+          foldedQueuedRunCount={Math.max(0, queuedRuns.length - listedQueuedRunCount)}
+          foldedFinishedRunCount={Math.max(0, (previousRuns.data?.total  ??  0) - finishedRuns.length)}
+          onUnfoldQueued={()  =>  setListedQueuedRunCount(listedQueuedRunCount + UNFOLDED_RUN_COUNT)}
+          onUnfoldFinished={()  =>  setListedFinishedRunCount(listedFinishedRunCount + UNFOLDED_RUN_COUNT)}
+        />
+      )}
     </section>
   );
 }

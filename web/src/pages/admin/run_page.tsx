@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, errorText } from '../../api.ts';
 import { isActive, RunProgress, runKindLabel, RunStatus } from '../../components/run_status.tsx';
 import { formatNumber, formatTime, playerLabel, useLoad } from '../../util.ts';
-import { runsTabPath } from './runs_page.tsx';
 
 const POLL_MS = 3000;
 // Only the players this close to the current one are listed (failed ones always are); the rest hide behind buttons.
@@ -122,7 +121,7 @@ export function RunPage() {
 
   return (
     <section>
-      <p><Link to={runsTabPath((active  ?  'current'  :  'previous'))}>← Scraping</Link></p>
+      <p><Link to="/admin/runs">← Scraping</Link></p>
       <div className="title-row">
         <h1>Run #{run.id}: {runKindLabel(run)}</h1>
         <div className="buttons">
