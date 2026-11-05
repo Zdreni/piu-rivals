@@ -14,6 +14,8 @@
 
 - List each limitation on its own and ask whether it's acceptable for this case. Don't build until each one is confirmed as acceptable, or the design is changed to avoid it.
 
+- Whenever a change adds or changes stored data or a query (a new table or column, a new route, a new filter, join, sort or grouping, a query run more often), check that the existing indices keep it fast: look at the `WHERE`, `JOIN`, `ORDER BY` and `GROUP BY` columns, and check with `EXPLAIN` when unsure. If an index is missing, propose it with the change; it's a schema change, so it needs a yes like any migration. Also check whether an index made unused by the change should be dropped.
+
 ## Site's score cache
 
 - When a change needs browsers to reload cached scores (e.g. a new field from the API, a changed stored shape), raise `DB_VERSION` in `web/src/data/bests_cache.ts`. Never lower it, not even when reverting a change: browsers that loaded the higher version would then run without a cache, or keep rows of the wrong shape once the version goes back up. Raising it a few times during one task is fine.
