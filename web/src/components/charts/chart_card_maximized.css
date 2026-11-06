@@ -25,3 +25,12 @@
 .rivals.card-overlay .chart-card-box { margin: 0; padding-top: 0; border-radius: 0; box-shadow: none; }
 .rivals.card-overlay .chart-card-results > .show-others:first-child { margin-top: -4px; padding-top: 6px; }
 .rivals.card-overlay:not(.in-place) .chart-card-results > .show-others:first-child { margin-top: -6px; padding-top: 8px; }
+/* Its results fade out at the box's top and bottom while there are more to scroll to (.more-above and .more-below, set
+   by ChartCardMaximized). */
+@property --fade-above { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-below { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.rivals.card-overlay .chart-card-body { --fade-above: 0px; --fade-below: 0px; transition: --fade-above .2s ease, --fade-below .2s ease;
+  mask-image: linear-gradient(transparent, rgba(0,0,0,.3) calc(var(--fade-above) * .5), #000 var(--fade-above),
+                             #000 calc(100% - var(--fade-below)), rgba(0,0,0,.3) calc(100% - var(--fade-below) * .5), transparent); }
+.rivals.card-overlay .chart-card-body.more-above { --fade-above: 32px; }
+.rivals.card-overlay .chart-card-body.more-below { --fade-below: 32px; }

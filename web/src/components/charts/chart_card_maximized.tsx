@@ -102,6 +102,33 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
     return ()  =>  [card, overlay].forEach((element)  =>  element.getAnimations().forEach((animation)  =>  animation.cancel()));
   }, []);
 
+  // Marks its results' box with whether there are more results above and below what's scrolled into view, which
+  //  fade out at its edges then.
+  useEffect(()  => {
+    const body = overlayRef.current?.querySelector<HTMLElement>('.chart-card-body');
+    if (! body)
+      return;
+
+    const markScrollEdges = ()  => {
+      body.classList.toggle('more-above', body.scrollTop > 1);
+      body.classList.toggle('more-below', body.scrollTop + body.clientHeight < body.scrollHeight - 1);
+    };
+
+    markScrollEdges();
+    body.addEventListener('scroll', markScrollEdges, { passive: true });
+
+    // Unfolding rivals or unrolling rows changes how much there is to scroll.
+    const resizeObserver = new ResizeObserver(markScrollEdges);
+    resizeObserver.observe(body);
+    if (body.firstElementChild)
+      resizeObserver.observe(body.firstElementChild);
+
+    return ()  => {
+      body.removeEventListener('scroll', markScrollEdges);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Shrinks it back into its card, then closes it and calls `then`.
   const close = useRef((then?: () => void)  =>  {});
   close.current = (then?: () => void)  => {
