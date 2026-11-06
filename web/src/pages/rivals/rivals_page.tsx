@@ -15,7 +15,7 @@ import { readUiState, saveUiState, type UiState } from './ui_state.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
-import { StatusBar } from '../../components/status_bar.tsx';
+import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
 
 
@@ -238,7 +238,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   return (
     <div className="rivals">
-      <StatusBar status={status} />
+      <StatusToast status={status} />
       <div
         className={`dlg-main${(sidePanelIsOpen  ?  ' side-open'  :  '')}${(sidePanel === 'preferences'  ?  ' side-preferences'  :  '')}`}
         onClickCapture={closeSideOnLevels}

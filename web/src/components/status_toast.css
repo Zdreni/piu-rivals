@@ -1,0 +1,11 @@
+/* The toast while scores are loading, or with an error (see StatusToast). */
+
+.rivals .status-toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; transform: translateX(-50%);
+  max-width: calc(100vw - 32px); padding: 10px 16px; border: 1px solid #2B4034; border-radius: 8px; background: #1C2A22;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); font-size: 13px; color: #9AB3A3; pointer-events: none;
+  animation: status-toast-in 0.2s ease-out; }
+.rivals .status-toast.error { border-color: #6B2A2A; color: #FF5A5A; pointer-events: auto; }
+
+@keyframes status-toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+}

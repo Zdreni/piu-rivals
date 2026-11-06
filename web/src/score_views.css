@@ -6,7 +6,7 @@
 @import './score_views_base.css';
 @import './pages/rivals/rivals_page.css';
 @import './pages/rivals/tabs.css';
-@import './components/status_bar.css';
+@import './components/status_toast.css';
 @import './pages/rivals/rival_list.css';
 @import './pages/rivals/preferences_panel.css';
 @import './pages/rivals/charts_groups.css';

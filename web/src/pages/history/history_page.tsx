@@ -12,7 +12,7 @@ import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { chartTier } from '../../data/stats.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
-import { StatusBar } from '../../components/status_bar.tsx';
+import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
 
 // The list shows this many days at first, and this many more with each click on its button.
@@ -96,7 +96,7 @@ function HistoryView({ me }: { me: PlayerSummary }) {
 
   return (
     <div className="rivals history">
-      <StatusBar status={status} />
+      <StatusToast status={status} />
       <ChartCardsGrid
         emptyMessage={(chartboards.length  ?  null  :  data.ready  ?  'No scores of yours yet. They show up once you are scraped.'  :  'Loading scores…')}
         groups={[...days].slice(0, shownDayCount).map(([day, dayFoldedChartboards])  =>  ({
