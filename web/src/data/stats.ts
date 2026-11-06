@@ -69,9 +69,8 @@ export function tierCounts(chartboards: Chartboard[]): Counts {
 }
 
 
-// Each rival's results lost / non-matched / won, judged on the real scores, with none of the settings applied (a
-//  true tie counts as won).
-export function realCounts(chartboards: Chartboard[]): Map<string, Counts> {
+// Each player's results in `chartboards` by stat (see resultStat).
+export function playerCounts(chartboards: Chartboard[]): Map<string, Counts> {
   const stats = new Map<string, Counts>();
   for (const chartboard of chartboards) {
     for (const rival of chartboard.rivals) {
@@ -79,7 +78,7 @@ export function realCounts(chartboards: Chartboard[]): Map<string, Counts> {
       if (! counts)
         stats.set(rival.playerId, counts = { ...NO_COUNTS });
 
-      counts[rival.realDelta === null  ?  'unplayed'  :  rival.realDelta < 0  ?  'lose'  :  'win']++;
+      counts[resultStat(rival)]++;
     }
   }
 

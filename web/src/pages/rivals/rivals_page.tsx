@@ -1,31 +1,27 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
-import { MOBILE_VIEW } from '../../components/media.ts';
-import type { SidePanel } from './layout.ts';
 import { SelectedLevelCharts } from './selected_level_charts.tsx';
+import { useSidePanel } from './side_panel_control.ts';
 import { autoLevels, type Preferences, resolveLevels } from '../../data/preferences.ts';
-import { buildChartboards, byTargetWeight, type Chartboard, targetWeight, withRivalsOrNull } from '../../data/model.ts';
+import { buildChartboards, byTargetWeight, type Chartboard } from '../../data/model.ts';
+import { shownChartboards } from '../../data/shown_chartboards.ts';
 import { PreferencesPanel } from './preferences_panel.tsx';
 import { RivalList } from './rival_list.tsx';
-import { chartTier, countCharts, levelStats, resultTab, sortedLevels, type TabId } from '../../data/stats.ts';
-import { readUiState, saveUiState, type UiState } from './ui_state.ts';
+import { countCharts, levelStats, type TabId } from '../../data/stats.ts';
+import { readUiState, type RivalTab, saveUiState, type UiState } from './ui_state.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
+import { useOtherBests, usePlayers, withSoloPlayer } from '../../data/other_players.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
 import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
 
 
 function RivalsView({ me }: { me: PlayerSummary }) {
-  // While set, only you and this rival are compared. Kept in memory only, and only while that rival stays focused and
-  //  is one of your rivals.
-  const [soloRivalId, setSoloRivalId] = useState<string | null>(null);
-  // A rival list from the server without the solo rival (removed on another device, or a failed add) ends solo mode.
-  const settings = useRivalSettings((rivals)  =>
-    setSoloRivalId((playerId)  =>  (rivals.some((r)  =>  r.id === playerId)  ?  playerId  :  null)));
+  const settings = useRivalSettings();
   const { rivals, preferences, snoozes } = settings;
   const { scoreCap, npMinimalRivals } = preferences;
   const playerIds = useMemo(()  =>  [me.id, ...rivals.map((r)  =>  r.id)], [me.id, rivals]);
@@ -61,11 +57,25 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, [data.ready, data.version, me.id, preferences.minLevel, preferences.maxLevel, minLevel, maxLevel]);
 
   const [ui, setUi] = useState<UiState>(readUiState);
+  // The player unrolled on either tab, and whether only you and they are compared. Kept in memory only.
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
-  // Whether the rivals or the preferences (`sidePanel`) are slid in. `sidePanel` stays as it was while the panel
-  //  slides out, so it doesn't go blank on the way.
-  const [sidePanelIsOpen, setSidePanelIsOpen] = useState(false);
-  const [sidePanel, setSidePanel] = useState<SidePanel>('rivals');
+  const [soloIsOn, setSoloIsOn] = useState(false);
+  // A player stays focused only while their row is listed: you or a rival, or anyone while the Others tab is open. A
+  //  rival removed here or on another device, or a player who isn't one once you leave the Others tab, is unfocused.
+  const focusIsListed = (! focusedPlayerId  ||  focusedPlayerId === me.id  ||  ui.rivalTab === 'others'
+    ||  rivals.some((r)  =>  r.id === focusedPlayerId));
+
+  const soloPlayerId = ((soloIsOn  &&  focusIsListed)  ?  focusedPlayerId  :  null);
+
+  // A solo player who isn't a rival is compared with the results loaded on the Others tab; so is one just added, until
+  //  theirs are in.
+  const { players } = usePlayers();
+  const soloPlayer = (soloPlayerId
+    ?  { id: soloPlayerId, name: players?.find((p)  =>  p.id === soloPlayerId)?.name  ??  soloPlayerId }
+    :  null);
+
+  const soloBests = useOtherBests(((soloPlayerId  &&  ! data.bests.has(soloPlayerId))  ?  soloPlayerId  :  null));
+  const { sidePanel, sidePanelIsOpen, toggleSide, closeSideOnLevels } = useSidePanel();
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -82,125 +92,43 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
   const selectTab = useCallback((tab: TabId)  =>  changeUi({ selectedTab: tab }), [changeUi]);
 
-  // The back button slides a side panel out rather than leaving the page: sliding one in adds a step to the browser's
-  //  history, which sliding it out any other way takes back. A maximized card opened over it adds its own step on top
-  //  (see ChartCardMaximized), and going back from that one leaves the panel in.
-  const sidePanelIsOpenRef = useRef(sidePanelIsOpen);
-  sidePanelIsOpenRef.current = sidePanelIsOpen;
-
-  useEffect(()  => {
-    if (! sidePanelIsOpen)
-      return;
-
-    if (! window.history.state?.sidePanelIsOpen)
-      window.history.pushState({ ...window.history.state, sidePanelIsOpen: true }, '');
-
-    const back = ()  =>  ! window.history.state?.sidePanelIsOpen  &&  setSidePanelIsOpen(false);
-    window.addEventListener('popstate', back);
-    return ()  => {
-      window.removeEventListener('popstate', back);
-      // A moment later, so a panel slid in again at once (as React's strict mode does) keeps its step.
-      window.setTimeout(()  =>  ! sidePanelIsOpenRef.current  &&  window.history.state?.sidePanelIsOpen  &&  window.history.back());
-    };
-  }, [sidePanelIsOpen]);
-
-  // On phones, while a side panel is in, a tap on the levels (but on their top bar's buttons) slides it out; a tap on a
-  //  bar selects its level too.
-  const closeSideOnLevels = (event: MouseEvent)  => {
-    const target = event.target as Element;
-    if (! sidePanelIsOpen  ||  ! MOBILE_VIEW.matches  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
-      return;
-
-    if (! target.closest('.level-bar')) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
-    toggleSide(sidePanel);
-  };
-
-  // The other panel's button swaps the panels in place.
-  const toggleSide = (panel: SidePanel)  => {
-    if (sidePanelIsOpen  &&  panel !== sidePanel) {
-      setSidePanel(panel);
-      return;
-    }
-
-    if (sidePanelIsOpen) {
-      setSidePanelIsOpen(false);
-      return;
-    }
-
-    if (panel === sidePanel) {
-      setSidePanelIsOpen(true);
-      return;
-    }
-
-    // The other panel takes the last one's place off the edge first, and slides in from there once it's laid out.
-    setSidePanel(panel);
-    requestAnimationFrame(()  =>  requestAnimationFrame(()  =>  setSidePanelIsOpen(true)));
-  };
-
+  // Solo goes with the focused player, so focusing another one ends it.
   const focus = (playerId: string | null)  => {
     setFocusedPlayerId(playerId);
-    if (soloRivalId !== playerId)
-      setSoloRivalId(null);
+    if (playerId !== focusedPlayerId)
+      setSoloIsOn(false);
   };
 
-  // Removing the solo rival ends solo mode.
-  const removeRival = (playerId: string)  => {
-    if (soloRivalId === playerId)
-      setSoloRivalId(null);
+  useEffect(()  => {
+    if (! focusIsListed)
+      focus(null);
+  }, [focusIsListed]);
 
-    settings.removeRival(playerId);
+  // Switching tabs ends solo mode.
+  const switchRivalTab = (rivalTab: RivalTab)  => {
+    changeUi({ rivalTab });
+    setSoloIsOn(false);
   };
+
+  const nonRivalSoloBests = ((soloBests !== null  &&  typeof soloBests === 'object')  ?  soloBests  :  null);
+  const compared = useMemo(()  =>  withSoloPlayer(data.charts, data.bests, rivals, soloPlayer, nonRivalSoloBests),
+    [data.version, data.charts, data.bests, rivals, soloPlayer?.id, soloPlayer?.name, nonRivalSoloBests]);
 
   const allChartboards = useMemo(
-    ()  =>  buildChartboards(data.charts, data.bests, me.id, rivals.map((r)  =>  ({ id: r.id, name: r.name  ??  r.id })), scoreCap,
-      { minLevel, maxLevel }),
-    [data.version, data.charts, data.bests, me.id, rivals, scoreCap, minLevel, maxLevel],
+    ()  =>  buildChartboards(compared.charts, compared.bests, me.id, compared.rivals, scoreCap, { minLevel, maxLevel }),
+    [compared, me.id, scoreCap, minLevel, maxLevel],
   );
 
   // Snoozes are checked when a level or tab is opened, or the scores or snoozes change; until then, cards keep the
   //  snooze status and time left they had.
   const snoozesCheckedAt = useMemo(()  =>  Date.now(), [ui.selectedLevel, ui.selectedTab, allChartboards, snoozes]);
 
-  // A solo rival is always counted by results, whatever the setting says.
-  const countBy = (soloRivalId  ?  'results'  :  preferences.countBy);
-  // A tie counts as a win, but while a rival is solo.
-  const treatTieAsWin = ! soloRivalId;
-  const view = useMemo(()  => {
-    const hiddenPlayerIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
-    // A solo rival is compared alone, whatever the stored selection says.
-    const isIncluded = (playerId: string)  =>  (soloRivalId  ?  playerId === soloRivalId  :  ! hiddenPlayerIds.has(playerId));
-    const chartboards = allChartboards
-      .map((cb)  =>  withRivalsOrNull(cb, (r)  =>  isIncluded(r.playerId)))
-      .filter((cb): cb is Chartboard  =>  cb !== null)
-      // Unplayed charts count as np only once enough shown rivals have played them.
-      .filter((cb)  =>  ! cb.unplayed  ||  cb.rivals.length >= npMinimalRivals)
-      .map((cb)  => {
-        const until = snoozes.get(cb.id);
-        return ((until !== undefined  &&  until > snoozesCheckedAt)  ?  { ...cb, snoozedUntil: until }  :  cb);
-      });
-
-    // Counted by results, the hidden charts keep only their hidden results.
-    const hiddenResultsOrNull = (chartboard: Chartboard)  =>
-      (countBy === 'charts'  ?  chartboard  :  withRivalsOrNull(chartboard, (r)  =>  resultTab(chartboard, r) === 'hidden'));
-
-    // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
-    //  listed as snoozed, the soonest to wake first.
-    const capHiddenChartboards = chartboards
-      .filter((cb)  =>  cb.snoozedUntil === null  &&  (countBy === 'results'  ||  chartTier(cb) === 'hidden'))
-      .map(hiddenResultsOrNull)
-      .filter((cb): cb is Chartboard  =>  cb !== null)
-      .map((cb)  =>  ({ ...cb, weight: targetWeight(cb.rivals.map((r)  =>  r.realDelta)) }));
-
-    const snoozedChartboards = chartboards.filter((cb)  =>  cb.snoozedUntil !== null)
-      .map(hiddenResultsOrNull)
-      .filter((cb): cb is Chartboard  =>  cb !== null)
-      .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
-    return { chartboards, capHiddenChartboards, snoozedChartboards, levels: sortedLevels(chartboards) };
-  }, [allChartboards, rivals, soloRivalId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt]);
+  // A solo player is always counted by results, whatever the setting says.
+  const countBy = (soloPlayerId  ?  'results'  :  preferences.countBy);
+  // A tie counts as a win, but while a player is solo.
+  const treatTieAsWin = ! soloPlayerId;
+  const view = useMemo(()  =>  shownChartboards(allChartboards, { rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt }),
+    [allChartboards, rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt]);
 
   const { chartboards, capHiddenChartboards, snoozedChartboards, levels } = view;
   const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
@@ -223,7 +151,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     };
   }, [chartboards, snoozedChartboards, capHiddenChartboards, selectedLevel]);
 
-  const emptyMessage = (! rivals.length
+  const emptyMessage = (! compared.rivals.length
     ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'
     :  ! data.ready
       ?  'Loading scores…'
@@ -250,19 +178,18 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           rivals={rivals}
           bests={data.bests}
           focusedPlayerId={focusedPlayerId}
-          soloRivalId={soloRivalId}
-          // In solo mode the solo rival's stats are the header's, with all the settings applied.
-          soloStats={(soloRivalId  ?  totals  :  null)}
+          soloPlayerId={soloPlayerId}
           myStats={myStats}
-          countBy={countBy}
-          onTab={(rivalTab)  =>  changeUi({ rivalTab })}
+          scoreCap={scoreCap}
+          levelRange={levelRange}
+          onTab={switchRivalTab}
           onFocus={focus}
-          onSolo={setSoloRivalId}
+          onSolo={setSoloIsOn}
           onToggle={(playerId, on)  =>  settings.setRivalHidden(playerId, ! on)}
-          onRemove={removeRival}
+          onRemove={settings.removeRival}
           onAdd={settings.addRival}
         />
-        <PreferencesPanel preferences={preferences} levelRange={levelRange} rivalIsSolo={!! soloRivalId} onChange={settings.changePreferences} />
+        <PreferencesPanel preferences={preferences} levelRange={levelRange} playerIsSolo={!! soloPlayerId} onChange={settings.changePreferences} />
         <ChartsGroups
           chartboards={chartboards}
           selectedLevel={selectedLevel}

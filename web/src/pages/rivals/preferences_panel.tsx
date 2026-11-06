@@ -38,16 +38,16 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 
 
 // The preferences panel, in the rivals' place. `levelRange` is set or follows your scores.
-export function PreferencesPanel({ preferences, levelRange, rivalIsSolo, onChange }: {
+export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChange }: {
   preferences: Preferences;
   levelRange: LevelRange;
-  rivalIsSolo: boolean;
+  playerIsSolo: boolean;
   onChange: (changes: Partial<Preferences>) => void;
 }) {
   const { scoreCap, npMinimalRivals } = preferences;
   const { minLevel, maxLevel } = levelRange;
-  const countBy = (rivalIsSolo  ?  'results'  :  preferences.countBy);
-  const countByTitle = (rivalIsSolo
+  const countBy = (playerIsSolo  ?  'results'  :  preferences.countBy);
+  const countByTitle = (playerIsSolo
     ?  'Solo: results are always counted'
     :  'Count matches per rival, or per chart');
 
@@ -75,10 +75,12 @@ export function PreferencesPanel({ preferences, levelRange, rivalIsSolo, onChang
           className="np-minimal-rivals"
           label="Unplayed: min rivals"
           text={`${npMinimalRivals}`}
-          title={`Show unplayed charts with ≥ ${npMinimalRivals} rival ${(npMinimalRivals === 1  ?  'result'  :  'results')}`}
-          off={npMinimalRivals === MIN_NP_RIVALS}
-          canLower={npMinimalRivals > MIN_NP_RIVALS}
-          canRaise={npMinimalRivals < MAX_NP_RIVALS}
+          title={(playerIsSolo
+            ?  'Solo: unplayed charts are always shown'
+            :  `Show unplayed charts with ≥ ${npMinimalRivals} rival ${(npMinimalRivals === 1  ?  'result'  :  'results')}`)}
+          off={playerIsSolo  ||  npMinimalRivals === MIN_NP_RIVALS}
+          canLower={! playerIsSolo  &&  npMinimalRivals > MIN_NP_RIVALS}
+          canRaise={! playerIsSolo  &&  npMinimalRivals < MAX_NP_RIVALS}
           lowerLabel="Lower minimal rivals for np"
           raiseLabel="Raise minimal rivals for np"
           onStep={(step)  =>  onChange({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) })}
@@ -127,8 +129,8 @@ export function PreferencesPanel({ preferences, levelRange, rivalIsSolo, onChang
               role="radio"
               aria-checked={value === countBy}
               className={(value === countBy  ?  'on'  :  undefined)}
-              title={(rivalIsSolo  ?  undefined  :  title)}
-              disabled={rivalIsSolo}
+              title={(playerIsSolo  ?  undefined  :  title)}
+              disabled={playerIsSolo}
               onClick={()  =>  value !== countBy  &&  onChange({ countBy: value })}
             >
               {label}

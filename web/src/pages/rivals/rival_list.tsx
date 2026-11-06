@@ -2,10 +2,11 @@ import type { PlayerSummary, Rival } from '@piu-rivals/shared';
 import { useEffect, useMemo, useRef } from 'react';
 import { tabsClass, useTabsFit } from './layout.ts';
 import { type Chartboard, displayName, type PlayerBests } from '../../data/model.ts';
-import type { CountBy } from '../../data/preferences.ts';
-import { OtherPlayers, usePlayers } from './other_players.tsx';
+import type { CountBy, LevelRange } from '../../data/preferences.ts';
+import { usePlayers } from '../../data/other_players.ts';
+import { OtherPlayers } from './other_players.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
-import { type Counts, NO_COUNTS, realCounts, STAT_WORDS } from '../../data/stats.ts';
+import { type Counts, NO_COUNTS, playerCounts } from '../../data/stats.ts';
 import type { RivalTab } from './ui_state.ts';
 
 
@@ -18,29 +19,30 @@ const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
 
 
 // The rivals column: your rivals, and other players to add in the Others tab. Rivals' stats are judged on the real
-//  scores, with no settings applied; `soloStats` replace the solo rival's. Your row shows `myStats`.
-export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloRivalId, soloStats, myStats, countBy, onTab, onFocus, onSolo, onToggle,
-  onRemove, onAdd }: {
+//  scores in your level range (see playerCounts). Your row shows `myStats`.
+export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloPlayerId, myStats, scoreCap, levelRange, onTab, onFocus,
+  onSolo,
+  onToggle, onRemove, onAdd }: {
   tab: RivalTab;
   chartboards: Chartboard[];
   me: PlayerSummary;
   rivals: Rival[];
   bests: Map<string, PlayerBests>;
   focusedPlayerId: string | null;
-  soloRivalId: string | null;
-  soloStats: Counts | null;
+  soloPlayerId: string | null;
   myStats: Record<CountBy, Counts>;
-  countBy: CountBy;
+  scoreCap: number;
+  levelRange: LevelRange;
   onTab: (tab: RivalTab) => void;
   onFocus: (playerId: string | null) => void;
-  onSolo: (playerId: string | null) => void;
+  onSolo: (soloIsOn: boolean) => void;
   onToggle: (playerId: string, on: boolean) => void;
   onRemove: (playerId: string) => void;
   onAdd: (player: PlayerSummary) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const { players: allPlayers, error: playersError } = usePlayers();
-  const rivalStats = useMemo(()  =>  realCounts(chartboards), [chartboards]);
+  const rivalStats = useMemo(()  =>  playerCounts(chartboards), [chartboards]);
 
   // You and your rivals by PUMBILITY (highest first); those without one follow alphabetically.
   const players = [me, ...rivals].map(toListedPlayer).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
@@ -89,12 +91,15 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
         {renderTabButton('others', 'Others', otherPlayerCount)}
       </div>
       {tab === 'others'
-        ?  <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds} onAdd={add} />
+        ?  (
+          <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds}
+            focusedPlayerId={focusedPlayerId} soloPlayerId={soloPlayerId} scoreCap={scoreCap} levelRange={levelRange} onFocus={onFocus} onAdd={add} onSolo={onSolo} />
+        )
         :  (
           <div className="rival-scroll" ref={container}>
             {players.map((player)  => {
               const isMe = player.playerId === me.id;
-              const isSolo = player.playerId === soloRivalId;
+              const isSolo = player.playerId === soloPlayerId;
               const playerBests = [...bests.get(player.playerId)?.values()  ??  []];
               return (
                 <RivalListItem
@@ -103,18 +108,17 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
                   me={isMe}
                   on={isMe  ||  ! hiddenIds.has(player.playerId)}
                   solo={isSolo}
-                  faded={!! soloRivalId  &&  ! isMe  &&  ! isSolo}
+                  faded={!! soloPlayerId  &&  ! isMe  &&  ! isSolo}
                   focused={player.playerId === focusedPlayerId}
-                  stats={(isSolo  &&  soloStats)  ||  rivalStats.get(player.playerId)  ||  NO_COUNTS}
-                  statsWords={STAT_WORDS[(isSolo  &&  soloStats)  ?  countBy  :  'results']}
+                  stats={rivalStats.get(player.playerId)  ||  NO_COUNTS}
                   totals={(isMe  ?  myStats  :  null)}
-                  treatTieAsWin={! soloRivalId}
+                  treatTieAsWin={! soloPlayerId}
                   best={playerBests.length}
                   scores={playerBests.reduce((acc, best)  =>  acc + best.tries, 0)}
                   onFocus={()  =>  onFocus(player.playerId)}
                   onUnfocus={()  =>  onFocus(null)}
                   onToggle={(on)  =>  onToggle(player.playerId, on)}
-                  onSolo={(on)  =>  onSolo((on  ?  player.playerId  :  null))}
+                  onSolo={onSolo}
                   onRemove={()  =>  onRemove(player.playerId)}
                 />
               );

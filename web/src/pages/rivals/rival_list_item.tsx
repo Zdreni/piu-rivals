@@ -11,9 +11,7 @@ export interface ListedPlayer {
   pumbility: number | null;
 }
 
-export const statsTip = 'Results against this rival: lost / non-matched / won, judged on the real scores, without the score cap filter';
-
-const statsSoloTip = 'Solo: the same counts as on your row, with the score cap and unplayed min rivals applied';
+export const statsTip = 'Results against this player in your level range: lost / tied / won, then losses hidden by the score cap / non-matched';
 
 const resultsTip = 'Your results against the compared rivals, with the score cap and unplayed min rivals applied';
 const chartsTip = 'Your charts: inferior if any compared rival beats you, otherwise not played or superior, with the score cap and '
@@ -27,7 +25,7 @@ export function Count({ value, label }: { value: number; label: string }) {
 
 // One row of the rivals column: a rival, or you (`me`), with your `totals` instead of stats. `on` marks a rival
 //  compared on the charts, `solo` the solo rival, `faded` the others while one is solo.
-export function RivalListItem({ player, me, on, solo, faded, focused, stats, statsWords, totals, treatTieAsWin, best, scores, onFocus,
+export function RivalListItem({ player, me, on, solo, faded, focused, stats, totals, treatTieAsWin, best, scores, onFocus,
   onUnfocus, onToggle, onSolo, onRemove }: {
   player: ListedPlayer;
   me: boolean;
@@ -36,7 +34,6 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
   faded: boolean;
   focused: boolean;
   stats: Counts;
-  statsWords: Record<keyof Counts, string>;
   totals: { results: Counts; charts: Counts } | null;
   treatTieAsWin: boolean;
   best: number;
@@ -86,8 +83,8 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, sta
               <Count value={scores} label="scores" /> · <Count value={best} label="best" />
             </div>
             {! me  &&  (
-              <div className="rival-stats" title={(solo  ?  statsSoloTip  :  statsTip)}>
-                <StatWords counts={stats} separator=" · " words={statsWords} treatTieAsWin={! solo} />
+              <div className="rival-stats" title={statsTip}>
+                <StatWords counts={stats} separator=" · " treatTieAsWin={false} showHidden />
               </div>
             )}
             {totals  &&  (

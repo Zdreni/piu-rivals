@@ -1,9 +1,5 @@
 import { type RefObject, useLayoutEffect, useState } from 'react';
 
-// The panels that wait off the left edge until the levels' top bar slides one in.
-export type SidePanel = 'rivals' | 'preferences';
-
-
 // How a tab bar's tabs are laid out: on one line if they fit, otherwise stacked, their words over their counts, and
 //  with short words if even that doesn't fit. Whether they fit can only be measured, so the bar is laid out each way
 //  for a moment whenever its width or `deps` (its words and counts) change.

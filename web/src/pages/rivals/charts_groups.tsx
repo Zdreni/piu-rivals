@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { SidePanel } from './layout.ts';
+import type { SidePanel } from './side_panel_control.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { type Counts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from '../../data/stats.ts';

@@ -39,6 +39,8 @@
 .rivals .rival-links + .rival-scrap { margin-top: 4px; }
 .rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
+/* Losses the score cap hides, in the Hidden tab's colour. */
+.rivals .rival-stats .hidden-loss { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
 .rivals .rival-stats .error { color: #FF5A5A; }
 .rivals .rival-stats .stats-label { color: #C9D8CE; }
 .rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 5px 12px;
@@ -50,6 +52,7 @@
 .rivals .rival .rival-check input { width: 14px; height: 14px; }
 .rivals .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
 .rivals .rival .rival-check input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
+.rivals .rival-check:has(input:disabled) { opacity: 0.5; cursor: default; pointer-events: none; }
 .rivals .rival-delete { margin-left: auto; font: inherit; font-size: 14px; cursor: pointer; }
 .rivals .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
 .rivals .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }

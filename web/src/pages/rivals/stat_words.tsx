@@ -7,20 +7,23 @@ function Stat({ className, value }: { className: string; value: number }) {
 }
 
 
-const STAT_CLASSES: Record<keyof Counts, string> = { lose: 'neg', unplayed: 'blue', win: 'pos', tie: 'tie', hidden: '' };
+const STAT_CLASSES: Record<keyof Counts, string> = { lose: 'neg', unplayed: 'blue', win: 'pos', tie: 'tie', hidden: 'hidden-loss' };
 
 
-// "3 lost, 5 non-matched, 9 won", in the words of `words`; unless `treatTieAsWin`, with ", 2 tied".
-export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results, treatTieAsWin = true }: {
+// "3 lost, 9 won, 5 non-matched", in the words of `words`; unless `treatTieAsWin`, with "2 tied" after the lost; with
+//  `showHidden`, "4 hidden" starts a second line, with the non-matched.
+export function StatWords({ counts, separator = ', ', words = STAT_WORDS.results, treatTieAsWin = true, showHidden = false }: {
   counts: Counts;
   separator?: string;
   words?: Record<keyof Counts, string>;
   treatTieAsWin?: boolean;
+  showHidden?: boolean;
 }) {
-  const stats: (keyof Counts)[] = (treatTieAsWin  ?  ['lose', 'unplayed', 'win']  :  ['lose', 'unplayed', 'win', 'tie']);
+  const allStats = ['lose', 'tie', 'win', ...(showHidden  ?  ['hidden'] as const  :  []), 'unplayed'] as const;
+  const stats = allStats.filter((stat)  =>  stat !== 'tie'  ||  ! treatTieAsWin);
   return stats.map((stat, i)  =>  (
     <Fragment key={stat}>
-      {i > 0  &&  separator}
+      {(stat === 'hidden'  ?  <br />  :  i > 0  &&  separator)}
       <Stat className={STAT_CLASSES[stat]} value={counts[stat]} /> {words[stat]}
     </Fragment>
   ));

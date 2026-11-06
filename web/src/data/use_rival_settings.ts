@@ -29,13 +29,9 @@ export interface RivalSettings {
 }
 
 
-// `onServerRivals` is given each rival list that comes from the server and replaces the shown one: after a change, a
-//  refresh or a failed save.
-export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): RivalSettings {
+export function useRivalSettings(): RivalSettings {
   const { me, updateMe } = useSession();
   const [error, setError] = useState<string | null>(null);
-  const serverRivalsListener = useRef(onServerRivals);
-  serverRivalsListener.current = onServerRivals;
   // Preference changes not sent yet; only one request is on its way at a time, so they arrive in order.
   const unsentPreferences = useRef<Partial<Preferences>>({});
   const sending = useRef(false);
@@ -51,7 +47,6 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
   const load = useCallback(async ()  => {
     const freshMe = await api<MeResponse>('GET', '/me');
     updateMe(()  =>  freshMe);
-    serverRivalsListener.current?.(freshMe.rivals);
   }, [updateMe]);
 
   const refresh = useCallback(async ()  => {
@@ -61,10 +56,8 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
     try {
       const freshMe = await api<MeResponse>('GET', '/me');
       // A change made while loading is newer than what came back.
-      if (! busy()) {
+      if (! busy())
         updateMe(()  =>  freshMe);
-        serverRivalsListener.current?.(freshMe.rivals);
-      }
     } catch {
       // A background refresh; the next one tries again.
     }
@@ -108,10 +101,8 @@ export function useRivalSettings(onServerRivals?: (rivals: Rival[]) => void): Ri
     rivalRequests.current++;
     try {
       const { rivals } = await request();
-      if (rivalRequests.current === 1) {
+      if (rivalRequests.current === 1)
         updateMe((current)  =>  ({ ...current, rivals }));
-        serverRivalsListener.current?.(rivals);
-      }
 
       setError(null);
     } catch (e) {

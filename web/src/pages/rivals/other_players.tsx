@@ -1,114 +1,54 @@
-import type { BestsResponse, Chart, ListedPlayer, PlayerSummary, PlayersResponse } from '@piu-rivals/shared';
-import { type MouseEvent, useEffect, useMemo, useState } from 'react';
-import { api, errorText } from '../../api.ts';
+import type { ListedPlayer, PlayerSummary } from '@piu-rivals/shared';
+import { type MouseEvent, useMemo, useState } from 'react';
+import { type OtherBests, useOtherBests } from '../../data/other_players.ts';
 import { formatNumber } from '../../util.ts';
 import { StatWords } from './stat_words.tsx';
-import { buildChartboards, DEFAULT_LEVELS, displayName, type PlayerBests } from '../../data/model.ts';
-import { MAX_SCORE_CAP } from '../../data/preferences.ts';
+import { buildChartboards, displayName, type PlayerBests } from '../../data/model.ts';
+import type { LevelRange } from '../../data/preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
-import { type Counts, NO_COUNTS, realCounts } from '../../data/stats.ts';
+import { type Counts, NO_COUNTS, playerCounts } from '../../data/stats.ts';
 
 // The Others tab lists this many players above you and below you at first; each click on a "more" button lists
 //  SHOW_STEP more.
 const LISTED_PLAYER_COUNTS = { above: 10, below: 5 };
 const SHOW_STEP = 10;
 
-let playersLoad: Promise<ListedPlayer[]> | null = null;
-
-
-// All players, loaded once per page load.
-function loadPlayers(): Promise<ListedPlayer[]> {
-  playersLoad  ??=  api<PlayersResponse>('GET', '/players').then(({ players })  =>  players, (error)  => {
-    playersLoad = null;
-    throw error;
-  });
-
-  return playersLoad;
-}
-
-
-// All registered players, or null while loading; `error` when they couldn't be loaded.
-export function usePlayers() {
-  const [players, setPlayers] = useState<ListedPlayer[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(()  => {
-    loadPlayers().then(setPlayers, (e)  =>  setError(errorText(e)));
-  }, []);
-
-  return { players, error };
-}
-
-
-interface OtherBests {
-  charts: Map<number, Chart>;
-  bests: PlayerBests;
-}
-
-// Best results of players unrolled on the Others tab, loaded once per page load; they aren't cached between visits.
-const otherBestsLoads = new Map<string, Promise<OtherBests>>();
-
-
-function loadOtherBests(playerId: string): Promise<OtherBests> {
-  let load = otherBestsLoads.get(playerId);
-  if (! load) {
-    load = api<BestsResponse>('GET', `/bests?players=${playerId}`).then((response)  =>  ({
-      charts: new Map(response.charts.map((c)  =>  [c.id, c])),
-      bests: new Map(response.bests.map((b)  =>  [b.chartId, b])),
-    }));
-    load.catch(()  =>  otherBestsLoads.delete(playerId));
-    otherBestsLoads.set(playerId, load);
-  }
-
-  return load;
-}
-
-
-// The player's results lost / non-matched / won against yours, like a rival's: null while loading, or the error.
-function useOtherStats(playerId: string | null, me: string, myBests: PlayerBests | undefined): Counts | string | null {
-  const [loaded, setLoaded] = useState<{ playerId: string; data: OtherBests | string } | null>(null);
-
-  useEffect(()  => {
-    if (! playerId)
-      return;
-
-    let current = true;
-    loadOtherBests(playerId).then(
-      (data)  =>  current  &&  setLoaded({ playerId, data }),
-      (e)  =>  current  &&  setLoaded({ playerId, data: errorText(e) }));
-
-    return ()  =>  { current = false; };
-  }, [playerId]);
-
-  return useMemo(()  => {
-    if (! playerId  ||  loaded?.playerId !== playerId)
-      return null;
-
-    if (typeof loaded.data === 'string')
-      return loaded.data;
-
-    const bests = new Map([[me, myBests  ??  new Map()], [playerId, loaded.data.bests]]);
-    const chartboards = buildChartboards(loaded.data.charts, bests, me, [{ id: playerId, name: playerId }], MAX_SCORE_CAP, DEFAULT_LEVELS);
-    return realCounts(chartboards).get(playerId)  ??  NO_COUNTS;
-  }, [playerId, loaded, me, myBests]);
+// The player's results against yours, counted as a rival's are.
+function otherStats(otherBests: OtherBests, playerId: string, me: string, myBests: PlayerBests | undefined, scoreCap: number,
+  levelRange: LevelRange): Counts {
+  const bests = new Map([[me, myBests  ??  new Map()], [playerId, otherBests.bests]]);
+  const chartboards = buildChartboards(otherBests.charts, bests, me, [{ id: playerId, name: playerId }], scoreCap, levelRange);
+  return playerCounts(chartboards).get(playerId)  ??  NO_COUNTS;
 }
 
 
 // The Others tab: registered players who aren't your rivals (`rivalIds`), by PUMBILITY and folded around you,
-//  to add as rivals. `players` is null while loading.
-export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
+//  to add as rivals, or to compare solo once their results are in. `players` is null while loading.
+export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPlayerId, soloPlayerId, scoreCap, levelRange, onFocus,
+  onAdd, onSolo }: {
   me: PlayerSummary;
   myBests: PlayerBests | undefined;
   players: ListedPlayer[] | null;
   error: string | null;
   rivalIds: Set<string>;
+  focusedPlayerId: string | null;
+  soloPlayerId: string | null;
+  scoreCap: number;
+  levelRange: LevelRange;
+  onFocus: (playerId: string | null) => void;
   onAdd: (player: PlayerSummary) => void;
+  onSolo: (soloIsOn: boolean) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [listedPlayerCountAbove, setListedPlayerCountAbove] = useState(LISTED_PLAYER_COUNTS.above);
   const [listedPlayerCountBelow, setListedPlayerCountBelow] = useState(LISTED_PLAYER_COUNTS.below);
-  const openStats = useOtherStats((openPlayerId !== me.id  ?  openPlayerId  :  null), me.id, myBests);
+  // The focused player's results, when they're listed here.
+  const openPlayerId = ((focusedPlayerId  &&  focusedPlayerId !== me.id  &&  ! rivalIds.has(focusedPlayerId))  ?  focusedPlayerId  :  null);
+  const openBests = useOtherBests(openPlayerId);
+  // Results come back only for an unrolled player, so `openPlayerId` is set once they're in.
+  const openStats = useMemo(()  =>  ((openBests !== null  &&  typeof openBests === 'object')
+    ?  otherStats(openBests, openPlayerId!, me.id, myBests, scoreCap, levelRange)
+    :  openBests), [openBests, openPlayerId, me.id, myBests, scoreCap, levelRange.minLevel, levelRange.maxLevel]);
 
   const words = query.trim().toLowerCase();
   const otherPlayers: (PlayerSummary | ListedPlayer)[] = [players?.find((p)  =>  p.id === me.id)  ??  me,
@@ -147,7 +87,8 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
         )}
         {otherPlayers.slice(fromIndex, toIndex).map((player)  => {
           const isMe = player.id === me.id;
-          const isOpen = player.id === openPlayerId;
+          const isOpen = player.id === focusedPlayerId;
+          const isSolo = player.id === soloPlayerId;
           const name = displayName(player.name  ??  player.id);
           const classes = ['rival', 'other', isMe  ?  'me'  :  '', isOpen  ?  'focused'  :  ''];
 
@@ -158,9 +99,9 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
               return;
 
             if (! isOpen)
-              setOpenPlayerId(player.id);
+              onFocus(player.id);
             else if (target.closest('.rival-toggle'))
-              setOpenPlayerId(null);
+              onFocus(null);
           };
 
           return (
@@ -179,6 +120,19 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
               {/* Unrolled while open, like a rival (see .rival-more). */}
               <div className="rival-more">
                 <div>
+                  {/* Solo waits for the player's results, which it compares. */}
+                  {isOpen  &&  ! isMe  &&  (
+                    <div className="rival-links">
+                      <label className="rival-link rival-check rival-solo" title="Compare only you and this player">
+                        <input
+                          type="checkbox"
+                          checked={isSolo}
+                          disabled={openBests === null  ||  typeof openBests !== 'object'}
+                          onChange={(event)  =>  onSolo(event.target.checked)}
+                        />Solo
+                      </label>
+                    </div>
+                  )}
                   {'plays' in player  &&  (
                     <div className="rival-scrap">
                       <div className="rival-counts" title="scraped scores · best scores">
@@ -188,7 +142,9 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, onAdd }: {
                         <div className="rival-stats" title={(typeof openStats === 'string'  ?  undefined  :  statsTip)}>
                           {openStats === null  &&  'Comparing…'}
                           {typeof openStats === 'string'  &&  <span className="error">{openStats}</span>}
-                          {openStats !== null  &&  typeof openStats === 'object'  &&  <StatWords counts={openStats} separator=" · " />}
+                          {openStats !== null  &&  typeof openStats === 'object'  &&  (
+                            <StatWords counts={openStats} separator=" · " treatTieAsWin={false} showHidden />
+                          )}
                         </div>
                       )}
                     </div>
