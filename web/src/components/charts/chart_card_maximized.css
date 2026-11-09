@@ -12,6 +12,7 @@
                                             max-height: calc(100% - 32px); }
 .rivals.card-overlay .chart-card-head { flex-shrink: 0; margin: 0; padding: 10px 12px 10px 14px; border-top: none; border-radius: 0; }
 .rivals.card-overlay.in-place .chart-card-head { padding-left: 12px; }
+.rivals.card-overlay .snooze-panel { flex: none; }
 .rivals.card-overlay .chart-card-title { align-items: center; gap: 10px; }
 .rivals.card-overlay .chart-card-title > .chart-slot { margin: 0; padding: 0; background: none; }
 .rivals.card-overlay:not(.in-place) .chart-card-head .track { font-size: 18px; }

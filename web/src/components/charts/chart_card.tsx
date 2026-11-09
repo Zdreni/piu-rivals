@@ -23,29 +23,29 @@ function ChartBall({ chartLabel }: { chartLabel: string }) {
 }
 
 
-// A card's header: the track and the chart, unrolled by a click, with snoozing when `canSnooze` and a close button
-//  when `maximized`.
-function CardHead({ chartboard, unrolled, canSnooze, snoozesCheckedAt, menuIsOpen, maximized, onToggle, onClose, onMenu, onSnooze, onWake }: {
+// A click's handler that does `action` alone, without the card's own handlers.
+const press = (action: () => void)  =>  (event: MouseEvent)  => {
+  event.stopPropagation();
+  action();
+};
+
+
+// A card's header: the track and the chart, unrolled by a click, with the snooze menu when `canSnooze` and a close
+//  button when `maximized`.
+function CardHead({ chartboard, unrolled, canSnooze, menuIsOpen, maximized, onToggle, onClose, onMenu, onSnooze }: {
   chartboard: Chartboard;
   unrolled: boolean;
   canSnooze: boolean;
-  snoozesCheckedAt: number;
   menuIsOpen: boolean;
   maximized: boolean;
   onToggle?: () => void;
   onClose?: () => void;
   onMenu: () => void;
   onSnooze: (days: SnoozeDays) => void;
-  onWake: () => void;
 }) {
-  const snoozeTimeLeft = (chartboard.snoozedUntil === null  ?  null  :  timeLeft(chartboard.snoozedUntil - snoozesCheckedAt));
-  const more = snoozeTimeLeft !== null  ||  ((unrolled  ||  maximized)  &&  canSnooze);
+  const more = unrolled  &&  canSnooze;
   // The length picked in the menu, lit while the card fades out.
   const [pickedDays, setPickedDays] = useState<SnoozeDays | null>(null);
-  const press = (action: () => void)  =>  (event: MouseEvent)  => {
-    event.stopPropagation();
-    action();
-  };
 
   const toggleMenu = press(()  => {
     setPickedDays(null);
@@ -58,7 +58,7 @@ function CardHead({ chartboard, unrolled, canSnooze, snoozesCheckedAt, menuIsOpe
   });
 
   return (
-    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuIsOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(snoozeTimeLeft !== null  ?  ' snoozed'  :  '')}`}
+    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuIsOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}`}
       onClick={onToggle}>
       <div className="chart-card-title">
         <span className="track" title={chartboard.trackTitle}>{(unrolled  ||  maximized)  ?  chartboard.trackTitle  :  chartboard.track}</span>
@@ -69,56 +69,65 @@ function CardHead({ chartboard, unrolled, canSnooze, snoozesCheckedAt, menuIsOpe
           </button>
         )}
       </div>
-      {(snoozeTimeLeft !== null  ||  canSnooze)  &&  (
+      {canSnooze  &&  (
         <div className="chart-card-more">
           <div>
-            {(snoozeTimeLeft === null  &&  maximized)
-              ?  (
-                <span className="snooze snooze-panel">
-                  <span className="snooze-title">Snooze chart to Hidden</span>
-                  <span className="snooze-lengths" role="group" aria-label="Snooze for">
+            <span className="snooze">
+              <span className="snooze-anchor">
+                <button className={`snooze-button snooze-toggle${(menuIsOpen  ?  ' on'  :  '')}`} type="button" aria-haspopup="menu"
+                  aria-expanded={menuIsOpen} title="Hide this chart for a while" onClick={toggleMenu}>
+                  Snooze…
+                </button>
+                {menuIsOpen  &&  (
+                  <span className="snooze-menu" role="menu">
                     {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
-                      <button key={days} type="button" title="Hide this chart for a while" onClick={pick(days)}>
+                      <button key={days} className={(pickedDays === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
+                        onClick={pick(days)}>
                         {days === 1  ?  '1 day'  :  `${days} days`}
                       </button>
                     ))}
                   </span>
-                </span>
-              )
-              :  snoozeTimeLeft === null
-              ?  (
-                <span className="snooze">
-                  <span className="snooze-anchor">
-                    <button className={`snooze-button snooze-toggle${(menuIsOpen  ?  ' on'  :  '')}`} type="button" aria-haspopup="menu"
-                      aria-expanded={menuIsOpen} title="Hide this chart for a while" onClick={toggleMenu}>
-                      Snooze…
-                    </button>
-                    {menuIsOpen  &&  (
-                      <span className="snooze-menu" role="menu">
-                        {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
-                          <button key={days} className={(pickedDays === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
-                            onClick={pick(days)}>
-                            {days === 1  ?  '1 day'  :  `${days} days`}
-                          </button>
-                        ))}
-                      </span>
-                    )}
-                  </span>
-                </span>
-              )
-              :  (
-                <span className="snooze snooze-panel wake">
-                  <span className="snooze-title">Chart snoozed for {snoozeTimeLeft}</span>
-                  <span className="snooze-lengths">
-                    <button type="button" title="Show this chart again now" onClick={press(onWake)}>Wake now</button>
-                  </span>
-                </span>
-              )}
-            {! maximized  &&  snoozeTimeLeft === null  &&  <ChartBall chartLabel={chartboard.chartLabel} />}
+                )}
+              </span>
+            </span>
+            <ChartBall chartLabel={chartboard.chartLabel} />
           </div>
         </div>
       )}
     </header>
+  );
+}
+
+
+// The band over a card's results: a snoozed chart's time left (`snoozeTimeLeft`) and Wake button, or else the snooze
+//  lengths.
+function SnoozePanel({ snoozeTimeLeft, onSnooze, onWake }: {
+  snoozeTimeLeft: string | null;
+  onSnooze: (days: SnoozeDays) => void;
+  onWake: () => void;
+}) {
+  if (snoozeTimeLeft !== null) {
+    return (
+      <div className="snooze snooze-panel wake">
+        <span className="snooze-title">Chart snoozed for {snoozeTimeLeft}</span>
+        <span className="snooze-lengths">
+          <button type="button" title="Show this chart again now" onClick={press(onWake)}>Wake now</button>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="snooze snooze-panel">
+      <span className="snooze-title">Snooze chart to Hidden</span>
+      <span className="snooze-lengths" role="group" aria-label="Snooze for">
+        {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
+          <button key={days} type="button" title="Hide this chart for a while" onClick={press(()  =>  onSnooze(days))}>
+            {days === 1  ?  '1 day'  :  `${days} days`}
+          </button>
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -165,7 +174,11 @@ export function ChartCard({
   onClose?: () => void;
 }) {
   const { chartboard, items, colorByRealDiff, dimWon, treatTieAsWin } = foldedChartboard;
+  const snoozeTimeLeft = (chartboard.snoozedUntil === null  ?  null  :  timeLeft(chartboard.snoozedUntil - snoozesCheckedAt));
   const toggler = (id: string)  =>  ()  =>  onUnroll((unrolledRowId === id  ?  null  :  id));
+  // Over the results; when maximized, out of their scroll, so it stays under the header.
+  const snoozePanel = (snoozeTimeLeft !== null  ||  (maximized  &&  canSnooze))
+    &&  <SnoozePanel snoozeTimeLeft={snoozeTimeLeft} onSnooze={onSnooze} onWake={onWake} />;
 
   const renderRow = (entry: Entry)  => {
     const id = (entry.me  ?  ME  :  entry.playerId);
@@ -202,10 +215,13 @@ export function ChartCard({
         event.stopPropagation();
         onMaximize();
       })}>
-      <CardHead chartboard={chartboard} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze} snoozesCheckedAt={snoozesCheckedAt} menuIsOpen={menuIsOpen} maximized={maximized}
-        onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} onMenu={onMenu} onSnooze={onSnooze} onWake={onWake} />
+      <CardHead chartboard={chartboard} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze  &&  snoozeTimeLeft === null  &&  ! maximized}
+        menuIsOpen={menuIsOpen} maximized={maximized} onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} onMenu={onMenu}
+        onSnooze={onSnooze} />
+      {maximized  &&  snoozePanel}
       <div className="chart-card-body">
         <div className="chart-card-box">
+          {! maximized  &&  snoozePanel}
           {/* Without your score there are no diffs, so their columns are dropped. */}
           <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>
         </div>

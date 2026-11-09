@@ -38,10 +38,9 @@
 .rivals .chart-label.single { --ball: #FF6A45; --ball-deep: #A3200A; --ball-core: #5A150A; --ring: #FFD2B0; --ring-mid: #A8653F; }
 .rivals .chart-label.double { --ball: #4FEA6E; --ball-deep: #138A33; --ball-core: #0D4D20; --ring: #C5F5CF; --ring-mid: #559762; }
 /* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
-   tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it.
-   A snoozed chart's header always has that line, with its Wake button, and keeps its chart beside the track. */
+   tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it. */
 .rivals .chart-card-head.unrolled .track { white-space: normal; }
-.rivals .chart-card-head.more:not(.maximized, .snoozed) .chart-card-title > :not(.track) { display: none; }
+.rivals .chart-card-head.more .chart-card-title > :not(.track) { display: none; }
 .rivals .chart-card-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
 .rivals .chart-card-head.more .chart-card-more { grid-template-rows: 1fr; }
 .rivals .chart-card-more > div { display: flex; align-items: center; gap: 10px; min-height: 0; overflow: hidden; visibility: hidden;
@@ -96,14 +95,10 @@
 @media (hover: hover) {
   .rivals .chart-card.maximizable:hover .chart-card-box { border-top-color: #3D5A49; background: #1D2D24; }
 }
-/* The snooze panel: darker than the header and only as wide as its lengths, with a small "Snooze chart to
-   Hidden" over them; they share one rounded block, split by lines, each as wide as its words. A snoozed chart's header
-   has one in every card, with how long it's snoozed for over its "Wake now". */
-.rivals .chart-card-more > div > .snooze-panel { flex: none; flex-direction: column; align-items: flex-start; gap: 5px;
-    margin: 10px 0 4px; padding: 6px 7px 7px; border-radius: 9px; background: #0B120E; }
-/* The panel is centred in its card, and its words and buttons in it. */
-.rivals .chart-card-more > div > .snooze-panel { margin-inline: auto; padding-inline: 28px; }
-.rivals .snooze-panel :is(.snooze-title, .snooze-lengths) { align-self: center; }
+/* The snooze panel: a darker band across the top of the results, with a small "Snooze chart to Hidden" over its lengths,
+   centred in it; they share one rounded block, split by lines, each as wide as its words. A snoozed chart's card has one,
+   with how long it's snoozed for over its "Wake now". */
+.rivals .snooze-panel { flex-direction: column; gap: 5px; padding: 7px 12px 8px; background: #0B120E; }
 .rivals .snooze-title { padding-left: 2px; color: #6B8174; font: 500 12px/1 Roboto, Arial, sans-serif; letter-spacing: .04em; }
 .rivals .snooze-lengths { display: flex; overflow: hidden; border: 1px solid #2B4034; border-radius: 7px; background: #1C2B22; }
 .rivals .snooze-lengths button { height: 36px; padding: 0 9px; color: #9AB3A3; white-space: nowrap; cursor: pointer;
