@@ -6,6 +6,8 @@ import { RunProgress, runKindLabel, RunStatus } from '../../components/run_statu
 import { formatAgo, formatDuration, formatNumber, formatTime, useLoad } from '../../util.ts';
 
 const POLL_MS = 3000;
+// Refresh of the current runs while none is active, so a scheduled run shows when it's queued.
+const IDLE_POLL_MS = 15000;
 // Runs listed on each side of the running one at first; the others are folded.
 const LISTED_RUN_COUNTS = { queued: 5, finished: 5 };
 // Runs each Show more button unfolds.
@@ -109,9 +111,12 @@ export function RunsPage() {
   const active = !! currentRuns.data?.runs.length;
 
   // Refreshes both lists while a run is queued or running: finished runs move from one to the other.
+  // While none is, refreshes only the current runs, less often.
   useEffect(()  => {
-    if (! active)
-      return;
+    if (! active) {
+      const timer = setInterval(()  =>  void currentRuns.reload(), IDLE_POLL_MS);
+      return ()  =>  clearInterval(timer);
+    }
 
     const timer = setInterval(()  => {
       void currentRuns.reload();
@@ -121,8 +126,8 @@ export function RunsPage() {
     return ()  =>  clearInterval(timer);
   }, [active, currentRuns.reload, previousRuns.reload]);
 
-  // A running "all" run shows over a queued one; either disables the button.
-  const allRuns = currentRuns.data?.runs.filter((r)  =>  r.kind === 'all')  ??  [];
+  // A running "all" or scheduled run shows over a queued one; either disables the button.
+  const allRuns = currentRuns.data?.runs.filter((r)  =>  r.kind === 'all'  ||  r.kind === 'scheduled')  ??  [];
   const runningAll = allRuns.find((r)  =>  r.status === 'running');
   const queuedAll = allRuns.find((r)  =>  r.status === 'queued');
   const scrapeAllLabel = (runningAll
