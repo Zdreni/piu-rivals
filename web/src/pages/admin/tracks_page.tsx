@@ -61,9 +61,9 @@ export function TracksPage() {
   useEffect(()  =>  setAllTracks(tracks.data?.tracks  ??  []), [tracks.data]);
 
   const shownTracks = useMemo(()  => {
-    const words = filter.trim().toLowerCase();
-    const matchingTracks = (words
-      ?  allTracks.filter((t)  =>  t.title.toLowerCase().includes(words)  ||  t.shortTitle.toLowerCase().includes(words))
+    const searchText = filter.trim().toLowerCase();
+    const matchingTracks = (searchText
+      ?  allTracks.filter((t)  =>  t.title.toLowerCase().includes(searchText)  ||  t.shortTitle.toLowerCase().includes(searchText))
       :  allTracks);
 
     const sign = (sort.descending  ?  -1  :  1);

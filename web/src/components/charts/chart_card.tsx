@@ -4,7 +4,7 @@ import { timeLeft } from './format.tsx';
 import { ResultItem } from './result_item.tsx';
 import type { Chartboard } from '../../data/model.ts';
 import { type Entry, type FoldedChartboard, SHOW_STEP, unfold, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
-import { resultStat, type Stat } from '../../data/stats.ts';
+import { resultOutcome, type Outcome } from '../../data/stats.ts';
 
 // The row unrolled for your own score, and the header unrolled.
 const ME = 'me';
@@ -134,14 +134,14 @@ function SnoozePanel({ snoozeTimeLeft, onSnooze, onWake }: {
 
 // A fold button's count, e.g. "3", in the colour of the strongest result folded, e.g. red if any of them beats you,
 //  with an "=" for ties. Ties get the tie colour unless `treatTieAsWin`.
-const FOLD_TONES: [Stat, string, string][] = [
+const FOLD_TONES: [Outcome, string, string][] = [
   ['lose', 'neg', ''], ['hidden', 'neg muted', ''], ['unplayed', 'blue', ''], ['win', 'pos', ''], ['tie', 'tie', '='],
 ];
 
 
 function FoldCount({ entries, count, treatTieAsWin }: { entries: Entry[]; count: number; treatTieAsWin: boolean }) {
-  const stats = new Set(entries.flatMap((e)  =>  (e.me  ?  []  :  [resultStat(e)])));
-  const tone = FOLD_TONES.find(([stat])  =>  stats.has(stat));
+  const outcomes = new Set(entries.flatMap((e)  =>  (e.me  ?  []  :  [resultOutcome(e)])));
+  const tone = FOLD_TONES.find(([outcome])  =>  outcomes.has(outcome));
   const className = ((tone  &&  (tone[0] !== 'tie'  ||  ! treatTieAsWin))  ?  tone[1]  :  undefined);
   return <span className={className}>{tone?.[2]}{count}</span>;
 }
@@ -151,19 +151,19 @@ function FoldCount({ entries, count, treatTieAsWin }: { entries: Entry[]; count:
 //  fold's rivals unfolded. `unrolledRowId` is the unrolled row: a rival's id, "me" or "head". `showGain` shows how much your
 //  best rose; `leaving`, the card fades out. With `onMaximize`, a click on the card only maximizes it.
 export function ChartCard({
-  foldedChartboard, myName, unfoldedRivalCounts, showGain = false, scoreCap, canSnooze, snoozesCheckedAt, menuIsOpen, leaving, maximized = false,
+  foldedChartboard, myName, unfoldedRivalCounts, showGain, scoreCap, canSnooze, snoozesCheckedAt, menuIsOpen, leaving, maximized,
   onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
 }: {
   foldedChartboard: FoldedChartboard;
   myName: string;
   unfoldedRivalCounts: UnfoldedRivalCounts;
-  showGain?: boolean;
+  showGain: boolean;
   scoreCap: number;
   canSnooze: boolean;
   snoozesCheckedAt: number;
   menuIsOpen: boolean;
   leaving: boolean;
-  maximized?: boolean;
+  maximized: boolean;
   onShow: (unfoldedRivalCounts: UnfoldedRivalCounts) => void;
   unrolledRowId: string | null;
   onUnroll: (playerId: string | null) => void;
@@ -173,7 +173,7 @@ export function ChartCard({
   onMaximize?: () => void;
   onClose?: () => void;
 }) {
-  const { chartboard, items, colorByRealDiff, dimWon, treatTieAsWin } = foldedChartboard;
+  const { chartboard, items, colorByRealDiff, dimmedOutcomes, treatTieAsWin } = foldedChartboard;
   const snoozeTimeLeft = (chartboard.snoozedUntil === null  ?  null  :  timeLeft(chartboard.snoozedUntil - snoozesCheckedAt));
   const toggler = (id: string)  =>  ()  =>  onUnroll((unrolledRowId === id  ?  null  :  id));
   // Over the results; when maximized, out of their scroll, so it stays under the header.
@@ -184,7 +184,7 @@ export function ChartCard({
     const id = (entry.me  ?  ME  :  entry.playerId);
     return (
       <ResultItem key={id} chartboard={chartboard} entry={entry} myName={myName} unrolled={unrolledRowId === id} colorByRealDiff={colorByRealDiff}
-        dimWon={dimWon} treatTieAsWin={treatTieAsWin} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
+        dimmedOutcomes={dimmedOutcomes} treatTieAsWin={treatTieAsWin} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
     );
   };
 

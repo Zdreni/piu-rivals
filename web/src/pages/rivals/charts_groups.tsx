@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { SidePanel } from './side_panel_control.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
-import { type Counts, levelNum, levelStats, levelType, SIDE_TYPES, sortedLevels, STAT_WORDS } from '../../data/stats.ts';
+import { CHART_OUTCOME_LABELS, type Counts, levelNum, levelStats, levelType, RESULT_OUTCOME_LABELS, SIDE_TYPES, sortedLevels } from '../../data/stats.ts';
 
 type Stats = Record<string, { charts: Counts; results: Counts }>;
 
@@ -34,15 +34,15 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
   const labelWidth = (label: number | string)  =>
     (String(label).length  ?  `${String(label).length} * var(--digit, 1ch) + 2 * min(var(--label-pad, 6px), 5%)`  :  '0px');
 
-  const renderSegment = (className: string, n: number, label: number | string = n, style: CSSProperties = {}, grow = n)  =>
+  const renderSegment = (className: string, n: number, { label = n, style = {}, grow = n }: { label?: number | string; style?: CSSProperties; grow?: number } = {})  =>
     (n  ?  <span className={className} style={{ flexGrow: grow, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
       {label}
     </span>  :  null);
 
-  const tipLine = (stat: keyof Counts)  =>  `\n${plural(byCharts[stat], `${STAT_WORDS.charts[stat]} chart`)}`
-    + ` / ${plural(byResults[stat], `${STAT_WORDS.results[stat]} result`)}`;
+  const tipLine = (outcome: keyof Counts)  =>  `\n${plural(byCharts[outcome], `${CHART_OUTCOME_LABELS[outcome]} chart`)}`
+    + ` / ${plural(byResults[outcome], `${RESULT_OUTCOME_LABELS[outcome]} result`)}`;
 
-  const tieLine = (treatTieAsWin  ?  ''  :  `\n${plural(byResults.tie, `${STAT_WORDS.results.tie} result`)}`);
+  const tieLine = (treatTieAsWin  ?  ''  :  `\n${plural(byResults.tie, `${RESULT_OUTCOME_LABELS.tie} result`)}`);
 
   return (
     <button
@@ -56,9 +56,9 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
       <span className="level-segs">
         {renderSegment('win', counts.win)}
         {! treatTieAsWin  &&  renderSegment('tie', counts.tie)}
-        {renderSegment('unplayed', counts.unplayed, counts.unplayed, {}, counts.unplayed ** (1 / 1.5))}
-        {renderSegment('hidden-loss', counts.hidden, '')}
-        {renderSegment('lose', counts.lose, counts.lose, { '--heat': heat(counts.lose) } as CSSProperties)}
+        {renderSegment('unplayed', counts.unplayed, { grow: counts.unplayed ** (1 / 1.5) })}
+        {renderSegment('hidden-loss', counts.hidden, { label: '' })}
+        {renderSegment('lose', counts.lose, { style: { '--heat': heat(counts.lose) } as CSSProperties })}
       </span>
     </button>
   );

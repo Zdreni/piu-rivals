@@ -1,7 +1,7 @@
 import { Delta, ScoreGain, Score } from './format.tsx';
 import { type Chartboard, displayName, type ResultStats } from '../../data/model.ts';
 import type { Entry } from '../../data/folded_chartboard.ts';
-import { resultStat } from '../../data/stats.ts';
+import { resultOutcome, type Outcome } from '../../data/stats.ts';
 
 // Lowest tier first, each count with its letters after it, e.g. "2m 0b 3gd 21gr 1850pf".
 const RESULT_STATS: [Exclude<keyof ResultStats, 'maxCombo'>, string, string][] = [
@@ -35,7 +35,7 @@ function ResultDetails({ unrolled, resultStats, date, score }: {
           )}
           <span className="result-date">{date}</span>
         </span>
-        {score !== null  &&  <span className="num result-details-score"><Score value={score} /></span>}
+        {score !== null  &&  <span className="num result-details-score"><Score value={score} tailClass="tail" /></span>}
       </div>
     </div>
   );
@@ -44,13 +44,13 @@ function ResultDetails({ unrolled, resultStats, date, score }: {
 
 // One score on the card of `chartboard`: the player, the score and the rival's diff, or with `showGain`, how much your best rose.
 // `unrolled`, it shows the score's details. The colouring flags are RivalsFolding's.
-export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDiff, dimWon, treatTieAsWin, showGain, scoreCap, onToggle }: {
+export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDiff, dimmedOutcomes, treatTieAsWin, showGain, scoreCap, onToggle }: {
   chartboard: Chartboard;
   entry: Entry;
   myName: string;
   unrolled: boolean;
   colorByRealDiff: boolean;
-  dimWon: boolean;
+  dimmedOutcomes: Outcome[];
   treatTieAsWin: boolean;
   showGain: boolean;
   scoreCap: number;
@@ -61,7 +61,7 @@ export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDif
       <>
         <div className={`result mine${(unrolled  ?  ' unrolled'  :  '')}`} onClick={onToggle}>
           <span className="result-player" title={myName}>{displayName(myName)}</span>
-          <span className="num"><Score value={entry.score} /></span>
+          <span className="num"><Score value={entry.score} tailClass="tail" /></span>
           {(showGain  &&  chartboard.myImprovement)  ?  <ScoreGain value={chartboard.myImprovement} />  :  <span />}
         </div>
         <ResultDetails unrolled={unrolled} resultStats={chartboard.myResultStats} date={chartboard.myDate} score={null} />
@@ -70,12 +70,12 @@ export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDif
   }
 
   // A win is a win even when the score cap turns it into a tie.
-  const won = ((dimWon  &&  resultStat(entry) === 'win')  ?  ' won'  :  '');
+  const dimmed = (dimmedOutcomes.includes(resultOutcome(entry))  ?  ' dimmed'  :  '');
   return (
     <>
-      <div className={`result${won}${(unrolled  ?  ' unrolled'  :  '')}`} onClick={onToggle}>
+      <div className={`result${dimmed}${(unrolled  ?  ' unrolled'  :  '')}`} onClick={onToggle}>
         <span className="result-player" title={entry.player}>{displayName(entry.player)}</span>
-        <span className="num score"><Score value={entry.score} /></span>
+        <span className="num score"><Score value={entry.score} tailClass="tail" /></span>
         {chartboard.mine !== null  &&  <Delta value={entry.realDelta} outcome={(colorByRealDiff  ?  entry.realDelta  :  entry.delta)} scoreCap={scoreCap} markTie={! treatTieAsWin} />}
       </div>
       <ResultDetails unrolled={unrolled} resultStats={entry.resultStats} date={entry.date} score={entry.score} />

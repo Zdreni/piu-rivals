@@ -115,7 +115,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     [data.version, data.charts, data.bests, rivals, soloPlayer?.id, soloPlayer?.name, nonRivalSoloBests]);
 
   const allChartboards = useMemo(
-    ()  =>  buildChartboards(compared.charts, compared.bests, me.id, compared.rivals, scoreCap, { minLevel, maxLevel }),
+    ()  =>  buildChartboards(compared.charts, compared.bests, me.id, compared.rivals, scoreCap, { minLevel, maxLevel }, false),
     [compared, me.id, scoreCap, minLevel, maxLevel],
   );
 

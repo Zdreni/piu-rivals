@@ -1,11 +1,11 @@
 import { type RefObject, useLayoutEffect, useState } from 'react';
 
-// How a tab bar's tabs are laid out: on one line if they fit, otherwise stacked, their words over their counts, and
-//  with short words if even that doesn't fit. Whether they fit can only be measured, so the bar is laid out each way
-//  for a moment whenever its width or `deps` (its words and counts) change.
+// How a tab bar's tabs are laid out: on one line if they fit, otherwise stacked, their labels over their counts, and
+//  with short labels if even that doesn't fit. Whether they fit can only be measured, so the bar is laid out each way
+//  for a moment whenever its width or `deps` (its labels and counts) change.
 export type TabsFit = 'line' | 'stacked' | 'short';
 
-export const tabsClass = (fit: TabsFit)  =>  ({ line: '', stacked: ' stacked', short: ' stacked short-words' })[fit];
+export const tabsClass = (fit: TabsFit)  =>  ({ line: '', stacked: ' stacked', short: ' stacked short-labels' })[fit];
 
 
 export function useTabsFit(bar: RefObject<HTMLElement | null>, deps: unknown[]): TabsFit {
@@ -21,7 +21,7 @@ export function useTabsFit(bar: RefObject<HTMLElement | null>, deps: unknown[]):
 
     const measure = ()  => {
       const was = element.className;
-      element.classList.remove('stacked', 'short-words');
+      element.classList.remove('stacked', 'short-labels');
       element.classList.add('measuring');
 
       let nextFit: TabsFit = 'line';

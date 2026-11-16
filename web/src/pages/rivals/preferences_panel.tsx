@@ -6,7 +6,7 @@ import {
 
 // A label above a − value + row, and the title spelled out under them, unless `noHint`
 //  (a pair of steppers sharing one hint).
-function Stepper({ className, label, text, title, off, canLower, canRaise, lowerLabel, raiseLabel, onStep, noHint = false }: {
+function Stepper({ className, label, text, title, off, canLower, canRaise, lowerLabel, raiseLabel, onStep, noHint }: {
   className: string;
   label: string;
   text: string;
@@ -17,7 +17,7 @@ function Stepper({ className, label, text, title, off, canLower, canRaise, lower
   lowerLabel: string;
   raiseLabel: string;
   onStep: (step: number) => void;
-  noHint?: boolean;
+  noHint: boolean;
 }) {
   return (
     <div className={`stepper ${className}${(off  ?  ' off'  :  '')}`} title={title}>
@@ -70,6 +70,7 @@ export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChan
           lowerLabel="Lower score cap"
           raiseLabel="Raise score cap"
           onStep={(step)  =>  onChange({ scoreCap: clampScoreCap(scoreCap + step * SCORE_CAP_STEP) })}
+          noHint={false}
         />
         <Stepper
           className="np-minimal-rivals"
@@ -84,6 +85,7 @@ export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChan
           lowerLabel="Lower minimal rivals for np"
           raiseLabel="Raise minimal rivals for np"
           onStep={(step)  =>  onChange({ npMinimalRivals: clampNpMinimalRivals(npMinimalRivals + step) })}
+          noHint={false}
         />
         {/* The level range on one line, with one hint for both. */}
         <div className="level-range">

@@ -9,7 +9,7 @@ import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { foldChartboard, type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
 import { rivalsFolding } from '../../data/rivals_folding.ts';
-import { chartTier, STAT_WORDS, TABS, type TabId, TIER_STAT } from '../../data/stats.ts';
+import { CHART_OUTCOME_LABELS, chartTier, OUTCOME_BY_TAB, RESULT_OUTCOME_LABELS, TABS, type TabId } from '../../data/stats.ts';
 import { tabChartboards } from '../../data/tab_charts.ts';
 
 export interface HiddenGroup {
@@ -19,8 +19,8 @@ export interface HiddenGroup {
 
 
 const capitalize = (word: string)  =>  word[0]!.toUpperCase() + word.slice(1);
-// Tab words on phones.
-const SHORT_WORDS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
+// Short tab labels for phones.
+const SHORT_LABELS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
 
 // A card snoozed or woken fades out this long, then the cards and group titles after it move into its place.
 const LEAVE_MS = 200;
@@ -166,7 +166,7 @@ export function SelectedLevelCharts({
   const tabBar = useRef<HTMLDivElement>(null);
   const tabsFit = useTabsFit(tabBar, [tabs.map((id)  =>  `${id} ${tabNumber(id)}`).join()]);
   // Tabs are named after what their numbers count.
-  const tabWord = (id: TabId)  =>  STAT_WORDS[countBy][TIER_STAT[id]];
+  const tabLabel = (id: TabId)  =>  (countBy === 'charts'  ?  CHART_OUTCOME_LABELS  :  RESULT_OUTCOME_LABELS)[OUTCOME_BY_TAB[id]];
 
   // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses and non-matches,
   //  so it isn't offered where it would leave the card in place.
@@ -175,7 +175,7 @@ export function SelectedLevelCharts({
   //  cards are folded from the full chartboards, to list the rivals they need (see rivalsFolding).
   const listedGroups = useMemo(()  => {
     const fullChartboards = new Map(levelChartboards.map((cb)  =>  [cb.id, cb]));
-    const folding = rivalsFolding(tab, { countBy, treatTieAsWin, inMobileView });
+    const folding = rivalsFolding(tab, { countBy, treatTieAsWin, inMobileView, maximized: false });
     const fold = (chartboards: Chartboard[])  =>  chartboards.map((cb)  =>  foldChartboard(fullChartboards.get(cb.id)  ??  cb, folding));
     // The "Hidden" tab lists its charts group by group, each under a title.
     return (tab === 'hidden'
@@ -192,12 +192,14 @@ export function SelectedLevelCharts({
         myName={myName}
         unfoldedRivalCounts={unfoldedRivalCountsByChart.get(chartId)  ??  NO_UNFOLDED_RIVALS}
         onShow={(counts)  =>  setUnfoldedRivalCountsByChart(new Map(unfoldedRivalCountsByChart).set(chartId, counts))}
+        showGain={false}
         scoreCap={scoreCap}
         snoozesCheckedAt={snoozesCheckedAt}
         unrolledRowId={(unrolledRowId?.startsWith(`${chartId} `)  ?  unrolledRowId.slice(`${chartId} `.length)  :  null)}
         onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chartId} ${playerId}`))}
         canSnooze={canSnooze}
         menuIsOpen={menu === chartId}
+        maximized={false}
         onMenu={()  =>  setMenu((menu === chartId  ?  null  :  chartId))}
         onSnooze={(days)  =>  leave(chartId, days)}
         // A wake needs no undo: the card goes back to its tab at once.
@@ -230,9 +232,9 @@ export function SelectedLevelCharts({
       <div className={`tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist" aria-label="Score results">
         {tabs.map((id)  =>  (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={()  =>  onSelectTab(id)}>
-            {/* On phones, and wherever stacked tabs don't fit their words, the longer words are shortened, e.g. "Non-matched" to "NP". */}
-            <span className="tab-word">{capitalize(tabWord(id))}</span>
-            <span className="tab-word short">{SHORT_WORDS[tabWord(id)]  ??  capitalize(tabWord(id))}</span>
+            {/* On phones, and wherever stacked tabs don't fit their labels, the longer labels are shortened, e.g. "Non-matched" to "NP". */}
+            <span className="tab-label">{capitalize(tabLabel(id))}</span>
+            <span className="tab-label short">{SHORT_LABELS[tabLabel(id)]  ??  capitalize(tabLabel(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
             {flash?.tab === id  &&  <span key={flash.n} className="tab-flash" aria-hidden="true" onAnimationEnd={()  =>  setFlash(null)} />}
           </button>
@@ -241,7 +243,7 @@ export function SelectedLevelCharts({
       <ChartCardsGrid
         ref={bodyRef}
         role="tabpanel"
-        emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${tabWord(tab)} ${countBy} at this level.`  :  null)}
+        emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${tabLabel(tab)} ${countBy} at this level.`  :  null)}
         // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
         narrow={tab === 'not-played'}
         groups={listedGroups}

@@ -10,8 +10,7 @@ export interface ChartCardsGroup {
   foldedChartboards: FoldedChartboard[];
   // Given, the title is a button that rolls the cards up or unrolls them, like a folder; rolled up, they aren't drawn.
   //  Unrolled, the title stays at the top while the cards scroll under it.
-  onToggle?: () => void;
-  unrolled?: boolean;
+  folder?: { unrolled: boolean; onToggle: () => void };
   // A folder's note at the right end of its title, e.g. how many cards it holds.
   note?: string;
 }
@@ -20,11 +19,11 @@ export interface ChartCardsGroup {
 // The scrolling body of a score view: a grid of the groups' cards under their titles, or `emptyMessage`. A `narrow`
 //  grid fits more of the narrower cards without diffs in a row.
 // Titles have a data-flip key like the cards, so they move along with them (see SelectedLevelCharts).
-export function ChartCardsGrid({ ref, role, emptyMessage = null, narrow = false, groups, renderCard, footer }: {
+export function ChartCardsGrid({ ref, role, emptyMessage, narrow, groups, renderCard, footer }: {
   ref?: Ref<HTMLDivElement>;
   role?: string;
-  emptyMessage?: string | null;
-  narrow?: boolean;
+  emptyMessage: string | null;
+  narrow: boolean;
   groups: ChartCardsGroup[];
   renderCard: (foldedChartboard: FoldedChartboard) => ReactNode;
   footer?: ReactNode;
@@ -35,19 +34,19 @@ export function ChartCardsGrid({ ref, role, emptyMessage = null, narrow = false,
         ?  <div className="empty">{emptyMessage}</div>
         :  (
           <div className={`chart-grid${(narrow  ?  ' narrow'  :  '')}`}>
-            {groups.map(({ key, title, className, foldedChartboards, onToggle, unrolled = true, note })  =>  {
+            {groups.map(({ key, title, className, foldedChartboards, folder, note })  =>  {
               const titleClass = `group-title${(className  ?  ` ${className}`  :  '')}`;
               // A folder gets a box of its own, so its title sticks to the top only while its cards scroll under it.
-              if (onToggle)
+              if (folder)
                 return (
                   <div key={key} className="group-folder">
                     <h3 className={titleClass} data-flip={`group ${key}`}>
-                      <button className={`group-toggle${(unrolled  ?  ' unrolled'  :  '')}`} type="button" aria-expanded={unrolled} onClick={onToggle}>
+                      <button className={`group-toggle${(folder.unrolled  ?  ' unrolled'  :  '')}`} type="button" aria-expanded={folder.unrolled} onClick={folder.onToggle}>
                         {title}
                         {note  &&  <span className="group-note">{note}</span>}
                       </button>
                     </h3>
-                    {unrolled  &&  foldedChartboards.map(renderCard)}
+                    {folder.unrolled  &&  foldedChartboards.map(renderCard)}
                   </div>
                 );
 

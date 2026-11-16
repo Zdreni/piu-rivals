@@ -57,7 +57,7 @@ function HistoryView({ me }: { me: PlayerSummary }) {
   const days = useMemo(()  => {
     const foldedChartboardsByDay = new Map<string | null, FoldedChartboard[]>();
     for (const chartboard of chartboards) {
-      const foldedChartboard = foldChartboard(chartboard, historyRivalsFolding(chartTier(chartboard)));
+      const foldedChartboard = foldChartboard(chartboard, historyRivalsFolding(chartTier(chartboard, true)));
       foldedChartboardsByDay.set(chartboard.myDate, [...foldedChartboardsByDay.get(chartboard.myDate)  ??  [], foldedChartboard]);
     }
 
@@ -82,6 +82,7 @@ function HistoryView({ me }: { me: PlayerSummary }) {
         snoozesCheckedAt={0}
         menuIsOpen={false}
         leaving={false}
+        maximized={false}
         unrolledRowId={(unrolledRowId?.startsWith(`${chartId} `)  ?  unrolledRowId.slice(`${chartId} `.length)  :  null)}
         onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chartId} ${playerId}`))}
         onMenu={()  =>  {}}
@@ -99,14 +100,14 @@ function HistoryView({ me }: { me: PlayerSummary }) {
       <StatusToast status={status} />
       <ChartCardsGrid
         emptyMessage={(chartboards.length  ?  null  :  data.ready  ?  'No scores of yours yet. They show up once you are scraped.'  :  'Loading scores…')}
+        narrow={false}
         groups={[...days].slice(0, shownDayCount).map(([day, dayFoldedChartboards])  =>  ({
           key: day  ??  '',
           title: dayTitle(day),
           note: (dayFoldedChartboards.length === 1  ?  '1 result'  :  `${dayFoldedChartboards.length} results`),
           className: 'day',
           foldedChartboards: dayFoldedChartboards,
-          unrolled: isUnrolled(day),
-          onToggle: ()  =>  setUnrolledByDay(new Map(unrolledByDay).set(day, ! isUnrolled(day))),
+          folder: { unrolled: isUnrolled(day), onToggle: ()  =>  setUnrolledByDay(new Map(unrolledByDay).set(day, ! isUnrolled(day))) },
         }))}
         renderCard={renderCard}
         footer={days.size > shownDayCount  &&  (

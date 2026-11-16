@@ -66,7 +66,7 @@ export const displayName = (name: string)  =>  name.replace(/\s*#\d{4}$/, '');
 
 
 // Positive = you're ahead, same sign convention as PIU Scores. Scores above the cap compare as equal to it.
-export const delta = (mine: number | null, theirs: number, cap = MAX_SCORE_CAP)  =>
+export const delta = (mine: number | null, theirs: number, cap: number)  =>
   (mine === null  ?  null  :  Math.min(mine, cap) - Math.min(theirs, cap));
 
 
@@ -96,7 +96,7 @@ export function buildChartboards(
   rivals: { id: string; name: string }[],
   scoreCap: number,
   levels: LevelRange,
-  ownCharts = false,
+  ownCharts: boolean,
 ): Chartboard[] {
   const ownBests = bests.get(ownPlayerId);
   const chartIds = new Set<number>((ownCharts  ?  ownBests?.keys()  :  []));
@@ -117,7 +117,7 @@ export function buildChartboards(
       const best = bests.get(rival.id)?.get(chartId);
       return (best
         ?  [{ player: rival.name, playerId: rival.id, score: best.score, date: best.bestPlayedOn, resultStats: resultStatsOrNull(best),
-          delta: delta(mine, best.score, scoreCap), realDelta: delta(mine, best.score) }]
+          delta: delta(mine, best.score, scoreCap), realDelta: delta(mine, best.score, MAX_SCORE_CAP) }]
         :  []);
     }).sort((a, b)  =>  b.score - a.score);
 

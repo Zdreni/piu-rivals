@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { formatNumber } from '../../util.ts';
-import { StatWords } from './stat_words.tsx';
-import { type Counts, STAT_WORDS } from '../../data/stats.ts';
+import { OutcomeStats } from './outcome_stats.tsx';
+import { CHART_OUTCOME_LABELS, type Counts, RESULT_OUTCOME_LABELS } from '../../data/stats.ts';
 
 export interface ListedPlayer {
   playerId: string;
@@ -84,16 +84,16 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, tot
             </div>
             {! me  &&  (
               <div className="rival-stats" title={statsTip}>
-                <StatWords counts={stats} separator=" · " treatTieAsWin={false} showHidden />
+                <OutcomeStats counts={stats} labels={RESULT_OUTCOME_LABELS} treatTieAsWin={false} showHidden />
               </div>
             )}
             {totals  &&  (
               <>
                 <div className="rival-stats" title={resultsTip}>
-                  <span className="stats-label">Results:</span> <StatWords counts={totals.results} separator=" · " treatTieAsWin={treatTieAsWin} />
+                  <span className="stats-label">Results:</span> <OutcomeStats counts={totals.results} labels={RESULT_OUTCOME_LABELS} treatTieAsWin={treatTieAsWin} showHidden={false} />
                 </div>
                 <div className="rival-stats" title={chartsTip}>
-                  <span className="stats-label">Charts:</span> <StatWords counts={totals.charts} separator=" · " words={STAT_WORDS.charts} />
+                  <span className="stats-label">Charts:</span> <OutcomeStats counts={totals.charts} labels={CHART_OUTCOME_LABELS} treatTieAsWin showHidden={false} />
                 </div>
               </>
             )}

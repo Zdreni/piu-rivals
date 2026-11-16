@@ -205,6 +205,7 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
         myName={myName}
         unfoldedRivalCounts={unfoldedRivalCounts}
         onShow={setUnfoldedRivalCounts}
+        showGain={false}
         scoreCap={scoreCap}
         canSnooze={canSnooze}
         snoozesCheckedAt={snoozesCheckedAt}

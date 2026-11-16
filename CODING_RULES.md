@@ -130,6 +130,18 @@ container.querySelector('.close').addEventListener('click', close);
 Keep the variable when the element is used again later, such as in a render function.
 
 
+## Default values
+
+Give a parameter or prop a default value only when callers use that value far more often than any
+other, such as an ascending sort. When callers pass each value about as often, as with
+`treatTieAsWin` for `OutcomeStats`, make it required: each caller then says which one it means,
+and a new caller can't get the wrong one by leaving it out.
+
+```tsx
+<OutcomeStats counts={totals.results} labels={RESULT_OUTCOME_LABELS} treatTieAsWin={treatTieAsWin} showHidden={false} />
+```
+
+
 ## Module size
 
 Keep a module under roughly 300 lines and 10 KB. When a module grows past that, check

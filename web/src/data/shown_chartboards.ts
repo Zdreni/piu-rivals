@@ -35,12 +35,12 @@ export function shownChartboards(allChartboards: Chartboard[],
 
   // Counted by results, the hidden charts keep only their hidden results.
   const hiddenResultsOrNull = (chartboard: Chartboard)  =>
-    (countBy === 'charts'  ?  chartboard  :  withRivalsOrNull(chartboard, (r)  =>  resultTab(chartboard, r) === 'hidden'));
+    (countBy === 'charts'  ?  chartboard  :  withRivalsOrNull(chartboard, (r)  =>  resultTab(chartboard, r, true) === 'hidden'));
 
   // Charts the score cap hides, weighted by the real diffs so the closest calls come first; snoozed ones are only
   //  listed as snoozed, the soonest to wake first.
   const capHiddenChartboards = chartboards
-    .filter((cb)  =>  cb.snoozedUntil === null  &&  (countBy === 'results'  ||  chartTier(cb) === 'hidden'))
+    .filter((cb)  =>  cb.snoozedUntil === null  &&  (countBy === 'results'  ||  chartTier(cb, true) === 'hidden'))
     .map(hiddenResultsOrNull)
     .filter((cb): cb is Chartboard  =>  cb !== null)
     .map((cb)  =>  ({ ...cb, weight: targetWeight(cb.rivals.map((r)  =>  r.realDelta)) }));

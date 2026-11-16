@@ -1,5 +1,6 @@
 import type { Chartboard, RivalResult } from './model.ts';
 import type { OpensFrom, RivalsFolding } from './rivals_folding.ts';
+import type { Outcome } from './stats.ts';
 
 // A score in a chart's card: a rival's, or yours.
 export type Entry = (RivalResult & { me?: false }) | { me: true; score: number };
@@ -20,7 +21,7 @@ export interface FoldedChartboard {
   chartboard: Chartboard;
   items: RivalsListItem[];
   colorByRealDiff: boolean;
-  dimWon: boolean;
+  dimmedOutcomes: Outcome[];
   treatTieAsWin: boolean;
 }
 
@@ -66,7 +67,7 @@ export function foldChartboard(chartboard: Chartboard, folding: RivalsFolding): 
     ...foldBetween(entries.slice(aboveRivalCount + 1), below.closestCount, below.lowestCount, 'below', below.opensFrom),
   ];
 
-  return { chartboard, items, colorByRealDiff: folding.colorByRealDiff, dimWon: folding.dimWon, treatTieAsWin: folding.treatTieAsWin };
+  return { chartboard, items, colorByRealDiff: folding.colorByRealDiff, dimmedOutcomes: folding.dimmedOutcomes, treatTieAsWin: folding.treatTieAsWin };
 }
 
 

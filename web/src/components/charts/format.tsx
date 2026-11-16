@@ -2,7 +2,7 @@ import { formatNumber } from '../../util.ts';
 
 
 // The last three digits are drawn smaller and dimmer, e.g. 997 + smaller ',458'.
-export function Score({ value, tailClass = 'tail' }: { value: number | null; tailClass?: string }) {
+export function Score({ value, tailClass }: { value: number | null; tailClass: string }) {
   const text = formatNumber(value);
   const i = text.lastIndexOf(',');
   return (i === -1  ?  <>{text}</>  :  <>{text.slice(0, i)}<span className={tailClass}>{text.slice(i)}</span></>);
@@ -19,11 +19,11 @@ export function timeLeft(ms: number) {
 // The colour follows `outcome` (the capped diff); a loss the cap turns into a tie gets a muted red and a tooltip
 //  naming `scoreCap`, while a win stays a win. With `markTie`, a true tie gets the tie colour.
 // Signed from the rival's side: + when the rival is ahead and − when you are.
-export function Delta({ value, outcome = value, scoreCap = null, markTie = false }: {
+export function Delta({ value, outcome, scoreCap, markTie }: {
   value: number | null;
-  outcome?: number | null;
-  scoreCap?: number | null;
-  markTie?: boolean;
+  outcome: number | null;
+  scoreCap: number;
+  markTie: boolean;
 }) {
   if (value === null)
     return <span />;
@@ -34,7 +34,7 @@ export function Delta({ value, outcome = value, scoreCap = null, markTie = false
   const tone = outcome  ||  value;
   const capped = ! outcome  &&  value < 0;
   const className = (tone > 0  ?  'pos'  :  tone < 0  ?  'neg'  :  markTie  ?  'tie'  :  '') + (capped  ?  ' muted'  :  '');
-  const capText = (scoreCap === null  ?  'score cap'  :  `${scoreCap / 1000}k score cap`);
+  const capText = `${scoreCap / 1000}k score cap`;
   const title = (capped  ?  `Both scores ≥ ${capText}, so this loss is hidden`  :  undefined);
   const abs = Math.abs(value);
   const sign = <span className="delta-sign">{value > 0  ?  '−'  :  '+'}</span>;

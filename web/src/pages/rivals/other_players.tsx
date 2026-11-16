@@ -2,11 +2,11 @@ import type { ListedPlayer, PlayerSummary } from '@piu-rivals/shared';
 import { type MouseEvent, useMemo, useState } from 'react';
 import { type OtherBests, useOtherBests } from '../../data/other_players.ts';
 import { formatNumber } from '../../util.ts';
-import { StatWords } from './stat_words.tsx';
+import { OutcomeStats } from './outcome_stats.tsx';
 import { buildChartboards, displayName, type PlayerBests } from '../../data/model.ts';
 import type { LevelRange } from '../../data/preferences.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
-import { type Counts, NO_COUNTS, playerCounts } from '../../data/stats.ts';
+import { type Counts, NO_COUNTS, playerCounts, RESULT_OUTCOME_LABELS } from '../../data/stats.ts';
 
 // The Others tab lists this many players above you and below you at first; each click on a "more" button lists
 //  SHOW_STEP more.
@@ -17,7 +17,7 @@ const SHOW_STEP = 10;
 function otherStats(otherBests: OtherBests, playerId: string, me: string, myBests: PlayerBests | undefined, scoreCap: number,
   levelRange: LevelRange): Counts {
   const bests = new Map([[me, myBests  ??  new Map()], [playerId, otherBests.bests]]);
-  const chartboards = buildChartboards(otherBests.charts, bests, me, [{ id: playerId, name: playerId }], scoreCap, levelRange);
+  const chartboards = buildChartboards(otherBests.charts, bests, me, [{ id: playerId, name: playerId }], scoreCap, levelRange, false);
   return playerCounts(chartboards).get(playerId)  ??  NO_COUNTS;
 }
 
@@ -50,17 +50,17 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
     ?  otherStats(openBests, openPlayerId!, me.id, myBests, scoreCap, levelRange)
     :  openBests), [openBests, openPlayerId, me.id, myBests, scoreCap, levelRange.minLevel, levelRange.maxLevel]);
 
-  const words = query.trim().toLowerCase();
+  const searchText = query.trim().toLowerCase();
   const otherPlayers: (PlayerSummary | ListedPlayer)[] = [players?.find((p)  =>  p.id === me.id)  ??  me,
     ...(players  ??  []).filter((p)  =>  p.id !== me.id)]
     .filter((p)  =>  p.id === me.id
-      ||  (! rivalIds.has(p.id)  &&  (! words  ||  (p.name  ??  p.id).toLowerCase().includes(words))))
+      ||  (! rivalIds.has(p.id)  &&  (! searchText  ||  (p.name  ??  p.id).toLowerCase().includes(searchText))))
     .sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
       ||  (a.name  ??  a.id).localeCompare(b.name  ??  b.id, undefined, { sensitivity: 'base' }));
 
   const meAt = otherPlayers.findIndex((p)  =>  p.id === me.id);
-  const fromIndex = (words  ?  0  :  Math.max(0, meAt - listedPlayerCountAbove));
-  const toIndex = (words  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + listedPlayerCountBelow));
+  const fromIndex = (searchText  ?  0  :  Math.max(0, meAt - listedPlayerCountAbove));
+  const toIndex = (searchText  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + listedPlayerCountBelow));
 
   return (
     <>
@@ -78,7 +78,7 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
         {error  &&  <div className="rival-hint error">{error}</div>}
         {! error  &&  ! players  &&  <div className="muted rival-hint">Loading players…</div>}
         {players  &&  otherPlayers.length === 1  &&  (
-          <div className="muted rival-hint">{words  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
+          <div className="muted rival-hint">{searchText  ?  'No such player. An admin can register them.'  :  'No other players.'}</div>
         )}
         {fromIndex > 0  &&  (
           <button className="show-others top" type="button" onClick={()  =>  setListedPlayerCountAbove(listedPlayerCountAbove + SHOW_STEP)}>
@@ -143,7 +143,7 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
                           {openStats === null  &&  'Comparing…'}
                           {typeof openStats === 'string'  &&  <span className="error">{openStats}</span>}
                           {openStats !== null  &&  typeof openStats === 'object'  &&  (
-                            <StatWords counts={openStats} separator=" · " treatTieAsWin={false} showHidden />
+                            <OutcomeStats counts={openStats} labels={RESULT_OUTCOME_LABELS} treatTieAsWin={false} showHidden />
                           )}
                         </div>
                       )}
