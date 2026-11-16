@@ -462,3 +462,19 @@ test('signing out ends the session', { skip }, async ()  => {
   assert.equal((await call('POST', '/auth/logout', { as: 'player@example.com' })).status, 200);
   assert.equal((await call('GET', '/me', { as: 'player@example.com' })).status, 401);
 });
+
+
+test('a best\'s improvement is its rise over the best of the days before, adding up a day\'s tries', { skip }, async ()  => {
+  const trainee = '44444444-4444-4444-8444-444444444444';
+  await scrapedSession(trainee, 'Mon 1', '2026-10-01', [play('Gamma', 800000)]);
+  await scrapedSession(trainee, 'Tue 2', '2026-10-02', [play('Gamma', 820000)]);
+  // Stored newest first, as piuscores lists them.
+  await scrapedSession(trainee, 'Tue 3', '2026-10-02', [play('Gamma', 830000), play('Gamma', 810000)]);
+
+  const best = await db.selectFrom('best_results').select(['improvement', 'tries'])
+    .where('player_id', '=', (await playerIdOf(trainee))!)
+    .executeTakeFirstOrThrow();
+
+  assert.equal(best.tries, 4);
+  assert.equal(best.improvement, 30000);
+});

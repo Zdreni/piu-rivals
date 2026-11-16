@@ -4,9 +4,11 @@ import type { BestResult, Chart } from '@piu-rivals/shared';
 //  It's a cache of public scores, shared by everyone signed in on this browser; anything can be loaded again.
 // A new DB_VERSION drops everything stored, e.g. after the stored shapes change.
 const DB_NAME = 'piu-rivals-cache';
-// 2: charts have songShortTitle. 5: bests have improvement (3 and 4 were only used in development).
+// 2: charts have songShortTitle.
+// 5: bests have improvement (3 and 4 were only used in development).
+// 6: bests have playId.
 // Never lowered: a browser that has a higher version can't open a lower one.
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // When the player's best results were last downloaded: a serverTime to pass as `since` next time.
 export interface SyncMark {

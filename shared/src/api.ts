@@ -92,6 +92,8 @@ export interface Chart {
 export interface BestResult {
   playerId: string;
   chartId: number;
+  // The best try's id; ids rise in the order plays are stored.
+  playId: number;
   score: number;
   // False when the best try was a broken play.
   passed: boolean;

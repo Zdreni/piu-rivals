@@ -113,8 +113,9 @@ async function chartIds(trx: Trx, plays: ParsedPlay[]): Promise<Map<string, numb
 
 
 // Recomputes the player's best results on `chartIdList`. The best try is the highest score,
-//  the earliest one on ties; its improvement is how much it rose over the highest earlier try, by
-//  play order. Returns how many best scores were raised or added.
+//  the earliest one on ties; its improvement is how much it rose over the highest try of the days
+//  before it. So a day's gains add up whatever order its tries were stored in, as piuscores lists
+//  a session's tries newest first. Returns how many best scores were raised or added.
 async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): Promise<number> {
   if (! chartIdList.length)
     return 0;
@@ -125,15 +126,20 @@ async function updateBests(trx: Trx, playerId: number, chartIdList: number[]): P
     SELECT chart_id, id AS play_id, score, IF(score > previous_best, score - previous_best, NULL) AS improvement,
       last_played_on, tries
     FROM (
-      SELECT id, chart_id, score, played_on,
-        ROW_NUMBER() OVER (PARTITION BY chart_id ORDER BY score DESC, played_on IS NULL, played_on, id) AS place,
-        MAX(score) OVER (PARTITION BY chart_id ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_best,
-        MAX(played_on) OVER (PARTITION BY chart_id) AS last_played_on,
-        COUNT(*) OVER (PARTITION BY chart_id) AS tries
-      FROM plays
-      WHERE player_id = ${playerId} AND chart_id IN (${sql.join(chartIdList)})
-    ) ranked
-    WHERE place = 1`.execute(trx);
+      SELECT ranked.*,
+        (SELECT MAX(earlier.score) FROM plays earlier
+          WHERE earlier.player_id = ${playerId} AND earlier.chart_id = ranked.chart_id
+            AND earlier.played_on < ranked.played_on) AS previous_best
+      FROM (
+        SELECT id, chart_id, score, played_on,
+          ROW_NUMBER() OVER (PARTITION BY chart_id ORDER BY score DESC, played_on IS NULL, played_on, id) AS place,
+          MAX(played_on) OVER (PARTITION BY chart_id) AS last_played_on,
+          COUNT(*) OVER (PARTITION BY chart_id) AS tries
+        FROM plays
+        WHERE player_id = ${playerId} AND chart_id IN (${sql.join(chartIdList)})
+      ) ranked
+      WHERE place = 1
+    ) best`.execute(trx);
 
   const storedBests = new Map((await trx.selectFrom('best_results as b')
     .innerJoin('plays as p', 'p.id', 'b.play_id')

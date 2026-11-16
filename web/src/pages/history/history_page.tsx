@@ -49,7 +49,7 @@ function HistoryView({ me }: { me: PlayerSummary }) {
     ()  =>  buildChartboards(data.charts, data.bests, me.id, shownRivals.map((r)  =>  ({ id: r.id, name: r.name  ??  r.id })),
       scoreCap, { minLevel: MIN_LEVEL, maxLevel: MAX_LEVEL }, true)
       .filter((cb)  =>  ! cb.unplayed)
-      .sort((a, b)  =>  (b.myDate  ??  '').localeCompare(a.myDate  ??  '')  ||  a.track.localeCompare(b.track)),
+      .sort((a, b)  =>  (b.myDate  ??  '').localeCompare(a.myDate  ??  '')  ||  (a.myPlayId  ??  0) - (b.myPlayId  ??  0)),
     [data.version, data.charts, data.bests, me.id, shownRivals, scoreCap],
   );
 

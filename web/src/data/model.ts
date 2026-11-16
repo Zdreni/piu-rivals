@@ -46,6 +46,8 @@ export interface Chartboard {
   // The day you set your best score, if known, and its result stats.
   myDate: string | null;
   myResultStats: ResultStats | null;
+  // Your best try's id (see BestResult); null when you have no score.
+  myPlayId: number | null;
   // How much your best score rose over your previous one; null for your first score on the chart.
   myImprovement: number | null;
   // Best score first.
@@ -129,6 +131,7 @@ export function buildChartboards(
       mine,
       myDate: myBest?.bestPlayedOn  ??  null,
       myResultStats: (myBest  ?  resultStatsOrNull(myBest)  :  null),
+      myPlayId: myBest?.playId  ??  null,
       myImprovement: myBest?.improvement  ??  null,
       rivals: rivalResults,
       unplayed: mine === null,
