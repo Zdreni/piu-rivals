@@ -184,7 +184,8 @@ export function ChartCard({
     const id = (entry.me  ?  ME  :  entry.playerId);
     return (
       <ResultItem key={id} chartboard={chartboard} entry={entry} myName={myName} unrolled={unrolledRowId === id} colorByRealDiff={colorByRealDiff}
-        dimmedOutcomes={dimmedOutcomes} treatTieAsWin={treatTieAsWin} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)} />
+        dimmedOutcomes={dimmedOutcomes} treatTieAsWin={treatTieAsWin} showGain={showGain} scoreCap={scoreCap} onToggle={toggler(id)}
+        onUnroll={()  =>  onUnroll(id)} />
     );
   };
 
