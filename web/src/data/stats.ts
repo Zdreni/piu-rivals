@@ -21,7 +21,7 @@ export const TABS: TabId[] = ['rivals-win', 'not-played', 'you-win', 'tie', 'hid
 export const OUTCOME_BY_TAB = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win', tie: 'tie', hidden: 'hidden' } as const;
 
 // The tab of each outcome.
-const TAB_BY_OUTCOME: Record<Outcome, TabId> = { lose: 'rivals-win', unplayed: 'not-played', win: 'you-win', tie: 'tie', hidden: 'hidden' };
+export const TAB_BY_OUTCOME: Record<Outcome, TabId> = { lose: 'rivals-win', unplayed: 'not-played', win: 'you-win', tie: 'tie', hidden: 'hidden' };
 
 
 // How a rival's result compares with yours, judged on the real scores. Only a loss is then checked against the

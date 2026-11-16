@@ -196,7 +196,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           countBy={countBy}
           treatTieAsWin={treatTieAsWin}
           sidePanel={(sidePanelIsOpen  ?  sidePanel  :  null)}
-          onSelect={(level)  =>  changeUi({ selectedLevel: level })}
+          onSelect={(level, tab)  =>  changeUi({ selectedLevel: level, ...(tab  &&  { selectedTab: tab }) })}
           onToggleSide={toggleSide}
         />
         <SelectedLevelCharts

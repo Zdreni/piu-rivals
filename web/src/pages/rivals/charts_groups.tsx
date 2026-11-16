@@ -1,8 +1,9 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import type { SidePanel } from './side_panel_control.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
-import { CHART_OUTCOME_LABELS, type Counts, levelNum, levelStats, levelType, RESULT_OUTCOME_LABELS, SIDE_TYPES, sortedLevels } from '../../data/stats.ts';
+import { CHART_OUTCOME_LABELS, type Counts, levelNum, levelStats, levelType, RESULT_OUTCOME_LABELS, SIDE_TYPES, sortedLevels, TAB_BY_OUTCOME,
+  type TabId } from '../../data/stats.ts';
 
 type Stats = Record<string, { charts: Counts; results: Counts }>;
 
@@ -12,6 +13,7 @@ const plural = (n: number, word: string)  =>  `${n} ${word}${(n === 1  ?  ''  : 
 
 // One level's bar, split by results, wins next to the level number. The not played segment grows with its count to
 //  the power of 1 / 1.5, so many unplayed charts don't crowd out the rest.
+// A click on the level already selected also passes `onSelect` the tab of the segment clicked.
 function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, onSelect }: {
   level: string | undefined;
   side: 'single' | 'double';
@@ -20,7 +22,7 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
   treatTieAsWin: boolean;
   selected: boolean;
   heat: (n: number) => string;
-  onSelect: (level: string) => void;
+  onSelect: (level: string, tab: TabId | null) => void;
 }) {
   if (! level)
     return <span className={`level-bar ${side} placeholder`} aria-hidden="true" />;
@@ -34,8 +36,9 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
   const labelWidth = (label: number | string)  =>
     (String(label).length  ?  `${String(label).length} * var(--digit, 1ch) + 2 * min(var(--label-pad, 6px), 5%)`  :  '0px');
 
-  const renderSegment = (className: string, n: number, { label = n, style = {}, grow = n }: { label?: number | string; style?: CSSProperties; grow?: number } = {})  =>
-    (n  ?  <span className={className} style={{ flexGrow: grow, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
+  const renderSegment = (outcome: keyof Counts, className: string, n: number,
+    { label = n, style = {}, grow = n }: { label?: number | string; style?: CSSProperties; grow?: number } = {})  =>
+    (n  ?  <span className={className} data-outcome={outcome} style={{ flexGrow: grow, minWidth: `calc(max(5%, ${labelWidth(label)}) + var(--overlap))`, ...style }}>
       {label}
     </span>  :  null);
 
@@ -44,6 +47,12 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
 
   const tieLine = (treatTieAsWin  ?  ''  :  `\n${plural(byResults.tie, `${RESULT_OUTCOME_LABELS.tie} result`)}`);
 
+  // A keyboard click (detail 0) has no segment.
+  const select = (event: MouseEvent<HTMLButtonElement>)  => {
+    const outcome = (event.target as HTMLElement).closest<HTMLElement>('[data-outcome]')?.dataset.outcome as keyof Counts | undefined;
+    onSelect(level, ((selected  &&  event.detail > 0  &&  outcome)  ?  TAB_BY_OUTCOME[outcome]  :  null));
+  };
+
   return (
     <button
       className={`level-bar ${side}${(selected  ?  ' on'  :  '')}`}
@@ -51,14 +60,14 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
       role="radio"
       aria-checked={selected}
       title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tieLine}${tipLine('win')}`}
-      onClick={()  =>  onSelect(level)}
+      onClick={select}
     >
       <span className="level-segs">
-        {renderSegment('win', counts.win)}
-        {! treatTieAsWin  &&  renderSegment('tie', counts.tie)}
-        {renderSegment('unplayed', counts.unplayed, { grow: counts.unplayed ** (1 / 1.5) })}
-        {renderSegment('hidden-loss', counts.hidden, { label: '' })}
-        {renderSegment('lose', counts.lose, { style: { '--heat': heat(counts.lose) } as CSSProperties })}
+        {renderSegment('win', 'win', counts.win)}
+        {! treatTieAsWin  &&  renderSegment('tie', 'tie', counts.tie)}
+        {renderSegment('unplayed', 'unplayed', counts.unplayed, { grow: counts.unplayed ** (1 / 1.5) })}
+        {renderSegment('hidden', 'hidden-loss', counts.hidden, { label: '' })}
+        {renderSegment('lose', 'lose', counts.lose, { style: { '--heat': heat(counts.lose) } as CSSProperties })}
       </span>
     </button>
   );
@@ -73,7 +82,7 @@ export function ChartsGroups({ chartboards, selectedLevel, countBy, treatTieAsWi
   countBy: CountBy;
   treatTieAsWin: boolean;
   sidePanel: SidePanel | null;
-  onSelect: (level: string) => void;
+  onSelect: (level: string, tab: TabId | null) => void;
   onToggleSide: (panel: SidePanel) => void;
 }) {
   const levels = sortedLevels(chartboards);
