@@ -15,6 +15,8 @@ const MIN_LEVEL_LABEL_WIDTH_PX = 22;
 const POINT_RADIUS_PX = 3;
 // The hover box keeps this far from the hovered level's line.
 const HOVER_GAP_PX = 10;
+// An average of fewer charts than this is less sure, so it's drawn fainter, in proportion to its chart count.
+const MIN_OPAQUE_CHARTS = 5;
 
 export interface GraphSeries {
   name: string;
@@ -25,39 +27,52 @@ export interface GraphSeries {
 
 const scoreLabel = (score: number)  =>  `${score / 1000}k`;
 
+// A level's average on the graph, and how opaque it's drawn.
+interface GraphPoint {
+  x: number;
+  y: number;
+  opacity: number;
+}
+
 const scoreGridLines = Array.from({ length: (MAX_GRAPH_SCORE - MIN_GRAPH_SCORE) / SCORE_GRID_STEP + 1 },
   (_, i)  =>  MIN_GRAPH_SCORE + i * SCORE_GRID_STEP);
 
 
-// The levels in a row that `levelAverages` has, each as its points.
-function pointRuns(levels: number[], levelAverages: Map<number, LevelAverage>, pointAt: (index: number, score: number) => [number, number]) {
-  const runs: [number, number][][] = [];
-  let run: [number, number][] = [];
-  levels.forEach((level, i)  => {
+// A point for each of `levels` that `levelAverages` has; levels without one are left out, so the line joins the points
+//  around them.
+const graphPoints = (levels: number[], levelAverages: Map<number, LevelAverage>, pointAt: (index: number, score: number) => [number, number])  =>
+  levels.flatMap((level, i): GraphPoint[]  => {
     const levelAverage = levelAverages.get(level);
-    if (levelAverage) {
-      run.push(pointAt(i, levelAverage.average));
-      return;
-    }
+    if (! levelAverage)
+      return [];
 
-    if (run.length)
-      runs.push(run);
-
-    run = [];
+    const [x, y] = pointAt(i, levelAverage.average);
+    return [{ x, y, opacity: Math.min(1, levelAverage.chartCount / MIN_OPAQUE_CHARTS) }];
   });
 
-  if (run.length)
-    runs.push(run);
 
-  return runs;
-}
-
-
-const linePath = (points: [number, number][])  =>  points.map(([x, y], i)  =>  `${(i  ?  'L'  :  'M')}${x},${y}`).join('');
+const linePath = (points: GraphPoint[])  =>  points.map(({ x, y }, i)  =>  `${(i  ?  'L'  :  'M')}${x},${y}`).join('');
 
 // The area between `points` and `bottomY`.
-const areaPath = (points: [number, number][], bottomY: number)  =>
-  `${linePath(points)}L${points.at(-1)![0]},${bottomY}L${points[0]![0]},${bottomY}Z`;
+const areaPath = (points: GraphPoint[], bottomY: number)  =>
+  `${linePath(points)}L${points.at(-1)!.x},${bottomY}L${points[0]!.x},${bottomY}Z`;
+
+
+// The line through `points`, each segment fading from one end's opacity to the other's. `gradientIdPrefix` keeps its
+//  segments' gradients apart from other lines'.
+const renderLine = (points: GraphPoint[], gradientIdPrefix: string)  =>  points.slice(1).map((point, i)  => {
+  const previous = points[i]!;
+  const gradientId = `${gradientIdPrefix}-${point.x}`;
+  return (
+    <g key={point.x}>
+      <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={previous.x} y1={previous.y} x2={point.x} y2={point.y}>
+        <stop offset="0" stopOpacity={previous.opacity} />
+        <stop offset="1" stopOpacity={point.opacity} />
+      </linearGradient>
+      <line className="score-graph-line" x1={previous.x} y1={previous.y} x2={point.x} y2={point.y} stroke={`url(#${gradientId})`} />
+    </g>
+  );
+});
 
 
 // A graph of the average best score at each of `levels` (one chart type's), one line for each of `seriesList`, with the
@@ -136,14 +151,14 @@ export function ScoreGraph({ title, levels, seriesList }: { title: string; level
               <line className="score-graph-crosshair" x1={levelX(hoveredIndex)} x2={levelX(hoveredIndex)} y1={PLOT_MARGINS_PX.top} y2={plotBottom} />
             )}
             {seriesList.map((series)  => {
-              const runs = pointRuns(levels, series.levelAverages, pointAt);
+              const points = graphPoints(levels, series.levelAverages, pointAt);
               const seriesClass = (series.isMine  ?  'mine'  :  'theirs');
               return (
                 <g key={seriesClass} className={`score-graph-series ${seriesClass}`}>
-                  {series.isMine  &&  runs.map((run, i)  =>  <path key={i} fill={`url(#${gradientId})`} d={areaPath(run, plotBottom)} />)}
-                  {runs.map((run, i)  =>  <path key={i} className="score-graph-line" d={linePath(run)} />)}
-                  {runs.flat().map(([x, y])  =>  (
-                    <circle key={x} className="score-graph-point" cx={x} cy={y} r={POINT_RADIUS_PX} />
+                  {series.isMine  &&  points.length > 0  &&  <path fill={`url(#${gradientId})`} d={areaPath(points, plotBottom)} />}
+                  {renderLine(points, `${gradientId}-${seriesClass}`)}
+                  {points.map(({ x, y, opacity })  =>  (
+                    <circle key={x} className="score-graph-point" cx={x} cy={y} r={POINT_RADIUS_PX} opacity={opacity} />
                   ))}
                 </g>
               );

@@ -13,8 +13,9 @@
 .score-graph-fill-top { stop-color: var(--mine); stop-opacity: .35; }
 .score-graph-fill-bottom { stop-color: var(--mine); stop-opacity: .04; }
 .score-graph-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.score-graph-series.mine .score-graph-line { stroke: var(--mine); }
-.score-graph-series.theirs .score-graph-line { stroke: var(--theirs); }
+/* Each segment of a line is stroked with its own gradient (see renderLine), in its series' colour. */
+.score-graph-series.mine stop { stop-color: var(--mine); }
+.score-graph-series.theirs stop { stop-color: var(--theirs); }
 /* Points keep a ring of the background where they cross the other line. */
 .score-graph-point { stroke: #14201A; stroke-width: 1; }
 .score-graph-series.mine .score-graph-point { fill: var(--mine); }
