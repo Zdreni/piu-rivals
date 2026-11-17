@@ -2,6 +2,7 @@ import type { SnoozeDays } from '@piu-rivals/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChartCard } from './chart_card.tsx';
+import { useCloseOnBack } from '../close_on_back.ts';
 import { REDUCED_MOTION, useMobileView } from '../media.ts';
 import { type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
 
@@ -23,9 +24,6 @@ const clipFrom = (from: DOMRect, to: DOMRect)  =>
   `inset(${Math.max(0, from.top - to.top)}px ${Math.max(0, to.right - from.right)}px ${Math.max(0, to.bottom - from.bottom)}px ${Math.max(0, from.left - to.left)}px round 8px)`;
 
 const CLIP_NONE = 'inset(0 round 8px)';
-
-// How many maximized cards are open (see their back button step).
-let openCardCount = 0;
 
 
 // A chart's card maximized over the page: it grows out of its card in the grid (`source`), and shrinks back into it
@@ -179,22 +177,7 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
     };
   }, []);
 
-  // The back button (on phones, mostly) closes it rather than leaving the page: opening it adds a step to the
-  //  browser's history, which closing it any other way takes back.
-  useEffect(()  => {
-    openCardCount++;
-    if (! window.history.state?.maximized)
-      window.history.pushState({ ...window.history.state, maximized: true }, '');
-
-    const back = ()  =>  close.current();
-    window.addEventListener('popstate', back);
-    return ()  => {
-      openCardCount--;
-      window.removeEventListener('popstate', back);
-      // A moment later, so a card opened again at once (as React's strict mode does) keeps its step.
-      window.setTimeout(()  =>  openCardCount === 0  &&  window.history.state?.maximized  &&  window.history.back());
-    };
-  }, []);
+  useCloseOnBack(close);
 
   // Out of the panels, which slide by transforms and so would hold a fixed overlay inside them.
   return createPortal(

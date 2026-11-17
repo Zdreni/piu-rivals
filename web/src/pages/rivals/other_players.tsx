@@ -25,7 +25,7 @@ function otherStats(otherBests: OtherBests, playerId: string, me: string, myBest
 // The Others tab: registered players who aren't your rivals (`rivalIds`), by PUMBILITY and folded around you,
 //  to add as rivals, or to compare solo once their results are in. `players` is null while loading.
 export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPlayerId, soloPlayerId, scoreCap, levelRange, onFocus,
-  onAdd, onSolo }: {
+  onAdd, onSolo, onStats }: {
   me: PlayerSummary;
   myBests: PlayerBests | undefined;
   players: ListedPlayer[] | null;
@@ -38,6 +38,7 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
   onFocus: (playerId: string | null) => void;
   onAdd: (player: PlayerSummary) => void;
   onSolo: (soloIsOn: boolean) => void;
+  onStats: (playerId: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [listedPlayerCountAbove, setListedPlayerCountAbove] = useState(LISTED_PLAYER_COUNTS.above);
@@ -150,10 +151,19 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
                     </div>
                   )}
                   <div className="rival-links">
-                    <a className="rival-link" href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`}
-                      target="_blank" rel="noreferrer">
-                      Sessions
-                    </a>
+                    {isMe
+                      ?  (
+                        <a className="rival-link" href={`https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.id)}/Sessions`}
+                          target="_blank" rel="noreferrer">
+                          Sessions
+                        </a>
+                      )
+                      :  (
+                        <button className="rival-link rival-stats-link" type="button" title="Your average scores by level and this player's"
+                          onClick={()  =>  onStats(player.id)}>
+                          Stats
+                        </button>
+                      )}
                   </div>
                 </div>
               </div>

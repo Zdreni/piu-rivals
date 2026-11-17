@@ -16,6 +16,7 @@ import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useOtherBests, usePlayers, withSoloPlayer } from '../../data/other_players.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
+import { StatsPopup } from './stats_popup.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
 
@@ -60,6 +61,8 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   // The player unrolled on either tab, and whether only you and they are compared. Kept in memory only.
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const [soloIsOn, setSoloIsOn] = useState(false);
+  // The player whose Stats popup is open.
+  const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null);
   // A player stays focused only while their row is listed: you or a rival, or anyone while the Others tab is open. A
   //  rival removed here or on another device, or a player who isn't one once you leave the Others tab, is unfocused.
   const focusIsListed = (! focusedPlayerId  ||  focusedPlayerId === me.id  ||  ui.rivalTab === 'others'
@@ -186,6 +189,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onFocus={focus}
           onSolo={setSoloIsOn}
           onToggle={(playerId, on)  =>  settings.setRivalHidden(playerId, ! on)}
+          onStats={setStatsPlayerId}
           onRemove={settings.removeRival}
           onAdd={settings.addRival}
         />
@@ -215,6 +219,16 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onSnooze={settings.snooze}
         />
       </div>
+      {statsPlayerId  &&  (
+        <StatsPopup
+          me={{ id: me.id, name: me.name  ??  me.id }}
+          player={{ id: statsPlayerId, name: rivals.find((r)  =>  r.id === statsPlayerId)?.name  ??  players?.find((p)  =>  p.id === statsPlayerId)?.name  ??  statsPlayerId }}
+          charts={data.charts}
+          bests={data.bests}
+          levelRange={levelRange}
+          onClose={()  =>  setStatsPlayerId(null)}
+        />
+      )}
     </div>
   );
 }

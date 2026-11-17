@@ -53,6 +53,7 @@
 .rivals .rival .rival-solo input:checked { background: #3FA9F5; border-color: #3FA9F5; }
 .rivals .rival .rival-check input:checked::after { width: 3px; height: 6px; margin-top: -1px; }
 .rivals .rival-check:has(input:disabled) { opacity: 0.5; cursor: default; pointer-events: none; }
+.rivals .rival-stats-link { font: inherit; font-size: 14px; cursor: pointer; }
 .rivals .rival-delete { margin-left: auto; font: inherit; font-size: 14px; cursor: pointer; }
 .rivals .rival-delete:hover { color: #FF5A5A; border-color: #FF5A5A; background: #2B1C1C; }
 .rivals .rival-scrap { margin: 2px 0 0; font-size: 13px; color: #8A9590; font-variant-numeric: tabular-nums; }

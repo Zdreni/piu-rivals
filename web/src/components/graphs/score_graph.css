@@ -1,0 +1,34 @@
+/* Score graphs (see ScoreGraph). Your series is green, the other player's red; their legend's swatches too. */
+.score-graph, .score-graph-swatch { --mine: #3aa86a; --theirs: #e8603c; }
+.score-graph { margin: 0; min-width: 0; }
+.score-graph-title { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #EAF5EC; }
+.score-graph-box { position: relative; height: 220px; }
+.score-graph svg { display: block; touch-action: pan-y; }
+
+.score-graph-grid { stroke: #4F6B5B; stroke-width: 1; stroke-dasharray: 3 4; }
+.score-graph-base { stroke: #6E8A7A; stroke-width: 1; }
+.score-graph-label { fill: #9AB3A3; font-size: 12px; }
+.score-graph-crosshair { stroke: #9AB3A3; stroke-width: 1; opacity: .6; }
+
+.score-graph-fill-top { stop-color: var(--mine); stop-opacity: .35; }
+.score-graph-fill-bottom { stop-color: var(--mine); stop-opacity: .04; }
+.score-graph-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.score-graph-series.mine .score-graph-line { stroke: var(--mine); }
+.score-graph-series.theirs .score-graph-line { stroke: var(--theirs); }
+/* Points keep a ring of the background where they cross the other line. */
+.score-graph-point { stroke: #14201A; stroke-width: 1; }
+.score-graph-series.mine .score-graph-point { fill: var(--mine); }
+.score-graph-series.theirs .score-graph-point { fill: var(--theirs); }
+
+.score-graph-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.score-graph-swatch.mine { background: var(--mine); }
+.score-graph-swatch.theirs { background: var(--theirs); }
+
+.score-graph-hover { position: absolute; bottom: 32px; z-index: 1; padding: 6px 10px; pointer-events: none; white-space: nowrap;
+                     border: 1px solid #2B4034; border-radius: 6px; background: rgba(16,26,21,.95); box-shadow: 0 4px 12px rgba(0,0,0,.5);
+                     font-size: 13px; line-height: 1.5; display: grid; grid-template-columns: 10px auto auto auto; align-items: center;
+                     gap: 0 8px; }
+.score-graph-hover-level { grid-column: 1 / -1; color: #9AB3A3; }
+.score-graph-hover-row { display: contents; }
+.score-graph-hover-score { font-variant-numeric: tabular-nums; text-align: right; color: #EAF5EC; }
+.score-graph-hover-count { color: #9AB3A3; }

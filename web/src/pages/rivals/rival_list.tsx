@@ -22,7 +22,7 @@ const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
 //  scores in your level range (see playerCounts). Your row shows `myStats`.
 export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloPlayerId, myStats, scoreCap, levelRange, onTab, onFocus,
   onSolo,
-  onToggle, onRemove, onAdd }: {
+  onToggle, onStats, onRemove, onAdd }: {
   tab: RivalTab;
   chartboards: Chartboard[];
   me: PlayerSummary;
@@ -37,6 +37,7 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
   onFocus: (playerId: string | null) => void;
   onSolo: (soloIsOn: boolean) => void;
   onToggle: (playerId: string, on: boolean) => void;
+  onStats: (playerId: string) => void;
   onRemove: (playerId: string) => void;
   onAdd: (player: PlayerSummary) => void;
 }) {
@@ -93,7 +94,8 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
       {tab === 'others'
         ?  (
           <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds}
-            focusedPlayerId={focusedPlayerId} soloPlayerId={soloPlayerId} scoreCap={scoreCap} levelRange={levelRange} onFocus={onFocus} onAdd={add} onSolo={onSolo} />
+            focusedPlayerId={focusedPlayerId} soloPlayerId={soloPlayerId} scoreCap={scoreCap} levelRange={levelRange} onFocus={onFocus} onAdd={add} onSolo={onSolo}
+            onStats={onStats} />
         )
         :  (
           <div className="rival-scroll" ref={container}>
@@ -119,6 +121,7 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
                   onUnfocus={()  =>  onFocus(null)}
                   onToggle={(on)  =>  onToggle(player.playerId, on)}
                   onSolo={onSolo}
+                  onStats={()  =>  onStats(player.playerId)}
                   onRemove={()  =>  onRemove(player.playerId)}
                 />
               );

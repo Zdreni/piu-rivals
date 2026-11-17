@@ -26,7 +26,7 @@ export function Count({ value, label }: { value: number; label: string }) {
 // One row of the rivals column: a rival, or you (`me`), with your `totals` instead of stats. `on` marks a rival
 //  compared on the charts, `solo` the solo rival, `faded` the others while one is solo.
 export function RivalListItem({ player, me, on, solo, faded, focused, stats, totals, treatTieAsWin, best, scores, onFocus,
-  onUnfocus, onToggle, onSolo, onRemove }: {
+  onUnfocus, onToggle, onSolo, onStats, onRemove }: {
   player: ListedPlayer;
   me: boolean;
   on: boolean;
@@ -42,6 +42,7 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, tot
   onUnfocus: () => void;
   onToggle: (on: boolean) => void;
   onSolo: (solo: boolean) => void;
+  onStats: () => void;
   onRemove: () => void;
 }) {
   const base = `https://piuscores.arroweclip.se/Player/${encodeURIComponent(player.playerId)}`;
@@ -100,7 +101,13 @@ export function RivalListItem({ player, me, on, solo, faded, focused, stats, tot
           </div>
           <div className="rival-links">
             {me  &&  <a className="rival-link" href={base} target="_blank" rel="noreferrer">My page</a>}
-            <a className="rival-link" href={`${base}/Sessions`} target="_blank" rel="noreferrer">Sessions</a>
+            {me
+              ?  <a className="rival-link" href={`${base}/Sessions`} target="_blank" rel="noreferrer">Sessions</a>
+              :  (
+                <button className="rival-link rival-stats-link" type="button" title="Your average scores by level and this rival's" onClick={onStats}>
+                  Stats
+                </button>
+              )}
             {! me  &&  (
               <button className="rival-link rival-delete" type="button" title="Remove from your rivals; their scores stay on the server" onClick={onRemove}>
                 Remove
