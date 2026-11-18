@@ -16,7 +16,7 @@ const CHART_TYPES: Record<string, [string, string]> = { S: ['single', 'Single'],
 
 
 // A chart's label, e.g. "D24", as a ball of its type's colour with its level in it.
-function ChartBall({ chartLabel }: { chartLabel: string }) {
+export function ChartBall({ chartLabel }: { chartLabel: string }) {
   const [, type = '', level = chartLabel] = /^(\D*?)\s*(\d+)$/.exec(chartLabel)  ??  [];
   const [className, name] = CHART_TYPES[type]  ??  ['other', type];
   return <span className={`chart-label ${className}`} title={`${name} ${level}`}>{level}</span>;

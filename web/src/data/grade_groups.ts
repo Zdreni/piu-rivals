@@ -7,7 +7,7 @@ export const GRADE_GROUPS: GradeGroup[] = ['fpc', 'sss', 's', 'a', 'lower', 'unp
 
 export const GRADE_GROUP_LABELS: Record<GradeGroup, string> = { fpc: 'FPC', sss: 'SSS–SSS+', s: 'S–SS+', a: 'A–AAA+', lower: 'Lower', unplayed: 'Not played' };
 
-const MAX_SCORE = 1_000_000;
+export const MAX_SCORE = 1_000_000;
 
 // The lowest score of each played group below FPC, for a best stored without its grade.
 const MIN_GROUP_SCORES: [GradeGroup, number][] = [['sss', 990_000], ['s', 970_000], ['a', 750_000]];

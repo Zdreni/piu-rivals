@@ -77,11 +77,11 @@ function PassesView({ me }: { me: PlayerSummary }) {
           chartGrades={chartGrades}
           levels={levels}
           levelRange={levelRange}
-          scoreCap={preferences.scoreCap}
           selectedLevel={selectedLevel}
           onSelect={(level, tab)  =>  changeUi({ selectedLevel: level, ...(tab  &&  { selectedTab: tab }) })}
         />
         <LevelGradesTable
+          level={selectedLevel}
           levelChartGrades={levelChartGrades}
           scoreCap={preferences.scoreCap}
           selectedTab={ui.selectedTab}

@@ -1,33 +1,38 @@
 import type { MouseEvent } from 'react';
 import { clickedSegmentIdOrNull, LevelChart, LevelSegment, type LevelSide } from '../../components/levels/level_chart.tsx';
-import { type ChartGrade, isAboveCap } from '../../data/chart_grades.ts';
-import { GRADE_GROUP_LABELS, GRADE_GROUPS, type GradeGroup } from '../../data/grade_groups.ts';
+import type { ChartGrade } from '../../data/chart_grades.ts';
+import { GRADE_GROUP_LABELS, GRADE_GROUPS } from '../../data/grade_groups.ts';
 import type { LevelRange } from '../../data/preferences.ts';
+import { scoreColor } from '../../data/score_colors.ts';
 import type { PassesTab } from './ui_state.ts';
 
-// A bar's segments: the grade groups, with the scores above the score cap apart, after FPC.
-type BarSegmentId = GradeGroup | 'above-cap';
-type SegmentCounts = Record<BarSegmentId, number>;
 
-const BAR_SEGMENT_IDS: BarSegmentId[] = ['fpc', 'above-cap', ...GRADE_GROUPS.filter((group)  =>  group !== 'fpc')];
+// A gradient through the played charts' score colours, each at the middle of its share of the segment, the best
+//  next to the level number.
+function scoresGradient(scores: number[], side: LevelSide) {
+  const sortedScores = [...scores].sort((a, b)  =>  b - a);
+  const stops = sortedScores.map((score, i)  =>  `${scoreColor(score)} ${((i + .5) / sortedScores.length * 100).toFixed(1)}%`);
+  // A gradient needs two stops.
+  const colorStops = ((stops.length === 1)  ?  [stops[0], stops[0]]  :  stops);
+  return `linear-gradient(${((side === 'single')  ?  'to left'  :  'to right')}, ${colorStops.join(', ')})`;
+}
 
 
-// One level's bar, split by grade groups, the best next to the level number; scores above `scoreCap` get a segment
-//  of their own. The not played segment grows with its count to the power of 1 / 1.5, as on the Rivals page.
+// One level's bar: the played charts coloured by their scores, then the not played ones, which grow with their count
+//  to the power of 1 / 1.5, as on the Rivals page. The played count leaves out FPCs, which can't be improved.
 // A click on the level already selected also passes `onSelect` the tab of the segment clicked.
-function GradeLevelBar({ level, side, counts, scoreCap, selected, onSelect }: {
+function GradeLevelBar({ level, side, levelChartGrades, selected, onSelect }: {
   level: string;
   side: LevelSide;
-  counts: SegmentCounts;
-  scoreCap: number;
+  levelChartGrades: ChartGrade[];
   selected: boolean;
   onSelect: (level: string, tab: PassesTab | null) => void;
 }) {
-  const playedCount = BAR_SEGMENT_IDS.reduce((acc, id)  =>  acc + ((id === 'unplayed')  ?  0  :  counts[id]), 0);
-  const segmentLabel = (id: BarSegmentId)  =>  ((id === 'above-cap')  ?  `${scoreCap / 1000}k+`  :  GRADE_GROUP_LABELS[id]);
-  // The score cap's line only shows where it applies.
-  const tip = BAR_SEGMENT_IDS.filter((id)  =>  id !== 'above-cap'  ||  counts[id])
-    .map((id)  =>  `\n${segmentLabel(id)}: ${counts[id]}`).join('');
+  const scores = levelChartGrades.flatMap((cg)  =>  ((cg.score === null)  ?  []  :  [cg.score]));
+  const unplayedCount = levelChartGrades.length - scores.length;
+  const fpcCount = levelChartGrades.filter((cg)  =>  cg.gradeGroup === 'fpc').length;
+  const tip = GRADE_GROUPS.map((group)  =>  `\n${GRADE_GROUP_LABELS[group]}: ${levelChartGrades.filter((cg)  =>  cg.gradeGroup === group).length}`)
+    .join('');
 
   const select = (event: MouseEvent<HTMLButtonElement>)  => {
     const segmentId = clickedSegmentIdOrNull(event);
@@ -40,40 +45,39 @@ function GradeLevelBar({ level, side, counts, scoreCap, selected, onSelect }: {
       type="button"
       role="radio"
       aria-checked={selected}
-      title={`${level}: ${playedCount} of ${playedCount + counts.unplayed} played${tip}`}
+      title={`${level}: ${scores.length} of ${levelChartGrades.length} played${tip}`}
       onClick={select}
     >
       <span className="level-segs">
-        {BAR_SEGMENT_IDS.map((id)  =>  (
-          <LevelSegment key={id} segmentId={id} className={`grade-${id}`} n={counts[id]}
-            grow={((id === 'unplayed')  ?  counts[id] ** (1 / 1.5)  :  counts[id])} />
-        ))}
+        <LevelSegment segmentId="played" className="grade-played" n={scores.length}
+          label={(scores.length - fpcCount)  ||  ''}
+          style={(scores.length  ?  { background: scoresGradient(scores, side) }  :  {})} />
+        <LevelSegment segmentId="unplayed" className="grade-unplayed" n={unplayedCount} grow={unplayedCount ** (1 / 1.5)} />
       </span>
     </button>
   );
 }
 
 
-// The levels column of the Passes page: a bar per level, singles and doubles, split by grade groups.
-export function GradeLevels({ chartGrades, levels, levelRange, scoreCap, selectedLevel, onSelect }: {
+// The levels column of the Passes page: a bar per level, singles and doubles, coloured by your scores.
+export function GradeLevels({ chartGrades, levels, levelRange, selectedLevel, onSelect }: {
   chartGrades: ChartGrade[];
   levels: string[];
   levelRange: LevelRange;
-  scoreCap: number;
   selectedLevel: string | null;
   onSelect: (level: string, tab: PassesTab | null) => void;
 }) {
-  const countsByLevel = new Map<string, SegmentCounts>();
+  const chartGradesByLevel = new Map<string, ChartGrade[]>();
   for (const chartGrade of chartGrades) {
-    let counts = countsByLevel.get(chartGrade.chartLabel);
-    if (! counts)
-      countsByLevel.set(chartGrade.chartLabel, counts = Object.fromEntries(BAR_SEGMENT_IDS.map((id)  =>  [id, 0])) as SegmentCounts);
-
-    counts[(isAboveCap(chartGrade, scoreCap)  ?  'above-cap'  :  chartGrade.gradeGroup)]++;
+    const levelChartGrades = chartGradesByLevel.get(chartGrade.chartLabel);
+    if (levelChartGrades)
+      levelChartGrades.push(chartGrade);
+    else
+      chartGradesByLevel.set(chartGrade.chartLabel, [chartGrade]);
   }
 
   const renderBar = (level: string, side: LevelSide)  =>  (
-    <GradeLevelBar key={level} level={level} side={side} counts={countsByLevel.get(level)!} scoreCap={scoreCap}
+    <GradeLevelBar key={level} level={level} side={side} levelChartGrades={chartGradesByLevel.get(level)  ??  []}
       selected={level === selectedLevel} onSelect={onSelect} />
   );
 
