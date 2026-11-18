@@ -258,6 +258,7 @@ export function SelectedLevelCharts({
           canSnooze={canSnooze}
           snoozesCheckedAt={snoozesCheckedAt}
           source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximizedChartboard.id}"]`)  ??  null}
+          maxWidth={null}
           onClose={()  =>  setMaximizedChartId(null)}
           onSnooze={(days)  =>  leave(maximizedChartboard.id, days)}
         />

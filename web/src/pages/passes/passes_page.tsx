@@ -1,5 +1,5 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
@@ -10,6 +10,7 @@ import { compareLevels } from '../../data/stats.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
+import { PassesChartPopup, passesChartboardOrNull } from './chart_popup.tsx';
 import { GradeLevels } from './grade_levels.tsx';
 import { LevelGradesTable } from './level_grades_table.tsx';
 import { type PassesUiState, readPassesUiState, savePassesUiState } from './ui_state.ts';
@@ -20,7 +21,7 @@ import '../../score_views.css';
 //  your rivals switched on played each.
 function PassesView({ me }: { me: PlayerSummary }) {
   const settings = useRivalSettings();
-  const { rivals, preferences } = settings;
+  const { rivals, preferences, snoozes } = settings;
   const shownRivalIds = useMemo(()  =>  rivals.filter((r)  =>  ! r.hidden).map((r)  =>  r.id), [rivals]);
   const playerIds = useMemo(()  =>  [me.id, ...shownRivalIds], [me.id, shownRivalIds]);
   const data = useBests(playerIds);
@@ -34,6 +35,9 @@ function PassesView({ me }: { me: PlayerSummary }) {
   const levelRange = resolveLevels(preferences, autoRange);
   const { minLevel, maxLevel } = levelRange;
   const [ui, setUi] = useState<PassesUiState>(readPassesUiState);
+  // The chart whose card is open, and the page it opens over, to find the chart's row in.
+  const [openChartId, setOpenChartId] = useState<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -64,13 +68,21 @@ function PassesView({ me }: { me: PlayerSummary }) {
   }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
 
   const levelChartGrades = useMemo(()  =>  chartGrades.filter((cg)  =>  cg.chartLabel === selectedLevel), [chartGrades, selectedLevel]);
+  // Snoozes are checked when a card is opened, or the scores or snoozes change, as on the Rivals page.
+  const snoozesCheckedAt = useMemo(()  =>  Date.now(), [openChartId, data.version, snoozes]);
+  const openChart = ((openChartId === null)  ?  undefined  :  data.charts.get(openChartId)  ??  known.charts.get(openChartId));
+  const openChartboard = useMemo(
+    ()  =>  (openChart  ?  passesChartboardOrNull(openChart, me.id, data.bests, rivals, preferences.scoreCap, levelRange, snoozes, snoozesCheckedAt)  :  null),
+    [openChart, me.id, data.version, data.bests, rivals, preferences.scoreCap, minLevel, maxLevel, snoozes, snoozesCheckedAt],
+  );
+
   const loading = ! data.ready  ||  ! known.ready;
   const emptyMessage = ((loading  &&  ! chartGrades.length)  ?  'Loading charts…'  :  null);
   const error = settings.error  ??  ((data.error  ||  known.error)  ?  `Couldn't load scores: ${data.error  ??  known.error}`  :  null);
   const status = (error  ?  { text: error, error: true }  :  loading  ?  { text: 'Loading charts…', error: false }  :  null);
 
   return (
-    <div className="rivals passes">
+    <div className="rivals passes" ref={rootRef}>
       <StatusToast status={status} />
       <div className="dlg-main">
         <GradeLevels
@@ -81,14 +93,27 @@ function PassesView({ me }: { me: PlayerSummary }) {
           onSelect={(level, tab)  =>  changeUi({ selectedLevel: level, ...(tab  &&  { selectedTab: tab }) })}
         />
         <LevelGradesTable
-          level={selectedLevel}
           levelChartGrades={levelChartGrades}
           scoreCap={preferences.scoreCap}
           selectedTab={ui.selectedTab}
           emptyMessage={emptyMessage}
           onSelectTab={(tab)  =>  changeUi({ selectedTab: tab })}
+          onOpen={setOpenChartId}
         />
       </div>
+      {openChartboard  &&  (
+        <PassesChartPopup
+          key={openChartboard.id}
+          chartboard={openChartboard}
+          myName={me.name  ??  'You'}
+          scoreCap={preferences.scoreCap}
+          countBy={preferences.countBy}
+          snoozesCheckedAt={snoozesCheckedAt}
+          source={()  =>  rootRef.current?.querySelector<HTMLElement>(`.grades-table tr[data-chart="${openChartboard.id}"]`)  ??  null}
+          onClose={()  =>  setOpenChartId(null)}
+          onSnooze={(days)  =>  settings.snooze(openChartboard.id, days)}
+        />
+      )}
     </div>
   );
 }

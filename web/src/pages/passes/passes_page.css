@@ -1,4 +1,4 @@
-/* The Passes page: the levels split by grade groups, beside a table of your results at the selected level. */
+/* The Passes page: the levels coloured by your scores, beside a table of the selected level's charts. */
 
 .rivals .level-range { color: #9AB3A3; font: 500 14px/1 Roboto, Arial, sans-serif; }
 
@@ -13,19 +13,19 @@
 /* The results table: the song takes the room left, cut short if it doesn't fit. */
 .rivals .grades-table { width: calc(100% - 2 * var(--results-pad)); margin: 0 var(--results-pad) 16px; border-collapse: collapse;
                         font-size: 16px; }
-.rivals .grades-table th { position: sticky; top: -12px; z-index: 1; padding: 6px 10px; background: #14201A; color: #9AB3A3;
-                           border-bottom: 1px solid #2B4034; font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; }
-.rivals .grades-table th.num { text-align: right; }
-.rivals .grades-table th.grade-level { text-align: center; }
 .rivals .grades-table td { padding: 6px 10px; border-bottom: 1px solid #1C2B22; white-space: nowrap; }
 .rivals .grades-table tbody tr:hover { background: #1C2B22; }
-.rivals .grade-song { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rivals .grades-table td.grade-ball { width: 0; padding-right: 4px; line-height: 0; }
+.rivals .grade-song { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; color: #B4C4BA; }
 .rivals .grade-broken { margin-right: .35em; font-size: .85em; }
 .rivals .grades-table tr:is(.above-cap, .fpc) :is(.grade-song, .grade-score) { opacity: .6; }
 .rivals .grades-table tr.broken .grade-score { opacity: .65; }
-/* A gap sets the scores above the score cap apart from those below it. */
-.rivals .grades-table tr:not(.above-cap) + tr.above-cap td { padding-top: 22px; }
+/* The empty row between the scores below the score cap and those above it, as tall as a chart's, its line kept by a
+   space. */
+.rivals .grades-table tbody tr.grade-cap-gap:hover { background: none; }
 .rivals .grade-date { color: #9AB3A3; font-size: .875em; }
+/* A chart someone played opens its card on a click (see PassesChartPopup). */
+.rivals .grades-table tr.openable { cursor: pointer; }
 /* The row that folds and unfolds the FPCs, below it. */
 .rivals .grades-fold td { padding: 0; }
 .rivals .grades-fold button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; color: inherit;
@@ -42,14 +42,12 @@
 @media (max-width: 1000px) {
   .rivals.passes .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); width: 100cqw; margin-left: 0;
                              grid-template-columns: var(--levels) calc(100cqw - var(--levels)); }
-  .rivals .grades-table th { position: static; }
 }
 
 @media (max-width: 600px) {
   .rivals.passes .dlg-main { --levels: 45cqw; }
   .rivals .grades-table { --results-pad: 4px; font-size: 14px; }
-  .rivals .grades-table :is(th, td) { padding: 5px 4px; }
-  .rivals .grades-table th { padding-block: 7px; }
+  .rivals .grades-table td { padding: 5px 4px; }
   .rivals .grade-date { display: none; }
 }
 

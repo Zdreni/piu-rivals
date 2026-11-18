@@ -7,7 +7,7 @@ import { type Entry, type FoldedChartboard, SHOW_STEP, unfold, type UnfoldedRiva
 import { resultOutcome, type Outcome } from '../../data/stats.ts';
 
 // The row unrolled for your own score, and the header unrolled.
-const ME = 'me';
+export const ME = 'me';
 const HEAD = 'head';
 
 const SNOOZE_DAYS_OPTIONS: SnoozeDays[] = [3, 7, 15, 31];
@@ -61,8 +61,8 @@ function CardHead({ chartboard, unrolled, canSnooze, menuIsOpen, maximized, onTo
     <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuIsOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}`}
       onClick={onToggle}>
       <div className="chart-card-title">
+        <ChartBall chartLabel={chartboard.chartLabel} />
         <span className="track" title={chartboard.trackTitle}>{(unrolled  ||  maximized)  ?  chartboard.trackTitle  :  chartboard.track}</span>
-        <span className="chart-slot"><ChartBall chartLabel={chartboard.chartLabel} /></span>
         {maximized  &&  (
           <button className="card-close" type="button" aria-label="Close" title="Close" onClick={press(()  =>  onClose?.())}>
             <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11" /></svg>
@@ -90,7 +90,6 @@ function CardHead({ chartboard, unrolled, canSnooze, menuIsOpen, maximized, onTo
                 )}
               </span>
             </span>
-            <ChartBall chartLabel={chartboard.chartLabel} />
           </div>
         </div>
       )}

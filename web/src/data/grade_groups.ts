@@ -1,8 +1,8 @@
-// The grade groups of the Passes page's level bars: your best grade on a chart, in larger groups, or "unplayed".
-//  "fpc" is a pass with the maximum score. A broken best counts under its grade.
+// The grade groups of the Passes page, counted in its level bars' tooltips: your best grade on a chart, in larger
+//  groups, or "unplayed". "fpc" is a pass with the maximum score. A broken best counts under its grade.
 export type GradeGroup = 'fpc' | 'sss' | 's' | 'a' | 'lower' | 'unplayed';
 
-// From the level number outward on the bars.
+// The best first.
 export const GRADE_GROUPS: GradeGroup[] = ['fpc', 'sss', 's', 'a', 'lower', 'unplayed'];
 
 export const GRADE_GROUP_LABELS: Record<GradeGroup, string> = { fpc: 'FPC', sss: 'SSS–SSS+', s: 'S–SS+', a: 'A–AAA+', lower: 'Lower', unplayed: 'Not played' };

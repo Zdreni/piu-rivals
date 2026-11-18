@@ -1,7 +1,7 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChartCard } from './chart_card.tsx';
+import { ChartCard, ME } from './chart_card.tsx';
 import { useCloseOnBack } from '../close_on_back.ts';
 import { REDUCED_MOTION, useMobileView } from '../media.ts';
 import { type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
@@ -28,17 +28,20 @@ const CLIP_NONE = 'inset(0 round 8px)';
 
 // A chart's card maximized over the page: it grows out of its card in the grid (`source`), and shrinks back into it
 //  before `onClose` is called. A snooze or a wake closes it too, then calls `onSnooze` (with null days for a wake).
-export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnooze, snoozesCheckedAt, source, onClose, onSnooze }: {
+// A `source` that isn't a card, such as a table row, stands for its card; `maxWidth` (px) then keeps it card-sized.
+export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnooze, snoozesCheckedAt, source, maxWidth, onClose, onSnooze }: {
   foldedChartboard: FoldedChartboard;
   myName: string;
   scoreCap: number;
   canSnooze: boolean;
   snoozesCheckedAt: number;
   source: () => HTMLElement | null;
+  maxWidth: number | null;
   onClose: () => void;
   onSnooze: (days: SnoozeDays | null) => void;
 }) {
-  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
+  // It opens with your row unrolled, showing your result's details.
+  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(ME);
   const [unfoldedRivalCounts, setUnfoldedRivalCounts] = useState<UnfoldedRivalCounts>(NO_UNFOLDED_RIVALS);
   const inMobileView = useMobileView();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -53,12 +56,13 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
     const overlay = overlayRef.current;
     const card = overlay?.firstElementChild as HTMLElement | null | undefined;
     const from = source();
-    const box = from?.querySelector('.chart-card-box')?.getBoundingClientRect();
-    if (! overlay  ||  ! card  ||  ! from  ||  ! box)
+    if (! overlay  ||  ! card  ||  ! from)
       return null;
 
     const cardRect = from.getBoundingClientRect();
-    return { overlay, card, from: (inMobileView  ?  cardRect  :  new DOMRect(box.left, cardRect.top, box.width, box.bottom - cardRect.top)) };
+    const box = from.querySelector('.chart-card-box')?.getBoundingClientRect()  ??  cardRect;
+    const width = Math.min(box.width, maxWidth  ??  Infinity);
+    return { overlay, card, from: (inMobileView  ?  cardRect  :  new DOMRect(box.left, cardRect.top, width, box.bottom - cardRect.top)) };
   };
 
   useLayoutEffect(()  => {

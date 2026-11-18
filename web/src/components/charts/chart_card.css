@@ -5,7 +5,7 @@
    room on their sides between them and the next card's. The bar's shadow falls over the results, and its snooze menu,
    while open, over the cards below. */
 .rivals .chart-card { display: flex; flex-direction: column; }
-.rivals .chart-card-head { position: relative; z-index: 1; margin: 0 var(--results-pad); padding: 10px 12px; background: #2D3D34;
+.rivals .chart-card-head { position: relative; z-index: 1; margin: 0 var(--results-pad); padding: 10px 12px 10px 8px; background: #2D3D34;
                            border-top: 1px solid #4B6556; border-radius: 6px; box-shadow: 0 4px 6px rgba(0, 0, 0, .6);
                            cursor: pointer; }
 .rivals .chart-card-head.menu-open { z-index: 2; }
@@ -18,29 +18,24 @@
 .rivals .chart-card-head .track { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px;
                                   font-weight: 700; }
 /* The chart's level in a ball of its type's colour (see ChartBall), not growing the line it's on: a dark core glowing
-   out to a rim of the colour, in a silver ring, with a lit top. */
+   out to a rim of the colour, in a silver ring, with a lit top. It keeps a line height of its own, as the Passes
+   page's ball cells have none. Its digits are proportional, so a narrow 1 doesn't leave the level off centre. */
 .rivals .chart-label { --ball: #9AB3A3; --ball-deep: #4A5A50; --ball-core: #2C3631;
                        --ring: #E8F0EA; --ring-mid: #7E8C83;
-                       flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
-                       margin: -4px 0; border: 2px solid transparent; border-radius: 50%; box-sizing: border-box; color: #FFF;
-                       font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums;
+                       flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+                       margin: -4px 0; border: 1.5px solid transparent; border-radius: 50%; box-sizing: border-box; color: #FFF;
+                       font-weight: 800; font-size: 14px; line-height: 1; font-variant-numeric: proportional-nums;
                        text-shadow: 0 0 2px #000, 0 0 3px rgba(0, 0, 0, .6), 0 1px 1px #000;
                        background: radial-gradient(ellipse 70% 45% at 50% 18%, rgba(255, 255, 255, .35), transparent) padding-box,
                                    radial-gradient(circle, var(--ball-core) 35%, var(--ball-deep) 70%, var(--ball) 92%) padding-box,
                                    linear-gradient(160deg, var(--ring), var(--ring-mid) 50%, var(--ring)) border-box;
                        box-shadow: 0 0 2.5px var(--ball-deep); }
-/* In the track bar, the ball is in a slot at its right end, from its top to its bottom edge (with the snooze line rolled
-   out under it, to the title's bottom), and glows wide in its colour. */
-.rivals .chart-card-title > .chart-slot { align-self: stretch; display: flex; align-items: center; margin: -10px -12px -10px 0;
-                                          padding: 0 7px; }
-.rivals .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
-.rivals .chart-card-title .chart-label { box-shadow: 0 0 2.5px var(--ball-deep), 0 0 14px 1px color-mix(in srgb, var(--ball) 15%, transparent); }
 .rivals .chart-label.single { --ball: #FF6A45; --ball-deep: #A3200A; --ball-core: #5A150A; --ring: #FFD2B0; --ring-mid: #A8653F; }
 .rivals .chart-label.double { --ball: #4FEA6E; --ball-deep: #138A33; --ball-core: #0D4D20; --ring: #C5F5CF; --ring-mid: #559762; }
 /* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
-   tab, the snooze line rolls out under it like a result's details (see .result-details), with the chart moved onto it. */
+   tab, the snooze line rolls out under it like a result's details (see .result-details). */
 .rivals .chart-card-head.unrolled .track { white-space: normal; }
-.rivals .chart-card-head.more .chart-card-title > :not(.track) { display: none; }
+.rivals .chart-card-head.more .chart-card-title > .card-close { display: none; }
 .rivals .chart-card-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
 .rivals .chart-card-head.more .chart-card-more { grid-template-rows: 1fr; }
 .rivals .chart-card-more > div { display: flex; align-items: center; gap: 10px; min-height: 0; overflow: hidden; visibility: hidden;
@@ -68,8 +63,8 @@
 .rivals .snooze-menu button:hover, .rivals .snooze-menu button:focus-visible { background: #2B4034; color: #4FE33F; outline: none; }
 /* The length pressed, and then picked while the card fades out. */
 .rivals .snooze-menu button:active, .rivals .snooze-menu button.picked { background: #3D5A49; color: #4FE33F; }
-.rivals .chart-card-title, .rivals .chart-card-body, .rivals .chart-card-more .chart-label { transition: opacity .2s ease; }
-.rivals .chart-card.snoozing :is(.chart-card-title, .chart-card-body, .chart-card-more .chart-label) { opacity: .2; }
+.rivals .chart-card-title, .rivals .chart-card-body { transition: opacity .2s ease; }
+.rivals .chart-card.snoozing :is(.chart-card-title, .chart-card-body) { opacity: .2; }
 /* A card snoozed or woken fades out, then the cards after it move into its place (see SelectedLevelCharts). */
 .rivals .chart-card { transition: opacity .2s ease; }
 .rivals .chart-card.leaving { opacity: 0; pointer-events: none; }
@@ -113,18 +108,14 @@
    cards get narrower: 265px leaves names about as much room as the narrowest card above, so two fit in 554px. */
 @media (min-width: 601px) {
   @container (max-width: 719px) {
-    .rivals .side-open .chart-card-head { padding: 7px 8px; }
+    .rivals .side-open .chart-card-head { padding: 7px 8px 7px 6px; }
     .rivals .side-open .chart-card-title { gap: 6px; }
-    .rivals .side-open .chart-card-title > .chart-slot { margin: -7px -8px -7px 0; padding: 0 5px; }
-    .rivals .side-open .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
   }
 }
 
 @media (max-width: 600px) {
-  .rivals .chart-card-head { padding: 7px 8px; }
+  .rivals .chart-card-head { padding: 7px 8px 7px 6px; }
   .rivals .chart-card-title { gap: 6px; }
-  .rivals .chart-card-title > .chart-slot { margin: -7px -8px -7px 0; padding: 0 5px; }
-  .rivals .chart-card-head.more .chart-card-title > .chart-slot { margin-bottom: 0; }
   .rivals .chart-card-box { margin-left: 8px; }
   .rivals .snooze-button { height: 40px; }
   .rivals .chart-card-head .track { font-size: 16px; }
@@ -132,6 +123,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body,
-  .rivals .chart-card-more .chart-label { transition: none; }
+  .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body { transition: none; }
 }
