@@ -1,5 +1,5 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
@@ -10,6 +10,7 @@ import { compareLevels } from '../../data/stats.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
+import { shownLevel, useSelectedLevel } from '../../data/use_selected_level.ts';
 import { PassesChartPopup, passesChartboardOrNull } from './chart_popup.tsx';
 import { GradeLevels } from './grade_levels.tsx';
 import { LevelGradesTable } from './level_grades_table.tsx';
@@ -35,6 +36,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
   const levelRange = resolveLevels(preferences, autoRange);
   const { minLevel, maxLevel } = levelRange;
   const [ui, setUi] = useState<PassesUiState>(readPassesUiState);
+  const { savedLevel, selectLevel } = useSelectedLevel();
   // The chart whose card is open, and the page it opens over, to find the chart's row in.
   const [openChartId, setOpenChartId] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -60,13 +62,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
   );
 
   const levels = useMemo(()  =>  [...new Set(chartGrades.map((cg)  =>  cg.chartLabel))].sort(compareLevels), [chartGrades]);
-  const selectedLevel = ((ui.selectedLevel !== null  &&  levels.includes(ui.selectedLevel))  ?  ui.selectedLevel  :  levels[0]  ??  null);
-
-  useEffect(()  => {
-    if (levels.length  &&  selectedLevel !== ui.selectedLevel)
-      changeUi({ selectedLevel });
-  }, [levels.length, selectedLevel, ui.selectedLevel, changeUi]);
-
+  const selectedLevel = shownLevel(savedLevel, levels);
   const levelChartGrades = useMemo(()  =>  chartGrades.filter((cg)  =>  cg.chartLabel === selectedLevel), [chartGrades, selectedLevel]);
   // Snoozes are checked when a card is opened, or the scores or snoozes change, as on the Rivals page.
   const snoozesCheckedAt = useMemo(()  =>  Date.now(), [openChartId, data.version, snoozes]);
@@ -90,7 +86,11 @@ function PassesView({ me }: { me: PlayerSummary }) {
           levels={levels}
           levelRange={levelRange}
           selectedLevel={selectedLevel}
-          onSelect={(level, tab)  =>  changeUi({ selectedLevel: level, ...(tab  &&  { selectedTab: tab }) })}
+          onSelect={(level, tab)  => {
+            selectLevel(level);
+            if (tab)
+              changeUi({ selectedTab: tab });
+          }}
         />
         <LevelGradesTable
           levelChartGrades={levelChartGrades}
