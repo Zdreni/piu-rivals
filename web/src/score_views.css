@@ -1,4 +1,4 @@
-/* The score views (the Rivals and History pages), styled like the old extension's rivals window. Everything is scoped
+/* The score views (the Rivals, Passes and History pages), styled like the old extension's rivals window. Everything is scoped
    to .rivals. Both pages import this one file, so each part is in the bundle once, in this order on purpose: later
    ones override earlier ones of the same specificity, e.g. the components' rules override the pages', and each
    part's screen sizes come after its own rules. */
@@ -16,3 +16,4 @@
 @import './components/charts/chart_card_maximized.css';
 @import './components/charts/result_item.css';
 @import './pages/history/history_page.css';
+@import './pages/passes/passes_page.css';

@@ -7,8 +7,11 @@ const DB_NAME = 'piu-rivals-cache';
 // 2: charts have songShortTitle.
 // 5: bests have improvement (3 and 4 were only used in development).
 // 6: bests have playId.
+// 7: the known charts' sync mark.
 // Never lowered: a browser that has a higher version can't open a lower one.
-const DB_VERSION = 6;
+const DB_VERSION = 7;
+// The key of the known charts' sync mark: the highest chart id `/charts` sent (see ChartsResponse).
+const LAST_KNOWN_CHART_ID_KEY = 'lastKnownChartId';
 
 // When the player's best results were last downloaded: a serverTime to pass as `since` next time.
 export interface SyncMark {
@@ -22,9 +25,17 @@ export interface CachedPlayers {
   marks: SyncMark[];
 }
 
+// Every chart cached, from `/charts` or `/bests`, and the highest id `/charts` sent; null when it never did.
+export interface CachedCharts {
+  charts: Chart[];
+  lastKnownChartId: number | null;
+}
+
 export interface BestsCache {
   load(playerIds: string[]): Promise<CachedPlayers>;
   save(data: CachedPlayers): Promise<void>;
+  loadCharts(): Promise<CachedCharts>;
+  saveKnownCharts(data: CachedCharts): Promise<void>;
   // Drops the players' best results and sync marks.
   clear(playerIds: string[]): Promise<void>;
 }
@@ -72,6 +83,7 @@ function openDatabase(): Promise<IDBDatabase> {
       db.createObjectStore('charts', { keyPath: 'id' });
       db.createObjectStore('bests', { keyPath: ['playerId', 'chartId'] });
       db.createObjectStore('syncs', { keyPath: 'playerId' });
+      db.createObjectStore('chartSyncs');
     };
 
     openRequest.onsuccess = ()  => {
@@ -127,6 +139,27 @@ function indexedDbCache(db: IDBDatabase): BestsCache {
       await transactionDone(tx);
     },
 
+    async loadCharts() {
+      const tx = db.transaction(['charts', 'chartSyncs'], 'readonly');
+      const [charts, lastKnownChartId] = await Promise.all([
+        request(tx.objectStore('charts').getAll() as IDBRequest<Chart[]>),
+        request(tx.objectStore('chartSyncs').get(LAST_KNOWN_CHART_ID_KEY) as IDBRequest<number | undefined>),
+      ]);
+
+      return { charts, lastKnownChartId: lastKnownChartId  ??  null };
+    },
+
+    async saveKnownCharts({ charts, lastKnownChartId }) {
+      const tx = db.transaction(['charts', 'chartSyncs'], 'readwrite');
+      for (const chart of charts)
+        tx.objectStore('charts').put(chart);
+
+      if (lastKnownChartId !== null)
+        tx.objectStore('chartSyncs').put(lastKnownChartId, LAST_KNOWN_CHART_ID_KEY);
+
+      await transactionDone(tx);
+    },
+
     async clear(playerIds) {
       const tx = db.transaction(['bests', 'syncs'], 'readwrite');
       for (const playerId of playerIds) {
@@ -144,6 +177,8 @@ function indexedDbCache(db: IDBDatabase): BestsCache {
 const noCache: BestsCache = {
   load: async ()  =>  ({ charts: [], bests: [], marks: [] }),
   save: async ()  =>  {},
+  loadCharts: async ()  =>  ({ charts: [], lastKnownChartId: null }),
+  saveKnownCharts: async ()  =>  {},
   clear: async ()  =>  {},
 };
 

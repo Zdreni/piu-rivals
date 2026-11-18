@@ -1,4 +1,4 @@
-import type { BestsResponse, Chart, PlayersResponse } from '@piu-rivals/shared';
+import type { BestsResponse, Chart, ChartsResponse, PlayersResponse } from '@piu-rivals/shared';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { sql } from 'kysely';
@@ -42,6 +42,25 @@ export const dataRoutes: FastifyPluginAsyncTypebox<AppDeps> = async (app, { db }
 
     return {
       players: rows.map((row)  =>  ({ ...playerSummary(row), plays: Number(row.plays), charts: Number(row.charts) })),
+    };
+  });
+
+
+  // Every known chart, the newest last; with `afterId`, only those added after it.
+  app.get('/charts', {
+    schema: { querystring: Type.Object({ afterId: Type.Optional(Type.Integer({ minimum: 0 })) }) },
+  }, async (request): Promise<ChartsResponse>  => {
+    const rows = await db.selectFrom('charts as c')
+      .innerJoin('tracks as t', 't.id', 'c.track_id')
+      .select(['c.id', 't.song_key', 't.title', 't.short_title', 'c.chart_type', 'c.level'])
+      .where('c.id', '>', request.query.afterId  ??  0)
+      .orderBy('c.id')
+      .execute();
+
+    return {
+      charts: rows.map((row)  =>  ({
+        id: row.id, songKey: row.song_key, songTitle: row.title, songShortTitle: row.short_title, chartType: row.chart_type, level: row.level,
+      })),
     };
   });
 

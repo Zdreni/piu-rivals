@@ -8,6 +8,7 @@ import { TracksPage } from './pages/admin/tracks_page.tsx';
 import { UserPage } from './pages/admin/user_page.tsx';
 import { UsersPage } from './pages/admin/users_page.tsx';
 import { HistoryPage } from './pages/history/history_page.tsx';
+import { PassesPage } from './pages/passes/passes_page.tsx';
 import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
 
@@ -22,6 +23,8 @@ const RIVALS_ICON = renderIcon(<>
 
 // A line going up: your scores rising.
 const HISTORY_ICON = renderIcon(<path d="M1.5 12.5l4-4 3 3 6-6M10.5 5.5h4v4" />);
+// A check mark in a circle: charts passed.
+const PASSES_ICON = renderIcon(<><circle cx="8" cy="8" r="6.5" /><path d="M5 8.2l2 2 4-4.4" /></>);
 // A head and shoulders: your account.
 const ACCOUNT_ICON = renderIcon(<><circle cx="8" cy="5.5" r="3" /><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /></>);
 
@@ -35,7 +38,14 @@ function Header() {
       <div className="header-left">
         <nav className="nav nav-main" aria-label="Pages">
           <NavLink to={(signedIn  ?  '/rivals'  :  '/')} end>{RIVALS_ICON}Rivals</NavLink>
-          {signedIn  &&  me.user.player  &&  <NavLink to="/history">{HISTORY_ICON}History</NavLink>}
+          {signedIn  &&  me.user.player  &&  (
+            <>
+              <span className="nav-gap" />
+              <NavLink to="/passes">{PASSES_ICON}Passes</NavLink>
+              <span className="nav-gap" />
+              <NavLink to="/history">{HISTORY_ICON}History</NavLink>
+            </>
+          )}
         </nav>
       </div>
       {signedIn  &&  (
@@ -74,9 +84,9 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 
-// The Rivals view and the History page fill the whole window below the menu bar; the other pages keep to a
+// The Rivals view and the Passes and History pages fill the whole window below the menu bar; the other pages keep to a
 //  readable width, with the footer below them.
-const FULL_PAGES = ['/rivals', '/history'];
+const FULL_PAGES = ['/rivals', '/passes', '/history'];
 
 
 function Layout({ children }: { children: ReactNode }) {
@@ -103,6 +113,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/rivals" element={<RivalsPage />} />
+            <Route path="/passes" element={<PassesPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/admin/players" element={<AdminOnly><PlayersPage /></AdminOnly>} />
             <Route path="/admin/runs" element={<AdminOnly><RunsPage /></AdminOnly>} />

@@ -127,7 +127,7 @@ export const levelNum = (level: string)  =>  parseInt((level.match(/\d+/)  ??  [
 export const SIDE_TYPES: Record<string, number> = { S: 0, D: 1 };
 
 
-function compareLevels(a: string, b: string) {
+export function compareLevels(a: string, b: string) {
   const ta = levelType(a), tb = levelType(b);
   return (SIDE_TYPES[ta]  ??  9) - (SIDE_TYPES[tb]  ??  9)
     ||  ta.localeCompare(tb)

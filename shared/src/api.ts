@@ -124,6 +124,12 @@ export interface BestsResponse {
   counts: Record<string, number>;
 }
 
+// Every chart a registered player has a score on; with `afterId`, only those with a higher id. Charts are only ever
+//  added, with rising ids, so the highest id held is enough to ask for the new ones.
+export interface ChartsResponse {
+  charts: Chart[];
+}
+
 export interface AdminUser extends User {
   createdAt: string;
   lastLoginAt: string | null;

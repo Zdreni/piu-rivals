@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type {
-  AdminPlayersResponse, AdminUserResponse, AdminTracksResponse, BestsResponse, ChartPreferencesResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
+  AdminPlayersResponse, AdminUserResponse, AdminTracksResponse, BestsResponse, ChartPreferencesResponse, ChartsResponse, LoginResponse, MeResponse, PreferencesResponse, RivalsResponse, ScrapeRunResponse,
   ScrapeRunsResponse,
 } from '@piu-rivals/shared';
 import { sql } from 'kysely';
@@ -477,4 +477,21 @@ test('a best\'s improvement is its rise over the best of the days before, adding
 
   assert.equal(best.tries, 4);
   assert.equal(best.improvement, 30000);
+});
+
+
+test('every known chart is listed, and afterId lists only the ones added after it', { skip }, async ()  => {
+  const all = await call<ChartsResponse>('GET', '/charts', { as: 'admin@example.com' });
+  assert.equal(all.status, 200);
+  assert.ok(['Alpha', 'Beta'].every((songKey)  =>  all.body.charts.some((c)  =>  c.songKey === songKey)));
+
+  const lastChartId = Math.max(...all.body.charts.map((c)  =>  c.id));
+  const unchanged = await call<ChartsResponse>('GET', `/charts?afterId=${lastChartId}`, { as: 'admin@example.com' });
+  assert.equal(unchanged.body.charts.length, 0);
+
+  // A chart only someone who isn't a rival has a score on is known too.
+  await scrapedSession('55555555-5555-4555-8555-555555555555', 'Mon 1', '2026-10-01', [play('Delta', 800000)]);
+
+  const added = await call<ChartsResponse>('GET', `/charts?afterId=${lastChartId}`, { as: 'admin@example.com' });
+  assert.deepEqual(added.body.charts.map((c)  =>  [c.songKey, c.level]), [['Delta', 20]]);
 });

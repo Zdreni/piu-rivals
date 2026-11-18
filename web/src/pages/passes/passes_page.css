@@ -1,0 +1,73 @@
+/* The Passes page: the levels split by grade groups, beside a table of your results at the selected level. */
+
+.rivals .level-range { color: #9AB3A3; font: 500 14px/1 Roboto, Arial, sans-serif; }
+
+/* Grade groups darken from the level number outward; not played is its blue. Each lies
+   over the next one (see charts_groups.css). */
+.rivals .level-bar .grade-fpc { background: linear-gradient(to right, #F2FBFF, #9CCFEA); z-index: 7; }
+.rivals .level-bar.single .grade-fpc { background: linear-gradient(to left, #F2FBFF, #9CCFEA); }
+/* Scores above the score cap are SSS+ too, but matter less: a flat colour between the SSS gold and the FPC
+   white. */
+.rivals .level-bar .grade-above-cap { background: color-mix(in srgb, #F5D76E 50%, #DDE9EE); z-index: 6; }
+.rivals .level-bar .grade-sss { background: linear-gradient(to right, #F5D76E, #B8932A); z-index: 5; }
+.rivals .level-bar.single .grade-sss { background: linear-gradient(to left, #F5D76E, #B8932A); }
+.rivals .level-bar .grade-s { background: linear-gradient(to right, #D0703E, #843417); z-index: 4; }
+.rivals .level-bar.single .grade-s { background: linear-gradient(to left, #D0703E, #843417); }
+.rivals .level-bar .grade-a { background: linear-gradient(to right, #4FB5A8, #23695F); z-index: 3; }
+.rivals .level-bar.single .grade-a { background: linear-gradient(to left, #4FB5A8, #23695F); }
+.rivals .level-bar .grade-lower { background: linear-gradient(to right, #7D8A82, #47534C); z-index: 2; }
+.rivals .level-bar.single .grade-lower { background: linear-gradient(to left, #7D8A82, #47534C); }
+.rivals .level-bar .grade-unplayed { background: linear-gradient(to right, #0F2B3C, #061219); color: #7F9DB0; z-index: 1; }
+.rivals .level-bar.single .grade-unplayed { background: linear-gradient(to left, #0F2B3C, #061219); }
+
+.rivals.passes .tab-count { color: #C9D8CE; }
+
+/* The results table: the song takes the room left, cut short if it doesn't fit. */
+.rivals .grades-table { width: calc(100% - 2 * var(--results-pad)); margin: 0 var(--results-pad) 16px; border-collapse: collapse;
+                        font-size: 16px; }
+.rivals .grades-table th { position: sticky; top: -12px; z-index: 1; padding: 6px 10px; background: #14201A; color: #9AB3A3;
+                           border-bottom: 1px solid #2B4034; font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; }
+.rivals .grades-table th.num { text-align: right; }
+.rivals .grades-table td { padding: 6px 10px; border-bottom: 1px solid #1C2B22; white-space: nowrap; }
+.rivals .grades-table tbody tr:hover { background: #1C2B22; }
+.rivals .grade-song { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rivals .grade-text-fpc { color: #CFEFFF; }
+.rivals .grade-text-sss { color: #D4BA62; }
+.rivals .grade-text-above-cap { color: color-mix(in srgb, #D4BA62 50%, #BFD6E0); }
+.rivals .grade-text-s { color: #D0703E; }
+.rivals .grade-text-a { color: #4FB5A8; }
+.rivals .grade-text-lower { color: #9AA59F; }
+.rivals .grade-broken { margin-right: .35em; font-size: .85em; }
+.rivals .grades-table tr.broken :is(.grade-song, .grade-score) { opacity: .5; }
+.rivals .grade-date { color: #9AB3A3; font-size: .875em; }
+/* The rows that fold and unfold the scores above the score cap, and the FPCs, below them. */
+.rivals .grades-fold td { padding: 0; }
+.rivals .grades-fold button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; color: #D4BA62;
+                              font: 500 15px/1.2 Roboto, Arial, sans-serif; cursor: pointer; }
+.rivals .grades-fold.above-cap button { color: color-mix(in srgb, #D4BA62 50%, #BFD6E0); }
+.rivals .grades-fold.fpc button { color: #CFEFFF; }
+.rivals .grades-fold button:hover { background: #1C2B22; }
+.rivals .grades-fold svg { width: 8px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round;
+                           stroke-linejoin: round; transition: transform .2s ease; }
+/* The arrow points right while the rows are folded, and turns down to unfold them. */
+.rivals .grades-fold button[aria-expanded="true"] svg { transform: rotate(90deg); }
+.rivals .fold-count { margin-left: auto; opacity: .7; font-variant-numeric: tabular-nums; }
+
+/* Narrow screens and phones: only the levels and the results, side by side (see rivals_page.css), and the page
+   scrolls under the results' tabs. */
+@media (max-width: 1000px) {
+  .rivals.passes .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); width: 100cqw; margin-left: 0;
+                             grid-template-columns: var(--levels) calc(100cqw - var(--levels)); }
+  .rivals .grades-table th { position: static; }
+}
+
+@media (max-width: 600px) {
+  .rivals.passes .dlg-main { --levels: 45cqw; }
+  .rivals .grades-table { --results-pad: 4px; font-size: 14px; }
+  .rivals .grades-table :is(th, td) { padding: 5px 4px; }
+  .rivals .grade-date { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rivals .grades-fold svg { transition: none; }
+}

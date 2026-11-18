@@ -53,15 +53,13 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
 .app.full .nav-admin { display: none; }
 .nav a { color: var(--muted); text-decoration: none; }
 .nav a.active { color: var(--text); font-weight: 600; }
-/* The user's pages: bold, and like the other menus, grey until open. They fill the room up to the account. History
-   keeps 3rem from Rivals, or less where the bar is narrow, to stay centred between Rivals and the account: the room
-   before it starts 1.5rem (the header's gap before the account) ahead of the room after it, and stops at 3rem. */
+/* The user's pages: bold, and like the other menus, grey until open. They fill the room up to the account. Each
+   page keeps 3rem from the one before it (see .nav-gap), or less where the bar is narrow, all the gaps alike: each
+   starts 1.5rem (the header's gap before the account) ahead of the room after the last page, and stops at 3rem. */
 .nav-main { flex: 1; gap: 0; font-size: 1.1rem; }
 .nav-main a, .nav-main a.active { flex: none; display: flex; align-items: center; gap: 0.4em; font-weight: 700; }
-.nav-main::before, .nav-main::after { content: ''; }
-.nav-main::before { order: 1; flex: 1 1 1.5rem; max-width: 3rem; }
-.nav-main a + a { order: 2; }
-.nav-main::after { order: 3; flex: 1 1 0; }
+.nav-main .nav-gap { flex: 1 1 1.5rem; min-width: .75rem; max-width: 3rem; }
+.nav-main::after { content: ''; flex: 1 1 0; }
 .account { margin-left: auto; display: flex; gap: 0.75rem; align-items: center; min-width: 0; }
 .account a { display: flex; align-items: center; gap: 0.4em; min-width: 0; max-width: 14rem; font-size: 1.1rem; font-weight: 700;
              text-decoration: none; }
@@ -70,6 +68,10 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
             opacity: 0.6; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a.active { color: var(--text); }
+/* Narrow phones leave the pages the room: the account is only its icon. */
+@media (max-width: 440px) {
+  .account-name { display: none; }
+}
 
 /* The footer keeps to the bottom of the window, below short pages too. */
 .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
