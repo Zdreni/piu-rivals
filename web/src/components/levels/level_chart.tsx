@@ -67,7 +67,8 @@ function frameStyleOrNull(framedLevels: string[], maxNum: number): CSSProperties
   const sides = new Set(framedLevels.map(levelSide));
   return {
     gridRow: `${maxNum - Math.max(...nums) + 2} / ${maxNum - Math.min(...nums) + 3}`,
-    gridColumn: ((sides.size > 1)  ?  '1 / 4'  :  sides.has('single')  ?  '1'  :  '3'),
+    // Placed absolutely, a frame given only its first line would stretch to the chart's edge.
+    gridColumn: ((sides.size > 1)  ?  '1 / 4'  :  sides.has('single')  ?  '1 / 2'  :  '3 / 4'),
   };
 }
 
@@ -86,8 +87,9 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
   const { draggedLevels, chartRef, dragHandlers } = useLevelDrag(sideLevels, (levelsDragged)  =>  onSelect(levelsDragged, null));
   const shownSelectedLevels = draggedLevels  ??  selectedLevels;
   const isSelected = (level: string | undefined)  =>  level !== undefined  &&  shownSelectedLevels.includes(level);
+  // While a drag is on, only the levels it has are shown, not those selected.
   const barSelection = (level: string)  =>
-    (draggedLevels?.includes(level)  ?  'pending'  :  selectedLevels.includes(level)  ?  'selected'  :  null);
+    (draggedLevels  ?  (draggedLevels.includes(level)  ?  'pending'  :  null)  :  selectedLevels.includes(level)  ?  'selected'  :  null);
 
   const otherLevels = levels.filter((level)  =>  ! (levelType(level) in SIDE_TYPES));
   // Every level between the highest and lowest gets a row, so missing levels keep their place.
@@ -106,7 +108,7 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
       onSelect([level], (selectedLevels.includes(level)  ?  clickedSegmentIdOrNull(event)  :  null));
   };
 
-  const selectedFrameStyle = frameStyleOrNull(selectedLevels.filter((level)  =>  sideLevels.includes(level)), maxNum);
+  const selectedFrameStyle = (draggedLevels  ?  null  :  frameStyleOrNull(selectedLevels.filter((level)  =>  sideLevels.includes(level)), maxNum));
   const draggedFrameStyle = (draggedLevels  ?  frameStyleOrNull(draggedLevels, maxNum)  :  null);
 
   const veilRef = useScrollVeil<HTMLDivElement>(null);
