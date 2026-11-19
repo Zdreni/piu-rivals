@@ -3,10 +3,17 @@
 .rivals .level-range { color: #9AB3A3; font: 500 14px/1 Roboto, Arial, sans-serif; }
 
 /* The played charts' colours are worked out from their scores (see GradeLevelBar); not played is the Rivals page's
-   blue. */
-.rivals .level-bar .grade-played { z-index: 2; }
-.rivals .level-bar .grade-unplayed { background: linear-gradient(to right, #0F2B3C, #061219); color: #7F9DB0; z-index: 1; }
-.rivals .level-bar.single .grade-unplayed { background: linear-gradient(to left, #0F2B3C, #061219); }
+   blue, darker for those too few rivals played. The counts are softer on the bars dimmed (see charts_groups.css). */
+.rivals.passes .level-bar { --played-ink: rgba(0,0,0,.5); --unplayed-ink: #A9B8C2; --few-rivals-ink: #67757E; }
+.rivals.passes .level-bar:is(.selected, .pending) { --played-ink: rgba(0,0,0,.72); --unplayed-ink: #FFF; --few-rivals-ink: #8A99A3; }
+@media (hover: hover) {
+  .rivals.passes .level-bar:hover { --played-ink: rgba(0,0,0,.72); --unplayed-ink: #FFF; --few-rivals-ink: #8A99A3; }
+}
+.rivals .level-bar .grade-played { color: var(--played-ink); z-index: 3; }
+.rivals .level-bar .grade-unplayed { background: linear-gradient(to right, #0F2B3C, #0A1E2A); color: var(--unplayed-ink); z-index: 2; }
+.rivals .level-bar.single .grade-unplayed { background: linear-gradient(to left, #0F2B3C, #0A1E2A); }
+.rivals .grade-unplayed.few-rivals { background: linear-gradient(to right, #04090C, #020507); color: var(--few-rivals-ink); z-index: 1; }
+.rivals .level-bar.single .grade-unplayed.few-rivals { background: linear-gradient(to left, #04090C, #020507); }
 
 .rivals.passes .tab-count { color: #C9D8CE; }
 
@@ -21,9 +28,10 @@
 .rivals .grades-table tr:is(.above-cap, .fpc) :is(.grade-ball, .grade-song, .grade-score) { opacity: .6; }
 .rivals .grades-table tr.below-np-min td { opacity: .6; }
 .rivals .grades-table tr.broken .grade-score { opacity: .65; }
-/* The empty row between the charts and the dimmed ones after them (above the score cap, or played by too few rivals), as
-   tall as a chart's, its line kept by a space. */
+/* The empty row between the charts and the dimmed ones after them (above the score cap, or played by too few rivals),
+   1.5 times as tall as a chart's: its line, kept by a space, and its padding are 1.5 times theirs. */
 .rivals .grades-table tbody tr.grade-cap-gap:hover { background: none; }
+.rivals .grades-table tr.grade-cap-gap td { padding-block: 9px; font-size: 1.5em; }
 .rivals .grade-date { color: #9AB3A3; font-size: .875em; }
 /* A chart someone played opens its card on a click (see PassesChartPopup). */
 .rivals .grades-table tr.openable { cursor: pointer; }
@@ -49,6 +57,7 @@
   .rivals.passes .dlg-main { --levels: 45cqw; }
   .rivals .grades-table { --results-pad: 4px; font-size: 14px; }
   .rivals .grades-table td { padding: 5px 4px; }
+  .rivals .grades-table tr.grade-cap-gap td { padding-block: 7.5px; }
   .rivals .grade-date { display: none; }
 }
 

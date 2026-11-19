@@ -41,6 +41,14 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
   const listedFpcCount = (playedTabIsOpen  ?  fpcChartGrades.length  :  0);
   const isBelowNpMinimum = (cg: ChartGrade)  =>  cg.score === null  &&  cg.rivalCount < npMinimalRivals;
   const isDimmed = (cg: ChartGrade)  =>  isAboveCap(cg, scoreCap)  ||  isBelowNpMinimum(cg);
+
+  // The not played tab counts the charts enough rivals played and the others apart, as "A + B".
+  const tabCount = (tab: PassesTab)  =>  {
+    const tabChartGrades = chartGradesByTab[tab];
+    const fewRivalsCount = ((tab === 'not-played')  ?  tabChartGrades.filter(isBelowNpMinimum).length  :  0);
+    return (fewRivalsCount  ?  `${tabChartGrades.length - fewRivalsCount} + ${fewRivalsCount}`  :  tabChartGrades.length);
+  };
+
   // An empty row sets the dimmed charts apart from the others.
   const firstDimmedIndex = listedChartGrades.findIndex(isDimmed);
 
@@ -80,7 +88,7 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === selectedTab} data-tab={id} onClick={()  =>  onSelectTab(id)}>
             <span className="tab-label">{TAB_LABELS[id]}</span>
             <span className="tab-label short">{TAB_LABELS[id]}</span>
-            <span className="tab-count">{chartGradesByTab[id].length}</span>
+            <span className="tab-count">{tabCount(id)}</span>
           </button>
         ))}
       </div>

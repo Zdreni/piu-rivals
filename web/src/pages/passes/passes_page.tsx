@@ -85,6 +85,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
           chartGrades={chartGrades}
           levels={levels}
           levelRange={levelRange}
+          npMinimalRivals={preferences.npMinimalRivals}
           selectedLevels={selectedLevels}
           onSelect={(newSelectedLevels, tab)  => {
             selectLevels(newSelectedLevels);

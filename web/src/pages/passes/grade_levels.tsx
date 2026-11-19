@@ -13,30 +13,41 @@ function scoresGradient(scores: number[], side: LevelSide) {
   const stops = sortedScores.map((score, i)  =>  `${scoreColor(score)} ${((i + .5) / sortedScores.length * 100).toFixed(1)}%`);
   // A gradient needs two stops.
   const colorStops = ((stops.length === 1)  ?  [stops[0], stops[0]]  :  stops);
-  return `linear-gradient(${((side === 'single')  ?  'to left'  :  'to right')}, ${colorStops.join(', ')})`;
+  return `linear-gradient(${gradientDirection(side)}, ${colorStops.join(', ')})`;
 }
 
 
-// One level's bar: the played charts coloured by their scores, then the not played ones, which grow with their count
-//  to the power of 1 / 1.5, as on the Rivals page. The played count leaves out FPCs, which can't be improved.
-function GradeLevelBar({ level, side, levelChartGrades, selection }: {
+const gradientDirection = (side: LevelSide)  =>  ((side === 'single')  ?  'to left'  :  'to right');
+
+
+// One level's bar: the played charts coloured by their scores, then the not played ones: first those at least
+//  `npMinimalRivals` rivals played, which grow with their count to the power of 1 / 1.25, then the others, which grow
+//  to the power of 1 / 1.5, as on the Rivals page.
+// The played count leaves out FPCs, which can't be improved.
+function GradeLevelBar({ level, side, levelChartGrades, npMinimalRivals, selection }: {
   level: string;
   side: LevelSide;
   levelChartGrades: ChartGrade[];
+  npMinimalRivals: number;
   selection: LevelBarSelection;
 }) {
   const scores = levelChartGrades.flatMap((cg)  =>  ((cg.score === null)  ?  []  :  [cg.score]));
-  const unplayedCount = levelChartGrades.length - scores.length;
+  const unplayedChartGrades = levelChartGrades.filter((cg)  =>  cg.score === null);
+  const unplayedCount = unplayedChartGrades.length;
+  const enoughRivalsCount = unplayedChartGrades.filter((cg)  =>  cg.rivalCount >= npMinimalRivals).length;
+  const fewRivalsCount = unplayedCount - enoughRivalsCount;
   const fpcCount = levelChartGrades.filter((cg)  =>  cg.gradeGroup === 'fpc').length;
   const tip = GRADE_GROUPS.map((group)  =>  `\n${GRADE_GROUP_LABELS[group]}: ${levelChartGrades.filter((cg)  =>  cg.gradeGroup === group).length}`)
     .join('');
+  const enoughRivalsTip = `\nNot played by ${npMinimalRivals}+ rivals: ${enoughRivalsCount}`;
 
   return (
-    <LevelBarButton level={level} side={side} selection={selection} title={`${level}: ${scores.length} of ${levelChartGrades.length} played${tip}`}>
+    <LevelBarButton level={level} side={side} selection={selection} title={`${level}: ${scores.length} of ${levelChartGrades.length} played${tip}${enoughRivalsTip}`}>
       <LevelSegment segmentId="played" className="grade-played" n={scores.length}
         label={(scores.length - fpcCount)  ||  ''}
         style={(scores.length  ?  { background: scoresGradient(scores, side) }  :  {})} />
-      <LevelSegment segmentId="unplayed" className="grade-unplayed" n={unplayedCount} grow={unplayedCount ** (1 / 1.5)} />
+      <LevelSegment segmentId="unplayed" className="grade-unplayed" n={enoughRivalsCount} grow={enoughRivalsCount ** (1 / 1.25)} />
+      <LevelSegment segmentId="unplayed-few" className="grade-unplayed few-rivals" n={fewRivalsCount} grow={fewRivalsCount ** (1 / 1.5)} />
     </LevelBarButton>
   );
 }
@@ -44,10 +55,11 @@ function GradeLevelBar({ level, side, levelChartGrades, selection }: {
 
 // The levels column of the Passes page: a bar per level, singles and doubles, coloured by your scores.
 // A click on a level already selected also passes `onSelect` the tab of the segment it was on.
-export function GradeLevels({ chartGrades, levels, levelRange, selectedLevels, onSelect }: {
+export function GradeLevels({ chartGrades, levels, levelRange, npMinimalRivals, selectedLevels, onSelect }: {
   chartGrades: ChartGrade[];
   levels: string[];
   levelRange: LevelRange;
+  npMinimalRivals: number;
   selectedLevels: string[];
   onSelect: (levels: string[], tab: PassesTab | null) => void;
 }) {
@@ -61,10 +73,11 @@ export function GradeLevels({ chartGrades, levels, levelRange, selectedLevels, o
   }
 
   const renderBar = (level: string, side: LevelSide, selection: LevelBarSelection)  =>  (
-    <GradeLevelBar key={level} level={level} side={side} levelChartGrades={chartGradesByLevel.get(level)  ??  []} selection={selection} />
+    <GradeLevelBar key={level} level={level} side={side} levelChartGrades={chartGradesByLevel.get(level)  ??  []}
+      npMinimalRivals={npMinimalRivals} selection={selection} />
   );
 
-  const tabOfSegment = (segmentId: string | null)  =>  ((segmentId === null)  ?  null  :  (segmentId === 'unplayed')  ?  'not-played'  :  'played');
+  const tabOfSegment = (segmentId: string | null)  =>  ((segmentId === null)  ?  null  :  segmentId.startsWith('unplayed')  ?  'not-played'  :  'played');
 
   return (
     <div className="filters">
