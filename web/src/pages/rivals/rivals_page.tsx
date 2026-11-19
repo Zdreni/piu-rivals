@@ -135,20 +135,20 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   const view = useMemo(()  =>  shownChartboards(allChartboards, { rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt }),
     [allChartboards, rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt]);
 
-  const { chartboards, capHiddenChartboards, snoozedChartboards, levels } = view;
+  const { chartboards, playedChartboards, capHiddenChartboards, snoozedChartboards, levels } = view;
   const selectedLevel = shownLevel(savedLevel, levels);
   const totals = useMemo(()  =>  countCharts(chartboards, countBy, treatTieAsWin), [chartboards, countBy, treatTieAsWin]);
   const myStats = useMemo(()  =>  levelStats(chartboards, treatTieAsWin), [chartboards, treatTieAsWin]);
   const selectedLevelCharts = useMemo(()  => {
     const atLevel = (chartboard: Chartboard)  =>  chartboard.chartLabel === selectedLevel;
     return {
-      chartboards: chartboards.filter(atLevel),
+      chartboards: playedChartboards.filter(atLevel),
       hiddenGroups: [
         { label: 'Snoozed', chartboards: snoozedChartboards.filter(atLevel) },
         { label: 'Score cap', chartboards: capHiddenChartboards.filter(atLevel).sort(byTargetWeight) },
       ],
     };
-  }, [chartboards, snoozedChartboards, capHiddenChartboards, selectedLevel]);
+  }, [playedChartboards, snoozedChartboards, capHiddenChartboards, selectedLevel]);
 
   const emptyMessage = (! compared.rivals.length
     ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'
@@ -156,7 +156,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       ?  'Loading scores…'
       :  ! allChartboards.length
         ?  'No scores for your rivals yet. They show up once your rivals are scraped.'
-        :  ! chartboards.length
+        :  ! playedChartboards.length
           ?  'No charts for the selected rivals — check some rivals on the left.'
           :  null);
 
@@ -191,7 +191,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         />
         <PreferencesPanel preferences={preferences} levelRange={levelRange} playerIsSolo={!! soloPlayerId} onChange={settings.changePreferences} />
         <ChartsGroups
-          chartboards={chartboards}
+          chartboards={playedChartboards}
           selectedLevel={selectedLevel}
           countBy={countBy}
           treatTieAsWin={treatTieAsWin}

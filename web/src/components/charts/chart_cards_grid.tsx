@@ -16,14 +16,12 @@ export interface ChartCardsGroup {
 }
 
 
-// The scrolling body of a score view: a grid of the groups' cards under their titles, or `emptyMessage`. A `narrow`
-//  grid fits more of the narrower cards without diffs in a row.
+// The scrolling body of a score view: a grid of the groups' cards under their titles, or `emptyMessage`.
 // Titles have a data-flip key like the cards, so they move along with them (see SelectedLevelCharts).
-export function ChartCardsGrid({ ref, role, emptyMessage, narrow, groups, renderCard, footer }: {
+export function ChartCardsGrid({ ref, role, emptyMessage, groups, renderCard, footer }: {
   ref?: Ref<HTMLDivElement>;
   role?: string;
   emptyMessage: string | null;
-  narrow: boolean;
   groups: ChartCardsGroup[];
   renderCard: (foldedChartboard: FoldedChartboard) => ReactNode;
   footer?: ReactNode;
@@ -33,7 +31,7 @@ export function ChartCardsGrid({ ref, role, emptyMessage, narrow, groups, render
       {emptyMessage !== null
         ?  <div className="empty">{emptyMessage}</div>
         :  (
-          <div className={`chart-grid${(narrow  ?  ' narrow'  :  '')}`}>
+          <div className="chart-grid">
             {groups.map(({ key, title, className, foldedChartboards, folder, note })  =>  {
               const titleClass = `group-title${(className  ?  ` ${className}`  :  '')}`;
               // A folder gets a box of its own, so its title sticks to the top only while its cards scroll under it.

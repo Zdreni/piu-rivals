@@ -14,8 +14,8 @@ export interface ChartboardsSettings {
 }
 
 
-// The charts the Rivals page shows, with only the compared rivals' results, out of `allChartboards`: those compared,
-//  the score cap's and the snoozed ones, and the levels they're at.
+// The charts the Rivals page counts, with only the compared rivals' results, out of `allChartboards`; those it lists,
+//  the ones you played: in the tabs, the score cap's and the snoozed ones; and the levels they're at.
 export function shownChartboards(allChartboards: Chartboard[],
   { rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt }: ChartboardsSettings) {
   const hiddenPlayerIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
@@ -45,9 +45,10 @@ export function shownChartboards(allChartboards: Chartboard[],
     .filter((cb): cb is Chartboard  =>  cb !== null)
     .map((cb)  =>  ({ ...cb, weight: targetWeight(cb.rivals.map((r)  =>  r.realDelta)) }));
 
-  const snoozedChartboards = chartboards.filter((cb)  =>  cb.snoozedUntil !== null)
+  const playedChartboards = chartboards.filter((cb)  =>  ! cb.unplayed);
+  const snoozedChartboards = playedChartboards.filter((cb)  =>  cb.snoozedUntil !== null)
     .map(hiddenResultsOrNull)
     .filter((cb): cb is Chartboard  =>  cb !== null)
     .sort((a, b)  =>  a.snoozedUntil! - b.snoozedUntil!  ||  a.track.localeCompare(b.track));
-  return { chartboards, capHiddenChartboards, snoozedChartboards, levels: sortedLevels(chartboards) };
+  return { chartboards, playedChartboards, capHiddenChartboards, snoozedChartboards, levels: sortedLevels(playedChartboards) };
 }

@@ -11,8 +11,7 @@ type Stats = Record<string, { charts: Counts; results: Counts }>;
 const plural = (n: number, word: string)  =>  `${n} ${word}${(n === 1  ?  ''  :  's')}`;
 
 
-// One level's bar, split by results, wins next to the level number. The not played segment grows with its count to
-//  the power of 1 / 1.5, so many unplayed charts don't crowd out the rest.
+// One level's bar, split by results, wins next to the level number.
 // A click on the level already selected also passes `onSelect` the tab of the segment clicked.
 function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, onSelect }: {
   level: string;
@@ -43,13 +42,12 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
       type="button"
       role="radio"
       aria-checked={selected}
-      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tipLine('unplayed')}${tieLine}${tipLine('win')}`}
+      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tieLine}${tipLine('win')}`}
       onClick={select}
     >
       <span className="level-segs">
         <LevelSegment segmentId="win" className="win" n={counts.win} />
         {! treatTieAsWin  &&  <LevelSegment segmentId="tie" className="tie" n={counts.tie} />}
-        <LevelSegment segmentId="unplayed" className="unplayed" n={counts.unplayed} grow={counts.unplayed ** (1 / 1.5)} />
         <LevelSegment segmentId="hidden" className="hidden-loss" n={counts.hidden} label="" />
         <LevelSegment segmentId="lose" className="lose" n={counts.lose} style={{ '--heat': heat(counts.lose) } as CSSProperties} />
       </span>

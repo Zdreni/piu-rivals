@@ -6,10 +6,8 @@ import { gradeLabel, MAX_SCORE } from '../../data/grade_groups.ts';
 import { scoreColor } from '../../data/score_colors.ts';
 import type { PassesTab } from './ui_state.ts';
 
-const TAB_LABELS: Record<PassesTab, { label: string; shortLabel: string }> = {
-  played: { label: 'Played', shortLabel: 'Played' },
-  'not-played': { label: 'Not played', shortLabel: 'NP' },
-};
+// Two tabs leave room for their whole labels, even on phones.
+const TAB_LABELS: Record<PassesTab, string> = { played: 'Played', 'not-played': 'Not played' };
 
 const PASSES_TABS: PassesTab[] = ['played', 'not-played'];
 
@@ -80,15 +78,15 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
       <div className="tabs" role="tablist" aria-label="Charts">
         {PASSES_TABS.map((id)  =>  (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === selectedTab} data-tab={id} onClick={()  =>  onSelectTab(id)}>
-            <span className="tab-label">{TAB_LABELS[id].label}</span>
-            <span className="tab-label short">{TAB_LABELS[id].shortLabel}</span>
+            <span className="tab-label">{TAB_LABELS[id]}</span>
+            <span className="tab-label short">{TAB_LABELS[id]}</span>
             <span className="tab-count">{chartGradesByTab[id].length}</span>
           </button>
         ))}
       </div>
       <div className="dlg-body" role="tabpanel">
         {! (listedChartGrades.length  ||  listedFpcCount)
-          ?  <p className="empty">{emptyMessage  ??  `No ${TAB_LABELS[selectedTab].label.toLowerCase()} charts at this level.`}</p>
+          ?  <p className="empty">{emptyMessage  ??  `No ${TAB_LABELS[selectedTab].toLowerCase()} charts at this level.`}</p>
           :  (
             <table className="grades-table">
               <tbody>

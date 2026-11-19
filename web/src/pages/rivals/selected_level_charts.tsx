@@ -19,8 +19,6 @@ export interface HiddenGroup {
 
 
 const capitalize = (word: string)  =>  word[0]!.toUpperCase() + word.slice(1);
-// Short tab labels for phones.
-const SHORT_LABELS: Record<string, string> = { 'non-matched': 'NP', 'not played': 'NP', inferior: 'Inf', superior: 'Sup', hidden: 'Hid' };
 
 // A card snoozed or woken fades out this long, then the cards and group titles after it move into its place.
 const LEAVE_MS = 200;
@@ -168,9 +166,9 @@ export function SelectedLevelCharts({
   // Tabs are named after what their numbers count.
   const tabLabel = (id: TabId)  =>  (countBy === 'charts'  ?  CHART_OUTCOME_LABELS  :  RESULT_OUTCOME_LABELS)[OUTCOME_BY_TAB[id]];
 
-  // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses and non-matches,
-  //  so it isn't offered where it would leave the card in place.
-  const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win'  ||  tab === 'not-played');
+  // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses, so it isn't offered
+  //  where it would leave the card in place.
+  const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win');
   // The open tab's cards, folded once it's opened. Counted by results, a tab's charts have only its results, so the
   //  cards are folded from the full chartboards, to list the rivals they need (see rivalsFolding).
   const listedGroups = useMemo(()  => {
@@ -232,9 +230,9 @@ export function SelectedLevelCharts({
       <div className={`tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist" aria-label="Score results">
         {tabs.map((id)  =>  (
           <button key={id} className="tab" type="button" role="tab" aria-selected={id === tab} data-tab={id} onClick={()  =>  onSelectTab(id)}>
-            {/* On phones, and wherever stacked tabs don't fit their labels, the longer labels are shortened, e.g. "Non-matched" to "NP". */}
+            {/* The labels fit whole even on phones, so the short form is the same. */}
             <span className="tab-label">{capitalize(tabLabel(id))}</span>
-            <span className="tab-label short">{SHORT_LABELS[tabLabel(id)]  ??  capitalize(tabLabel(id))}</span>
+            <span className="tab-label short">{capitalize(tabLabel(id))}</span>
             <span className={`tab-count ${id}`}>{tabNumber(id)}</span>
             {flash?.tab === id  &&  <span key={flash.n} className="tab-flash" aria-hidden="true" onAnimationEnd={()  =>  setFlash(null)} />}
           </button>
@@ -244,8 +242,6 @@ export function SelectedLevelCharts({
         ref={bodyRef}
         role="tabpanel"
         emptyMessage={(tabCounts[tab] === 0  ?  emptyMessage  ??  `No ${tabLabel(tab)} ${countBy} at this level.`  :  null)}
-        // Unplayed charts have no diffs, so their cards are narrower and more fit in a row.
-        narrow={tab === 'not-played'}
         groups={listedGroups}
         renderCard={renderCard}
       />

@@ -17,7 +17,6 @@
 .rivals .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(321px + 2 * var(--results-pad), 100%), 1fr));
                       align-items: stretch; }
 /* Cards without diffs: the names get as much room as above, less the arrow and diff columns. */
-.rivals .chart-grid.narrow { grid-template-columns: repeat(auto-fill, minmax(min(248px + 2 * var(--results-pad), 100%), 1fr)); }
 .rivals .group-title { grid-column: 1 / -1; margin: 6px var(--results-pad) 0; padding-bottom: 6px; border-bottom: 1px solid #3A1813;
                        color: #A85044; font: 500 14px/1.2 Roboto, Arial, sans-serif; }
 .rivals .group-title:not(:first-child) { margin-top: 14px; }
@@ -52,6 +51,6 @@
 
 @media (max-width: 600px) {
   .rivals .dlg-body { --results-pad: 4px; --card-gap: 18px; padding-top: 8px; }
-  .rivals .chart-grid, .rivals .chart-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+  .rivals .chart-grid { grid-template-columns: minmax(0, 1fr); }
   .rivals .group-folder { --folder-indent: 12px; }
 }

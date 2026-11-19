@@ -100,7 +100,6 @@ function HistoryView({ me }: { me: PlayerSummary }) {
       <StatusToast status={status} />
       <ChartCardsGrid
         emptyMessage={(chartboards.length  ?  null  :  data.ready  ?  'No scores of yours yet. They show up once you are scraped.'  :  'Loading scores…')}
-        narrow={false}
         groups={[...days].slice(0, shownDayCount).map(([day, dayFoldedChartboards])  =>  ({
           key: day  ??  '',
           title: dayTitle(day),

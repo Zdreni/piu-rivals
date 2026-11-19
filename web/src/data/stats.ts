@@ -14,8 +14,9 @@ export const NO_COUNTS: Counts = { lose: 0, unplayed: 0, win: 0, tie: 0, hidden:
 export const RESULT_OUTCOME_LABELS = { lose: 'lost', unplayed: 'non-matched', win: 'won', tie: 'tied', hidden: 'hidden' };
 export const CHART_OUTCOME_LABELS = { lose: 'inferior', unplayed: 'not played', win: 'superior', tie: 'tied', hidden: 'hidden' };
 
-// Each tab is labelled with its outcome's label. "tie" is only a tab in the solo view.
-export const TABS: TabId[] = ['rivals-win', 'not-played', 'you-win', 'tie', 'hidden'];
+// The Rivals page's tabs, each labelled with its outcome's label. "tie" is only a tab in the solo view. Charts you
+//  haven't played are only counted there, so "not-played" isn't one.
+export const TABS: TabId[] = ['rivals-win', 'hidden', 'you-win', 'tie'];
 
 // The outcome each tab counts.
 export const OUTCOME_BY_TAB = { 'rivals-win': 'lose', 'not-played': 'unplayed', 'you-win': 'win', tie: 'tie', hidden: 'hidden' } as const;

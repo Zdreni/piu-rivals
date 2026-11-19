@@ -40,7 +40,7 @@
 .rivals .rival-stats { color: #9AB3A3; }
 .rivals .rival-stats .blue { color: #3FA9F5; }
 /* Losses the score cap hides, in the Hidden tab's colour. */
-.rivals .rival-stats .hidden-loss { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
+.rivals .rival-stats .hidden-loss { color: #9296C0; }
 .rivals .rival-stats .error { color: #FF5A5A; }
 .rivals .rival-stats .stats-label { color: #C9D8CE; }
 .rivals .rival-link { background: rgba(0,0,0,.12); color: #9AB3A3; border: 1px solid #2B4034; border-radius: 4px; padding: 5px 12px;

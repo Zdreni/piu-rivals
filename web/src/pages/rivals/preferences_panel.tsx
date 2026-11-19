@@ -77,8 +77,8 @@ export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChan
           label="Unplayed: min rivals"
           text={`${npMinimalRivals}`}
           title={(playerIsSolo
-            ?  'Solo: unplayed charts are always shown'
-            :  `Show unplayed charts with ≥ ${npMinimalRivals} rival ${(npMinimalRivals === 1  ?  'result'  :  'results')}`)}
+            ?  'Solo: unplayed charts are always counted'
+            :  `Count unplayed charts with ≥ ${npMinimalRivals} rival ${(npMinimalRivals === 1  ?  'result'  :  'results')}; Passes dims the others`)}
           off={playerIsSolo  ||  npMinimalRivals === MIN_NP_RIVALS}
           canLower={! playerIsSolo  &&  npMinimalRivals > MIN_NP_RIVALS}
           canRaise={! playerIsSolo  &&  npMinimalRivals < MAX_NP_RIVALS}

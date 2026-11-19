@@ -4,18 +4,16 @@
 /* The tabs' counts are coloured by their results, and only tinted: half the colour, half the text white, like the
    counts on fold buttons. */
 .rivals .tab-count.rivals-win { color: color-mix(in srgb, #FF2A00 50%, #EAF5EC); }
-.rivals .tab-count.not-played { color: color-mix(in srgb, #3FA9F5 50%, #EAF5EC); }
 .rivals .tab-count.you-win { color: color-mix(in srgb, #4FE33F 50%, #EAF5EC); }
 .rivals .tab-count.tie { color: #F2E8B6; }
-.rivals .tab-count.hidden { color: color-mix(in srgb, #8C2E1C 50%, #EAF5EC); }
+.rivals .tab-count.hidden { color: color-mix(in srgb, #6F7CF5 50%, #EAF5EC); }
 /* The tab a chart was just snoozed or woken into splashes in its colour: a glow that swells and fades, and a ring
    that spreads out of it (see SelectedLevelCharts). */
 .rivals .tabs .tab { position: relative; }
 .rivals .tab[data-tab="rivals-win"] { --flash: #FF2A00; }
-.rivals .tab[data-tab="not-played"] { --flash: #3FA9F5; }
 .rivals .tab[data-tab="you-win"] { --flash: #4FE33F; }
 .rivals .tab[data-tab="tie"] { --flash: #F2E8B6; }
-.rivals .tab[data-tab="hidden"] { --flash: #D0573F; }
+.rivals .tab[data-tab="hidden"] { --flash: #6F7CF5; }
 .rivals .tab-flash { position: absolute; inset: 2px; border-radius: 10px; pointer-events: none;
                      background: radial-gradient(closest-side, color-mix(in srgb, var(--flash) 55%, transparent), transparent);
                      animation: tab-flash .9s ease-out both; }
