@@ -68,9 +68,27 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
             opacity: 0.6; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account a.active { color: var(--text); }
-/* Narrow phones leave the pages the room: the account is only its icon. */
-@media (max-width: 440px) {
-  .account-name { display: none; }
+/* Phones: the whole menu bar is fixed along the bottom of the screen, its pages and the account as tabs of the same
+   width, each its icon over its name. The admin menu, where shown, is a row above them (the tabs' basis wraps them
+   onto the next). Fixed things at the bottom of
+   the page or as tall as the screen leave the tabs --bottom-nav-height. */
+:root { --bottom-nav-height: 0px; }
+@media (max-width: 600px) {
+  :root { --bottom-nav-height: 56px; }
+  .app { padding-bottom: var(--bottom-nav-height); }
+  .app:has(.nav-admin):not(.full) { padding-bottom: calc(var(--bottom-nav-height) + 3.25rem); }
+  .header { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; gap: 0; padding: 0;
+            border-top: 1px solid var(--border); border-bottom: none; }
+  .header-left, .nav-main, .account { display: contents; }
+  .nav-main a, .nav-main a.active, .account a { flex: 1 1 4rem; min-width: 0; max-width: none; height: var(--bottom-nav-height);
+      flex-direction: column; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600; line-height: 1.2;
+      -webkit-tap-highlight-color: transparent; }
+  .nav-main a.active, .account a.active { color: var(--accent); }
+  .nav-main a.active .nav-icon, .account a.active .nav-icon { opacity: 1; }
+  .header .nav-icon { width: 22px; height: 22px; }
+  .nav-main .nav-gap, .nav-main::after { display: none; }
+  .account-name { display: block; max-width: 100%; padding: 0 4px; }
+  .nav-admin { order: -1; height: 3.25rem; align-items: center; padding: 0 1rem; border-bottom: 1px solid var(--border); }
 }
 
 /* The footer keeps to the bottom of the window, below short pages too. */

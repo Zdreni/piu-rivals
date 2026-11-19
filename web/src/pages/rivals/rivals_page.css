@@ -39,7 +39,7 @@
   /* The shift is a margin, not a transform: a transform moves on its own, ahead of the columns whenever the browser
      is slow to lay them out, which pushes the levels past the screen's left edge and back while they change width. */
   .rivals .dlg-main.side-open { margin-left: 0; }
-  .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: 100vh; height: 100dvh; }
+  .rivals .rival-list, .rivals .prefs-panel { position: sticky; top: 0; align-self: start; width: auto; height: calc(100vh - var(--bottom-nav-height)); height: calc(100dvh - var(--bottom-nav-height)); }
 }
 
 @media (min-width: 601px) and (max-width: 1000px) {
