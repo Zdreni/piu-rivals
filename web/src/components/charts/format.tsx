@@ -47,8 +47,17 @@ export function Delta({ value, outcome, scoreCap, markTie }: {
 }
 
 
-// How much your best score rose over your previous one, e.g. "+12,345", in your row's diff column.
-export function ScoreGain({ value }: { value: number }) {
+// How much your best score rose over your previous one, e.g. "+12,345", in your row's diff column; "NEW" when
+//  `value` is null, for your first best on the chart.
+export function ScoreGain({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <span className="num delta" title="Your first score on this chart">
+        <span className="gain first-best">NEW</span>
+      </span>
+    );
+  }
+
   const sign = <span className="delta-sign">+</span>;
   return (
     <span className="num delta" title="Over your previous best">

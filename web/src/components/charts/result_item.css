@@ -15,11 +15,12 @@
 /* Centred under a typical diff like "+5,574", not in the whole cell, since the diffs are right-aligned. */
 .rivals .result .delta-tie { display: inline-block; width: 6ch; text-align: center; }
 .rivals .result.mine { color: #FFC433; }
-.rivals .result.mine .num { color: #C9A44A; }
+.rivals .result.mine .num, .rivals .result-details-gain { color: #C9A44A; }
 /* Your score's rise over your previous best is on a dark rounded patch like the result stats. The patch takes no room
    of its own, so the rise lines up with the diffs and the row keeps its height, and it stays off the card's edge even
    on phones. */
 .rivals .gain { margin: 0 -4px; padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,.4); }
+.rivals .gain.first-best { padding: 3px 4px; font-size: .8em; font-weight: 600; letter-spacing: .06em; }
 .rivals .dimmed { opacity: .4; }
 /* A click on a row unrolls it (see ResultItem); an unrolled rival isn't dimmed. */
 .rivals .result { cursor: pointer; }
@@ -54,6 +55,13 @@
 .rivals .result-stat.zero { opacity: .4; }
 .rivals .result-stat + .result-stat { margin-left: .4em; }
 .rivals .result-details-score { display: none; color: #C9D8CE; font-size: 16px; }
+/* With your gain on the stats' line, in the gain's column, the day goes under them. */
+.rivals .result-info:has(+ .result-details-gain) { display: contents; }
+.rivals .result-info:has(+ .result-details-gain) .result-stats { grid-column: 1 / -2; grid-row: 1; justify-self: start; margin: 2px 0 0; }
+.rivals .result-info:has(+ .result-details-gain) .result-date { grid-column: 1 / -1; grid-row: 2; justify-self: end; margin: 2px 0 6px; }
+.rivals .result-details > div > .result-details-gain { grid-column: -2 / -1; grid-row: 1; justify-self: end; margin: 2px 0 0; }
+/* The details clip what sticks out of them, so the gain's patch stays inside its column there. */
+.rivals .result-details-gain .gain { margin: 0; }
 
 /* In a maximized card on phones, the rows have room for names, scores and diffs, a little bigger than in the cards
    (see chart_card_maximized.css). */
@@ -115,4 +123,8 @@
   .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-score) .result-date {
       grid-column: 1; grid-row: 2; justify-self: end; margin: 2px 0 6px; padding-right: 12px; }
   .rivals .chart-card-results:not(.no-diffs) .result-info + .result-details-score { grid-row: 2; }
+  /* Your gain goes under the result stats, on the day's line. */
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-gain) .result-stats { grid-column: 1 / -1; }
+  .rivals .chart-card-results:not(.no-diffs) .result-info:has(+ .result-details-gain) .result-date { grid-column: 1; padding-right: 12px; }
+  .rivals .chart-card-results:not(.no-diffs) .result-details > div > .result-details-gain { grid-row: 2; margin: 2px 0 6px; }
 }

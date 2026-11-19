@@ -2,7 +2,7 @@ import type { PlayerSummary } from '@piu-rivals/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
-import { ChartCard } from '../../components/charts/chart_card.tsx';
+import { ChartCard, ME } from '../../components/charts/chart_card.tsx';
 import { ChartCardsGrid } from '../../components/charts/chart_cards_grid.tsx';
 import { buildChartboards } from '../../data/model.ts';
 import { MAX_LEVEL, MIN_LEVEL } from '../../data/preferences.ts';
@@ -37,8 +37,8 @@ function HistoryView({ me }: { me: PlayerSummary }) {
   const [unrolledByDay, setUnrolledByDay] = useState<Map<string | null, boolean>>(new Map());
   // By chart, how many of its folded scores were shown (see ChartCard).
   const [unfoldedRivalCountsByChart, setUnfoldedRivalCountsByChart] = useState<Map<number, UnfoldedRivalCounts>>(new Map());
-  // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
-  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
+  // The row (see ChartCard) unrolled or rolled up by hand in the one card last touched; the other cards unroll yours.
+  const [touchedCardRow, setTouchedCardRow] = useState<{ chartId: number; unrolledRowId: string | null } | null>(null);
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -83,8 +83,8 @@ function HistoryView({ me }: { me: PlayerSummary }) {
         menuIsOpen={false}
         leaving={false}
         maximized={false}
-        unrolledRowId={(unrolledRowId?.startsWith(`${chartId} `)  ?  unrolledRowId.slice(`${chartId} `.length)  :  null)}
-        onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chartId} ${playerId}`))}
+        unrolledRowId={(touchedCardRow?.chartId === chartId  ?  touchedCardRow.unrolledRowId  :  ME)}
+        onUnroll={(rowId)  =>  setTouchedCardRow({ chartId, unrolledRowId: rowId })}
         onMenu={()  =>  {}}
         onSnooze={()  =>  {}}
         onWake={()  =>  {}}

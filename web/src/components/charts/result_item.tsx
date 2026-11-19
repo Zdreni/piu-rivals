@@ -1,4 +1,4 @@
-import { type PointerEvent, useEffect, useRef } from 'react';
+import { type PointerEvent, type ReactNode, useEffect, useRef } from 'react';
 import { Delta, ScoreGain, Score } from './format.tsx';
 import { type Chartboard, displayName, type ResultStats } from '../../data/model.ts';
 import type { Entry } from '../../data/folded_chartboard.ts';
@@ -13,11 +13,14 @@ const RESULT_STATS: [Exclude<keyof ResultStats, 'maxCombo'>, string, string][] =
 
 // A row's details, shown when it's unrolled: the result stats, the day of the best score,
 //  and the score itself when the row has no room for it (`score`).
-function ResultDetails({ unrolled, resultStats, date, score }: {
+// With `gain` (see ScoreGain), how much your best rose goes on the stats' line, in the row's last column, and the day
+//  under them.
+function ResultDetails({ unrolled, resultStats, date, score, gain }: {
   unrolled: boolean;
   resultStats: ResultStats | null;
   date: string | null;
   score: number | null;
+  gain: ReactNode;
 }) {
   return (
     <div className={`result-details${(unrolled  ?  ' unrolled'  :  '')}`}>
@@ -37,6 +40,7 @@ function ResultDetails({ unrolled, resultStats, date, score }: {
           )}
           <span className="result-date">{date}</span>
         </span>
+        {gain  &&  <span className="result-details-gain">{gain}</span>}
         {score !== null  &&  <span className="num result-details-score"><Score value={score} tailClass="tail" /></span>}
       </div>
     </div>
@@ -82,14 +86,15 @@ export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDif
   const hoverHandlers = useHoverUnroll(onUnroll);
 
   if (entry.me) {
+    const gain = (showGain  ?  <ScoreGain value={chartboard.myImprovement} />  :  null);
     return (
       <>
         <div className={`result mine${(unrolled  ?  ' unrolled'  :  '')}`} onClick={onToggle} {...hoverHandlers}>
           <span className="result-player">{displayName(myName)}</span>
           <span className="num"><Score value={entry.score} tailClass="tail" /></span>
-          {(showGain  &&  chartboard.myImprovement)  ?  <ScoreGain value={chartboard.myImprovement} />  :  <span />}
+          {(gain  &&  ! unrolled)  ?  gain  :  <span />}
         </div>
-        <ResultDetails unrolled={unrolled} resultStats={chartboard.myResultStats} date={chartboard.myDate} score={null} />
+        <ResultDetails unrolled={unrolled} resultStats={chartboard.myResultStats} date={chartboard.myDate} score={null} gain={gain} />
       </>
     );
   }
@@ -103,7 +108,7 @@ export function ResultItem({ chartboard, entry, myName, unrolled, colorByRealDif
         <span className="num score"><Score value={entry.score} tailClass="tail" /></span>
         {chartboard.mine !== null  &&  <Delta value={entry.realDelta} outcome={(colorByRealDiff  ?  entry.realDelta  :  entry.delta)} scoreCap={scoreCap} markTie={! treatTieAsWin} />}
       </div>
-      <ResultDetails unrolled={unrolled} resultStats={entry.resultStats} date={entry.date} score={entry.score} />
+      <ResultDetails unrolled={unrolled} resultStats={entry.resultStats} date={entry.date} score={entry.score} gain={null} />
     </>
   );
 }
