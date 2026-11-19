@@ -1,10 +1,10 @@
 import { type CSSProperties, Fragment, type MouseEvent, type ReactNode } from 'react';
 import { levelNum, levelType, SIDE_TYPES } from '../../data/stats.ts';
-import { useLevelSwipe } from './level_swipe.ts';
+import { levelSide, useLevelDrag } from './level_drag.ts';
 import { useScrollVeil } from '../scroll_veil.ts';
 
 export type LevelSide = 'single' | 'double';
-// A bar is selected once its level's content is shown, and pending while a swipe has passed over it but not ended.
+// A bar is selected once its level's content is shown, and pending while a drag's rectangle has it but hasn't ended.
 export type LevelBarSelection = 'selected' | 'pending' | null;
 
 
@@ -57,23 +57,38 @@ const clickedSegmentIdOrNull = (event: MouseEvent<HTMLElement>)  =>
   ((event.detail > 0  &&  (event.target as HTMLElement).closest<HTMLElement>('[data-segment]')?.dataset.segment)  ||  null);
 
 
+// Where a frame around the singles and doubles `framedLevels` goes in the levels' grid, whose top row, under the
+//  heads, is level `maxNum`: from the highest level's row to the lowest's, over the sides they're on.
+function frameStyleOrNull(framedLevels: string[], maxNum: number): CSSProperties | null {
+  if (! framedLevels.length)
+    return null;
+
+  const nums = framedLevels.map(levelNum);
+  const sides = new Set(framedLevels.map(levelSide));
+  return {
+    gridRow: `${maxNum - Math.max(...nums) + 2} / ${maxNum - Math.min(...nums) + 3}`,
+    gridColumn: ((sides.size > 1)  ?  '1 / 4'  :  sides.has('single')  ?  '1'  :  '3'),
+  };
+}
+
+
 // The levels' bars, singles and doubles side by side with the level number between them, highest on top, and the
 //  other chart types' levels below them; `renderBar` draws each bar with a LevelBarButton.
-// A click selects one level, a ctrl (or cmd) click adds or removes one, and a swipe after a long press selects the
-//  levels it passes over (see useLevelSwipe). A click on a level already selected also passes `onSelect` the id of the segment it was on.
+// A click selects one level, and a drag a rectangle of singles and doubles (see useLevelDrag), framed as a whole. A
+//  click on a level already selected also passes `onSelect` the id of the segment it was on.
 export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
   levels: string[];
   selectedLevels: string[];
   renderBar: (level: string, side: LevelSide, selection: LevelBarSelection) => ReactNode;
   onSelect: (levels: string[], segmentId: string | null) => void;
 }) {
-  const { swipedLevels, chartRef, swipeHandlers } = useLevelSwipe(levels, (levelsSwiped)  =>  onSelect(levelsSwiped, null));
-  const shownSelectedLevels = swipedLevels  ??  selectedLevels;
+  const sideLevels = levels.filter((level)  =>  levelType(level) in SIDE_TYPES);
+  const { draggedLevels, chartRef, dragHandlers } = useLevelDrag(sideLevels, (levelsDragged)  =>  onSelect(levelsDragged, null));
+  const shownSelectedLevels = draggedLevels  ??  selectedLevels;
   const isSelected = (level: string | undefined)  =>  level !== undefined  &&  shownSelectedLevels.includes(level);
   const barSelection = (level: string)  =>
-    (swipedLevels?.includes(level)  ?  'pending'  :  selectedLevels.includes(level)  ?  'selected'  :  null);
+    (draggedLevels?.includes(level)  ?  'pending'  :  selectedLevels.includes(level)  ?  'selected'  :  null);
 
-  const sideLevels = levels.filter((level)  =>  levelType(level) in SIDE_TYPES);
   const otherLevels = levels.filter((level)  =>  ! (levelType(level) in SIDE_TYPES));
   // Every level between the highest and lowest gets a row, so missing levels keep their place.
   const levelNums = sideLevels.map(levelNum);
@@ -87,25 +102,17 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
 
   const select = (event: MouseEvent<HTMLElement>)  => {
     const level = (event.target as HTMLElement).closest<HTMLElement>('[data-level]')?.dataset.level;
-    if (! level)
-      return;
-
-    if (! event.ctrlKey  &&  ! event.metaKey) {
+    if (level)
       onSelect([level], (selectedLevels.includes(level)  ?  clickedSegmentIdOrNull(event)  :  null));
-      return;
-    }
-
-    // The last level selected stays selected.
-    if (! selectedLevels.includes(level))
-      onSelect(levels.filter((l)  =>  l === level  ||  selectedLevels.includes(l)), null);
-    else if (selectedLevels.length > 1)
-      onSelect(selectedLevels.filter((l)  =>  l !== level), null);
   };
+
+  const selectedFrameStyle = frameStyleOrNull(selectedLevels.filter((level)  =>  sideLevels.includes(level)), maxNum);
+  const draggedFrameStyle = (draggedLevels  ?  frameStyleOrNull(draggedLevels, maxNum)  :  null);
 
   const veilRef = useScrollVeil<HTMLDivElement>(null);
   return (
     <div className="level-scroll" ref={veilRef}>
-      <div className="level-chart" role="group" aria-label="Levels" ref={chartRef} onClick={select} {...swipeHandlers}>
+      <div className="level-chart" role="group" aria-label="Levels" ref={chartRef} onClick={select} {...dragHandlers}>
         <span className={`level-head single${headOn('S')}`}>Singles</span>
         <span />
         <span className={`level-head${headOn('D')}`}>Doubles</span>
@@ -114,7 +121,7 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
           return (
             <Fragment key={num}>
               {renderSideBar(singleLevel, 'single')}
-              <span className={`level-num${((isSelected(singleLevel)  ||  isSelected(doubleLevel))  ?  ' on'  :  '')}`}>{num}</span>
+              <span className={`level-num${((isSelected(singleLevel)  ||  isSelected(doubleLevel))  ?  ' on'  :  '')}`} data-num={num}>{num}</span>
               {renderSideBar(doubleLevel, 'double')}
             </Fragment>
           );
@@ -125,6 +132,8 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
             {renderBar(level, 'double', barSelection(level))}
           </div>
         ))}
+        {selectedFrameStyle  &&  <span className="level-frame" style={selectedFrameStyle} aria-hidden="true" />}
+        {draggedFrameStyle  &&  <span className="level-frame pending" style={draggedFrameStyle} aria-hidden="true" />}
       </div>
     </div>
   );

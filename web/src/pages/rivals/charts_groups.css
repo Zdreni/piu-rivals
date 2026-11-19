@@ -13,8 +13,8 @@
 .rivals .filters:hover .level-scroll { scrollbar-color: #3D5A49 transparent; }
 /* Rows share the column height evenly, but never get thinner than 10px (the panel scrolls then). There's no row gap:
    bars take 92% of their row instead, so the space between them stays in proportion to their height. */
-.rivals .level-chart { display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
-                       grid-auto-rows: minmax(10px, 1fr); font-size: 14px; }
+.rivals .level-chart { position: relative; display: grid; grid-template-columns: 128px 38px 128px; grid-template-rows: auto;
+                       grid-auto-rows: minmax(10px, 1fr); font-size: 14px; user-select: none; -webkit-user-select: none; }
 .rivals .level-head { color: #9AB3A3; font-size: 17px; padding-bottom: 8px; }
 .rivals .level-head.single { text-align: right; }
 .rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
@@ -26,15 +26,19 @@
    pinned to the button's edges. */
 .rivals .level-segs { position: absolute; inset: 0; display: flex; }
 .rivals .level-bar.single .level-segs { flex-direction: row-reverse; }
-/* Bars but the selected one are dimmed, on every screen, to --bar-dim; a mouse over one brightens it (not a tap, which
+/* Bars but the selected ones are dimmed, on every screen, to --bar-dim; a mouse over one brightens it (not a tap, which
    would leave it bright). */
 .rivals { --bar-dim: .4; }
 @media (hover: hover) { .rivals .level-bar:hover { opacity: 1; } }
-.rivals .level-bar.selected { opacity: 1; box-shadow: 0 0 0 2px #EAF5EC; }
-.rivals .level-bar.pending { opacity: 1; box-shadow: 0 0 0 2px #F2C230; }
+.rivals :is(.level-bar.selected, .level-bar.pending) { opacity: 1; }
+.rivals .level-other .level-bar.selected { box-shadow: 0 0 0 2px #EAF5EC; }
+/* One frame goes around the levels selected, and a yellow one around those dragged over until their charts show. Placed
+   absolutely in the grid, they take no cells of their own. */
+.rivals .level-frame { position: absolute; inset: -1px -3px; border: 2px solid #EAF5EC; border-radius: 5px; pointer-events: none; z-index: 6; }
+.rivals .level-frame.pending { border-color: #F2C230; }
 .rivals .level-bar.placeholder { visibility: hidden; }
-/* A long press on a bar starts a swipe over levels (see useLevelSwipe), not the browser's menu or text selection. */
-.rivals .level-bar { -webkit-touch-callout: none; user-select: none; }
+/* A long press on a bar starts a drag over levels (see useLevelDrag), not the browser's menu. */
+.rivals .level-bar { -webkit-touch-callout: none; }
 /* Segments split the bar by their counts, but each is at least 5% of it and wide enough for its count with 5% of the bar (up to 6px) on
    either side (see LevelBar), even if that bends the proportions. There's no padding, so it can't add to small segments. */
 .rivals .level-segs > span { flex: 0 0 0; box-sizing: border-box; --overlap: 0px; overflow: hidden; display: flex; align-items: center;
