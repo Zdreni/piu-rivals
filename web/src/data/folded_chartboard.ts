@@ -82,3 +82,8 @@ export function unfold(fold: RivalsFold, unfoldedRivalCount: number) {
     ?  { shownRivals: fold.rivals.slice(0, unfoldedRivalCount), foldedRivals: fold.rivals.slice(unfoldedRivalCount) }
     :  { shownRivals: fold.rivals.slice(foldedRivalCount), foldedRivals: fold.rivals.slice(0, foldedRivalCount) });
 }
+
+
+// All of a card's scores, folded ones too, best first.
+export const listedEntries = (foldedChartboard: FoldedChartboard)  =>
+  foldedChartboard.items.flatMap((item)  =>  ('entry' in item  ?  [item.entry]  :  item.fold.rivals));

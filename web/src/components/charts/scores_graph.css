@@ -1,0 +1,27 @@
+/* A chart's scores graph (see ScoresGraph): its strokes keep their width however the plot is stretched. */
+.rivals .scores-graph { height: 72px; padding: 6px 12px 8px; }
+/* The rivals who beat you are as red as `--red-share` says, paler the fewer they are, and the area under them is
+   filled more strongly too. */
+.rivals .scores-graph { --above: color-mix(in srgb, #FF2A00 var(--red-share), #6B5752); }
+.rivals .scores-graph svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.rivals .scores-graph path, .rivals .scores-graph line { vector-effect: non-scaling-stroke; }
+.rivals .scores-graph .line { fill: none; stroke-width: 1; stroke-linejoin: round; stroke-linecap: round; }
+.rivals .scores-graph .area { stroke: none; }
+.rivals .scores-graph .above .line { stroke: var(--above); }
+.rivals .scores-graph .above .area { fill: color-mix(in srgb, var(--above) calc(var(--red-share) * .4), transparent); }
+.rivals .scores-graph .below .line { stroke: #5F7366; }
+.rivals .scores-graph .below .area { fill: rgba(154, 179, 163, .07); }
+/* Above the score cap, where scores compare as equal to it, the area is a neutral, slightly reddish sand. */
+.rivals .scores-graph .capped .area { fill: rgba(200, 120, 100, .15); }
+/* There the line and dots of the rivals who beat you are half sand. */
+.rivals .scores-graph .above.capped .line { stroke: color-mix(in srgb, var(--above) 50%, #A89E86); }
+.rivals .scores-graph .mine { stroke: #FFC433; stroke-width: 2; }
+/* Each score's dot is a zero-length stroke with round caps, so it stays round however the plot is stretched. They're
+   see-through, so where many overlap they show darker. */
+.rivals .scores-graph .dot { fill: none; stroke-linecap: round; stroke-opacity: .45; }
+.rivals .scores-graph .dot.above { stroke: color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752); }
+.rivals .scores-graph .dot.above.capped {
+  stroke: color-mix(in srgb, color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752) 50%, #A89E86);
+}
+.rivals .scores-graph .dot.below { stroke: #5F7366; }
+.rivals .scores-graph .dot.mine { stroke: #FFC433; stroke-opacity: 1; }

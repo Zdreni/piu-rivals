@@ -2,8 +2,10 @@ import type { SnoozeDays } from '@piu-rivals/shared';
 import { type MouseEvent, type ReactNode, useState } from 'react';
 import { timeLeft } from './format.tsx';
 import { ResultItem } from './result_item.tsx';
+import { ScoresGraph } from './scores_graph.tsx';
+import type { GraphScoreSpans } from '../../data/graph_spans.ts';
 import type { Chartboard } from '../../data/model.ts';
-import { type Entry, type FoldedChartboard, SHOW_STEP, unfold, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
+import { type Entry, type FoldedChartboard, listedEntries, SHOW_STEP, unfold, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
 import { resultOutcome, type Outcome } from '../../data/stats.ts';
 
 // The row unrolled for your own score, and the header unrolled.
@@ -148,10 +150,11 @@ function FoldCount({ entries, count, treatTieAsWin }: { entries: Entry[]; count:
 
 // One chart's card: its header (see CardHead), then `foldedChartboard`'s scores and folds, with `unfoldedRivalCounts` of each
 //  fold's rivals unfolded. `unrolledRowId` is the unrolled row: a rival's id, "me" or "head". `showGain` shows how much your
-//  best rose; `leaving`, the card fades out. With `onMaximize`, a click on the card only maximizes it.
+//  best rose; `leaving`, the card fades out. With `scoresAsGraph`, the scores are drawn as a graph (see ScoresGraph)
+//  instead, folded ones too, its height shared with other cards' by `graphScoreSpans`. With `onMaximize`, a click on the card only maximizes it.
 export function ChartCard({
   foldedChartboard, myName, unfoldedRivalCounts, showGain, scoreCap, canSnooze, snoozesCheckedAt, menuIsOpen, leaving, maximized,
-  onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
+  scoresAsGraph, graphScoreSpans, onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
 }: {
   foldedChartboard: FoldedChartboard;
   myName: string;
@@ -163,6 +166,8 @@ export function ChartCard({
   menuIsOpen: boolean;
   leaving: boolean;
   maximized: boolean;
+  scoresAsGraph: boolean;
+  graphScoreSpans: GraphScoreSpans | null;
   onShow: (unfoldedRivalCounts: UnfoldedRivalCounts) => void;
   unrolledRowId: string | null;
   onUnroll: (playerId: string | null) => void;
@@ -222,8 +227,10 @@ export function ChartCard({
       <div className="chart-card-body">
         <div className="chart-card-box">
           {! maximized  &&  snoozePanel}
-          {/* Without your score there are no diffs, so their columns are dropped. */}
-          <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>
+          {(scoresAsGraph
+            ?  <ScoresGraph entries={listedEntries(foldedChartboard)} scoreCap={scoreCap} scoreSpans={graphScoreSpans} />
+            // Without your score there are no diffs, so their columns are dropped.
+            :  <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>)}
         </div>
       </div>
     </section>

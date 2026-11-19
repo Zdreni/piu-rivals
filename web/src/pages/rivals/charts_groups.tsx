@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { lossRedShare } from '../../data/loss_red.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy, LevelRange } from '../../data/preferences.ts';
 import { CHART_OUTCOME_LABELS, type Counts, levelStats, RESULT_OUTCOME_LABELS, sortedLevels, TAB_BY_OUTCOME, type TabId } from '../../data/stats.ts';
@@ -11,14 +12,13 @@ const plural = (n: number, word: string)  =>  `${n} ${word}${(n === 1  ?  ''  : 
 
 
 // One level's bar, split by results, wins next to the level number.
-function LevelBar({ level, side, stats, countBy, treatTieAsWin, selection, heat }: {
+function LevelBar({ level, side, stats, countBy, treatTieAsWin, selection }: {
   level: string;
   side: LevelSide;
   stats: Stats;
   countBy: CountBy;
   treatTieAsWin: boolean;
   selection: LevelBarSelection;
-  heat: (n: number) => string;
 }) {
   const { charts: byCharts, results: byResults } = stats[level]!;
   const counts = stats[level]![countBy];
@@ -34,7 +34,7 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selection, heat 
       <LevelSegment segmentId="win" className="win" n={counts.win} />
       {! treatTieAsWin  &&  <LevelSegment segmentId="tie" className="tie" n={counts.tie} />}
       <LevelSegment segmentId="hidden" className="hidden-loss" n={counts.hidden} label="" />
-      <LevelSegment segmentId="lose" className="lose" n={counts.lose} style={{ '--heat': heat(counts.lose) } as CSSProperties} />
+      <LevelSegment segmentId="lose" className="lose" n={counts.lose} style={{ '--red-share': lossRedShare(counts.lose) } as CSSProperties} />
     </LevelBarButton>
   );
 }
@@ -55,13 +55,9 @@ export function ChartsGroups({ chartboards, selectedLevels, countBy, treatTieAsW
   for (const level of levels)
     stats[level] = levelStats(chartboards.filter((cb)  =>  cb.chartLabel === level), treatTieAsWin);
 
-  // A level's heat grows with the square of its losses, relative to the level with the most.
-  const maxLose = Math.max(1, ...levels.map((level)  =>  stats[level]![countBy].lose));
-  const heat = (n: number)  =>  ((n / maxLose) ** 2).toFixed(3);
-
   const renderBar = (level: string, side: LevelSide, selection: LevelBarSelection)  =>  (
     <LevelBar key={level} level={level} side={side} selection={selection} stats={stats} countBy={countBy}
-      treatTieAsWin={treatTieAsWin  ||  countBy !== 'results'} heat={heat} />
+      treatTieAsWin={treatTieAsWin  ||  countBy !== 'results'} />
   );
 
   return (

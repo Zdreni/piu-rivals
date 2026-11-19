@@ -83,6 +83,8 @@ function HistoryView({ me }: { me: PlayerSummary }) {
         menuIsOpen={false}
         leaving={false}
         maximized={false}
+        scoresAsGraph={false}
+        graphScoreSpans={null}
         unrolledRowId={(touchedCardRow?.chartId === chartId  ?  touchedCardRow.unrolledRowId  :  ME)}
         onUnroll={(rowId)  =>  setTouchedCardRow({ chartId, unrolledRowId: rowId })}
         onMenu={()  =>  {}}
