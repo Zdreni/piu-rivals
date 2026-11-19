@@ -4,6 +4,7 @@ import { Score } from '../../components/charts/format.tsx';
 import { byNewestDate, byRivalCount, byScore, type ChartGrade, isAboveCap } from '../../data/chart_grades.ts';
 import { gradeLabel, MAX_SCORE } from '../../data/grade_groups.ts';
 import { scoreColor } from '../../data/score_colors.ts';
+import { useScrollVeil } from '../../components/scroll_veil.ts';
 import type { PassesTab } from './ui_state.ts';
 
 // Two tabs leave room for their whole labels, even on phones.
@@ -81,6 +82,7 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
     );
   };
 
+  const veilRef = useScrollVeil<HTMLDivElement>(null);
   return (
     <div className="score-content">
       <div className="tabs" role="tablist" aria-label="Charts">
@@ -92,7 +94,7 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
           </button>
         ))}
       </div>
-      <div className="dlg-body" role="tabpanel">
+      <div className="dlg-body" role="tabpanel" ref={veilRef}>
         {! (listedChartGrades.length  ||  listedFpcCount)
           ?  <p className="empty">{emptyMessage  ??  `No ${TAB_LABELS[selectedTab].toLowerCase()} charts at this level.`}</p>
           :  (

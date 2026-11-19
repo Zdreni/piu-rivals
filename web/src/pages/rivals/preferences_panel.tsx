@@ -2,6 +2,7 @@ import {
   clampLevel, clampNpMinimalRivals, clampScoreCap, type CountBy, type LevelRange, MAX_LEVEL, MAX_NP_RIVALS, MAX_SCORE_CAP, MIN_LEVEL,
   MIN_NP_RIVALS, MIN_SCORE_CAP, type Preferences, SCORE_CAP_STEP,
 } from '../../data/preferences.ts';
+import { useScrollVeil } from '../../components/scroll_veil.ts';
 
 
 // A label above a − value + row, and the title spelled out under them, unless `noHint`
@@ -37,7 +38,7 @@ const COUNT_BY_BUTTONS: { value: CountBy; label: string; title: string }[] = [
 ];
 
 
-// The preferences panel, in the rivals' place. `levelRange` is set or follows your scores.
+// The Setup page's preferences. `levelRange` is set or follows your scores.
 export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChange }: {
   preferences: Preferences;
   levelRange: LevelRange;
@@ -55,10 +56,11 @@ export function PreferencesPanel({ preferences, levelRange, playerIsSolo, onChan
   const levelsTitle = ((anyMin  &&  anyMax)
     ?  'Show charts of every level'
     :  anyMin  ?  `Show charts up to level ${maxLevel}`  :  anyMax  ?  `Show charts from level ${minLevel} up`  :  `Shows charts of levels ${minLevel}...${maxLevel}`);
+
+  const veilRef = useScrollVeil<HTMLDivElement>(null);
   return (
     <div className="prefs-panel" aria-label="Preferences">
-      <div className="prefs-top">Preferences</div>
-      <div className="prefs-controls">
+      <div className="prefs-controls" ref={veilRef}>
         <Stepper
           className="score-cap"
           label="Score cap"

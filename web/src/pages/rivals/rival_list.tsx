@@ -1,5 +1,5 @@
 import type { PlayerSummary, Rival } from '@piu-rivals/shared';
-import { useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { tabsClass, useTabsFit } from './layout.ts';
 import { type Chartboard, displayName, type PlayerBests } from '../../data/model.ts';
 import type { CountBy, LevelRange } from '../../data/preferences.ts';
@@ -7,7 +7,8 @@ import { usePlayers } from '../../data/other_players.ts';
 import { OtherPlayers } from './other_players.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, playerCounts } from '../../data/stats.ts';
-import type { RivalTab } from './ui_state.ts';
+import type { SetupTab } from './ui_state.ts';
+import { useScrollVeil } from '../../components/scroll_veil.ts';
 
 
 const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
@@ -18,12 +19,11 @@ const toListedPlayer = (player: PlayerSummary): ListedPlayer  =>  ({
 });
 
 
-// The rivals column: your rivals, and other players to add in the Others tab. Rivals' stats are judged on the real
-//  scores in your level range (see playerCounts). Your row shows `myStats`.
-export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloPlayerId, myStats, scoreCap, levelRange, onTab, onFocus,
-  onSolo,
-  onToggle, onStats, onRemove, onAdd }: {
-  tab: RivalTab;
+// The Setup page's tabs: your rivals, other players to add in the Others tab, and `preferencesPanel`. Rivals' stats
+//  are judged on the real scores in your level range (see playerCounts). Your row shows `myStats`.
+export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId, soloPlayerId, myStats, scoreCap, levelRange, preferencesPanel,
+  onTab, onFocus, onSolo, onToggle, onStats, onRemove, onAdd }: {
+  tab: SetupTab;
   chartboards: Chartboard[];
   me: PlayerSummary;
   rivals: Rival[];
@@ -33,7 +33,8 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
   myStats: Record<CountBy, Counts>;
   scoreCap: number;
   levelRange: LevelRange;
-  onTab: (tab: RivalTab) => void;
+  preferencesPanel: ReactNode;
+  onTab: (tab: SetupTab) => void;
   onFocus: (playerId: string | null) => void;
   onSolo: (soloIsOn: boolean) => void;
   onToggle: (playerId: string, on: boolean) => void;
@@ -42,6 +43,7 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
   onAdd: (player: PlayerSummary) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const veilRef = useScrollVeil(null, container);
   const { players: allPlayers, error: playersError } = usePlayers();
   const rivalStats = useMemo(()  =>  playerCounts(chartboards), [chartboards]);
 
@@ -79,26 +81,29 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
   const tabBar = useRef<HTMLDivElement>(null);
   const tabsFit = useTabsFit(tabBar, [rivals.length, otherPlayerCount]);
 
-  const renderTabButton = (id: RivalTab, label: string, count: number | null)  =>  (
+  const renderTabButton = (id: SetupTab, label: string, count: number | null)  =>  (
     <button type="button" role="tab" aria-selected={tab === id} className="rival-tab" onClick={()  =>  onTab(id)}>
       {label}{count !== null  &&  <span className="tab-count">{count}</span>}
     </button>
   );
 
   return (
-    <div className="rival-list" aria-label="Rivals">
+    <div className="rival-list" aria-label="Setup">
       <div className={`rival-tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist">
         {renderTabButton('mine', 'My rivals', rivals.length)}
         {renderTabButton('others', 'Others', otherPlayerCount)}
+        {renderTabButton('preferences', 'Preferences', null)}
       </div>
-      {tab === 'others'
+      {tab === 'preferences'
+        ?  preferencesPanel
+        :  tab === 'others'
         ?  (
           <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds}
             focusedPlayerId={focusedPlayerId} soloPlayerId={soloPlayerId} scoreCap={scoreCap} levelRange={levelRange} onFocus={onFocus} onAdd={add} onSolo={onSolo}
             onStats={onStats} />
         )
         :  (
-          <div className="rival-scroll" ref={container}>
+          <div className="rival-scroll" ref={veilRef}>
             {players.map((player)  => {
               const isMe = player.playerId === me.id;
               const isSolo = player.playerId === soloPlayerId;

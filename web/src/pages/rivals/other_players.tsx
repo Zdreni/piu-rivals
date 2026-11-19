@@ -5,6 +5,7 @@ import { formatNumber } from '../../util.ts';
 import { OutcomeStats } from './outcome_stats.tsx';
 import { buildChartboards, displayName, type PlayerBests } from '../../data/model.ts';
 import type { LevelRange } from '../../data/preferences.ts';
+import { useScrollVeil } from '../../components/scroll_veil.ts';
 import { Count, statsTip } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, playerCounts, RESULT_OUTCOME_LABELS } from '../../data/stats.ts';
 
@@ -63,6 +64,7 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
   const fromIndex = (searchText  ?  0  :  Math.max(0, meAt - listedPlayerCountAbove));
   const toIndex = (searchText  ?  otherPlayers.length  :  Math.min(otherPlayers.length, meAt + 1 + listedPlayerCountBelow));
 
+  const veilRef = useScrollVeil<HTMLDivElement>(null);
   return (
     <>
       <div className="rival-add">
@@ -75,7 +77,7 @@ export function OtherPlayers({ me, myBests, players, error, rivalIds, focusedPla
           onKeyDown={(event)  =>  event.key === 'Escape'  &&  setQuery('')}
         />
       </div>
-      <div className="rival-scroll">
+      <div className="rival-scroll" ref={veilRef}>
         {error  &&  <div className="rival-hint error">{error}</div>}
         {! error  &&  ! players  &&  <div className="muted rival-hint">Loading players…</div>}
         {players  &&  otherPlayers.length === 1  &&  (

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { ChartCard, ME } from './chart_card.tsx';
 import { useCloseOnBack } from '../close_on_back.ts';
 import { REDUCED_MOTION, useMobileView } from '../media.ts';
+import { watchScrollVeil } from '../scroll_veil.ts';
 import { type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
 
 // A maximized card grows out of its card this long, and shrinks back into it this long, as the page dims and brightens.
@@ -104,31 +105,10 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
     return ()  =>  [card, overlay].forEach((element)  =>  element.getAnimations().forEach((animation)  =>  animation.cancel()));
   }, []);
 
-  // Marks its results' box with whether there are more results above and below what's scrolled into view, which
-  //  fade out at its edges then.
+  // Its results fade out at their box's edges while there are more to scroll to.
   useEffect(()  => {
     const body = overlayRef.current?.querySelector<HTMLElement>('.chart-card-body');
-    if (! body)
-      return;
-
-    const markScrollEdges = ()  => {
-      body.classList.toggle('more-above', body.scrollTop > 1);
-      body.classList.toggle('more-below', body.scrollTop + body.clientHeight < body.scrollHeight - 1);
-    };
-
-    markScrollEdges();
-    body.addEventListener('scroll', markScrollEdges, { passive: true });
-
-    // Unfolding rivals or unrolling rows changes how much there is to scroll.
-    const resizeObserver = new ResizeObserver(markScrollEdges);
-    resizeObserver.observe(body);
-    if (body.firstElementChild)
-      resizeObserver.observe(body.firstElementChild);
-
-    return ()  => {
-      body.removeEventListener('scroll', markScrollEdges);
-      resizeObserver.disconnect();
-    };
+    return (body  ?  watchScrollVeil(body, null)  :  undefined);
   }, []);
 
   // Shrinks it back into its card, then closes it and calls `then`.
@@ -183,7 +163,7 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
 
   useCloseOnBack(close);
 
-  // Out of the panels, which slide by transforms and so would hold a fixed overlay inside them.
+  // Out of the page's columns, so no transform or containment of theirs can hold the fixed overlay inside them.
   return createPortal(
     <div className={`rivals card-overlay${(inMobileView  ?  ''  :  ' in-place')}`} ref={overlayRef} role="dialog" aria-modal="true" aria-label={foldedChartboard.chartboard.trackTitle}
       onClick={(event)  =>  event.target === event.currentTarget  &&  close.current()}>

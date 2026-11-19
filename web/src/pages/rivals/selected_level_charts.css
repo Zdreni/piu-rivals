@@ -27,16 +27,6 @@
   .rivals .score-content { min-height: 0; }
 }
 
-/* Tablets and wide screens, while the rivals or the preferences are in and the results are too narrow for two cards
-   (always on tablets): narrower cards (see components/charts/chart_card.css), so two fit in 554px. */
-@media (min-width: 601px) {
-  @container (max-width: 719px) {
-    .rivals .side-open .dlg-body { --results-pad: 6px; }
-    .rivals .side-open .chart-grid {
-        grid-template-columns: repeat(auto-fill, minmax(min(265px + 2 * var(--results-pad), 100%), 1fr)); }
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   /* The tab only glows and fades, without swelling. */
   .rivals .tab-flash { animation-name: tab-flash-fade; }

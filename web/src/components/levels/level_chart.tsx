@@ -1,6 +1,7 @@
 import { type CSSProperties, Fragment, type MouseEvent, type ReactNode } from 'react';
 import { levelNum, levelType, SIDE_TYPES } from '../../data/stats.ts';
 import { useLevelSwipe } from './level_swipe.ts';
+import { useScrollVeil } from '../scroll_veil.ts';
 
 export type LevelSide = 'single' | 'double';
 // A bar is selected once its level's content is shown, and pending while a swipe has passed over it but not ended.
@@ -101,8 +102,9 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
       onSelect(selectedLevels.filter((l)  =>  l !== level), null);
   };
 
+  const veilRef = useScrollVeil<HTMLDivElement>(null);
   return (
-    <div className="level-scroll">
+    <div className="level-scroll" ref={veilRef}>
       <div className="level-chart" role="group" aria-label="Levels" ref={chartRef} onClick={select} {...swipeHandlers}>
         <span className={`level-head single${headOn('S')}`}>Singles</span>
         <span />

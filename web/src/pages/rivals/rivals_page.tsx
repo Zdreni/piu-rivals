@@ -1,17 +1,16 @@
 import type { PlayerSummary } from '@piu-rivals/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { ChartsGroups } from './charts_groups.tsx';
 import { SelectedLevelCharts } from './selected_level_charts.tsx';
-import { useSidePanel } from './side_panel_control.ts';
 import { autoLevels, type Preferences, resolveLevels } from '../../data/preferences.ts';
 import { buildChartboards, byTargetWeight, type Chartboard } from '../../data/model.ts';
 import { shownChartboards } from '../../data/shown_chartboards.ts';
 import { PreferencesPanel } from './preferences_panel.tsx';
 import { RivalList } from './rival_list.tsx';
 import { countCharts, levelStats, type TabId } from '../../data/stats.ts';
-import { readUiState, type RivalTab, saveUiState, type UiState } from './ui_state.ts';
+import { readUiState, saveUiState, type SetupTab, type UiState } from './ui_state.ts';
 import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useOtherBests, usePlayers, withSoloPlayer } from '../../data/other_players.ts';
@@ -22,7 +21,9 @@ import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
 
 
-function RivalsView({ me }: { me: PlayerSummary }) {
+// The Rivals view: the levels and the selected levels' results, or with `setupIsOpen`, the Setup page: your rivals,
+//  other players to add, and the preferences.
+function RivalsView({ me, setupIsOpen }: { me: PlayerSummary; setupIsOpen: boolean }) {
   const settings = useRivalSettings();
   const { rivals, preferences, snoozes } = settings;
   const { scoreCap, npMinimalRivals } = preferences;
@@ -80,7 +81,6 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     :  null);
 
   const soloBests = useOtherBests(((soloPlayerId  &&  ! data.bests.has(soloPlayerId))  ?  soloPlayerId  :  null));
-  const { sidePanel, sidePanelIsOpen, toggleSide, closeSideOnLevels } = useSidePanel();
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -109,10 +109,16 @@ function RivalsView({ me }: { me: PlayerSummary }) {
       focus(null);
   }, [focusIsListed]);
 
-  // Switching tabs ends solo mode.
-  const switchRivalTab = (rivalTab: RivalTab)  => {
-    changeUi({ rivalTab });
-    setSoloIsOn(false);
+  // Switching between the lists ends solo mode; the preferences keep it.
+  const selectSetupTab = (setupTab: SetupTab)  => {
+    if (setupTab === 'preferences') {
+      changeUi({ preferencesAreOpen: true });
+      return;
+    }
+
+    changeUi({ rivalTab: setupTab, preferencesAreOpen: false });
+    if (setupTab !== ui.rivalTab)
+      setSoloIsOn(false);
   };
 
   const nonRivalSoloBests = ((soloBests !== null  &&  typeof soloBests === 'object')  ?  soloBests  :  null);
@@ -151,27 +157,35 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, [playedChartboards, snoozedChartboards, capHiddenChartboards, selectedLevels]);
 
   const emptyMessage = (! compared.rivals.length
-    ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'
+    ?  'Add rivals on the Others tab of Setup to compare your scores with theirs.'
     :  ! data.ready
       ?  'Loading scores…'
       :  ! allChartboards.length
         ?  'No scores for your rivals yet. They show up once your rivals are scraped.'
         :  ! playedChartboards.length
-          ?  'No charts for the selected rivals — check some rivals on the left.'
+          ?  'No charts for the selected rivals — check some rivals on Setup.'
           :  null);
 
   const error = settings.error  ??  (data.error  ?  `Couldn't load scores: ${data.error}`  :  null);
   const status = (error  ?  { text: error, error: true }  :  ! data.ready  ?  { text: 'Loading scores…', error: false }  :  null);
 
-  return (
-    <div className="rivals">
-      <StatusToast status={status} />
-      <div
-        className={`dlg-main${(sidePanelIsOpen  ?  ' side-open'  :  '')}${(sidePanel === 'preferences'  ?  ' side-preferences'  :  '')}`}
-        onClickCapture={closeSideOnLevels}
-      >
+  const statsPopup = statsPlayerId  &&  (
+    <StatsPopup
+      me={{ id: me.id, name: me.name  ??  me.id }}
+      player={{ id: statsPlayerId, name: rivals.find((r)  =>  r.id === statsPlayerId)?.name  ??  players?.find((p)  =>  p.id === statsPlayerId)?.name  ??  statsPlayerId }}
+      charts={data.charts}
+      bests={data.bests}
+      levelRange={levelRange}
+      onClose={()  =>  setStatsPlayerId(null)}
+    />
+  );
+
+  if (setupIsOpen) {
+    return (
+      <div className="rivals setup">
+        <StatusToast status={status} />
         <RivalList
-          tab={ui.rivalTab}
+          tab={(ui.preferencesAreOpen  ?  'preferences'  :  ui.rivalTab)}
           chartboards={allChartboards}
           me={me}
           rivals={rivals}
@@ -181,7 +195,10 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           myStats={myStats}
           scoreCap={scoreCap}
           levelRange={levelRange}
-          onTab={switchRivalTab}
+          preferencesPanel={
+            <PreferencesPanel preferences={preferences} levelRange={levelRange} playerIsSolo={!! soloPlayerId} onChange={settings.changePreferences} />
+          }
+          onTab={selectSetupTab}
           onFocus={focus}
           onSolo={setSoloIsOn}
           onToggle={(playerId, on)  =>  settings.setRivalHidden(playerId, ! on)}
@@ -189,19 +206,26 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onRemove={settings.removeRival}
           onAdd={settings.addRival}
         />
-        <PreferencesPanel preferences={preferences} levelRange={levelRange} playerIsSolo={!! soloPlayerId} onChange={settings.changePreferences} />
+        {statsPopup}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rivals">
+      <StatusToast status={status} />
+      <div className="dlg-main">
         <ChartsGroups
           chartboards={playedChartboards}
           selectedLevels={selectedLevels}
           countBy={countBy}
           treatTieAsWin={treatTieAsWin}
-          sidePanel={(sidePanelIsOpen  ?  sidePanel  :  null)}
+          levelRange={levelRange}
           onSelect={(newSelectedLevels, tab)  => {
             selectLevels(newSelectedLevels);
             if (tab)
               selectTab(tab);
           }}
-          onToggleSide={toggleSide}
         />
         <SelectedLevelCharts
           // Other levels start with every card folded again.
@@ -219,16 +243,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
           onSnooze={settings.snooze}
         />
       </div>
-      {statsPlayerId  &&  (
-        <StatsPopup
-          me={{ id: me.id, name: me.name  ??  me.id }}
-          player={{ id: statsPlayerId, name: rivals.find((r)  =>  r.id === statsPlayerId)?.name  ??  players?.find((p)  =>  p.id === statsPlayerId)?.name  ??  statsPlayerId }}
-          charts={data.charts}
-          bests={data.bests}
-          levelRange={levelRange}
-          onClose={()  =>  setStatsPlayerId(null)}
-        />
-      )}
+      {statsPopup}
     </div>
   );
 }
@@ -236,6 +251,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
 
 export function RivalsPage() {
   const { status, me } = useSession();
+  const setupIsOpen = useLocation().pathname === '/setup';
   if (status === 'loading')
     return <p className="muted">Loading…</p>;
 
@@ -245,5 +261,5 @@ export function RivalsPage() {
   if (! me.user.player)
     return <p className="muted">No PIU Scores player is linked to your account yet, so there's no Rivals view for you. Ask an admin to link yours.</p>;
 
-  return <RivalsView me={me.user.player} />;
+  return <RivalsView me={me.user.player} setupIsOpen={setupIsOpen} />;
 }

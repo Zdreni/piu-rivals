@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/home_page.tsx';
 import { PlayersPage } from './pages/admin/players_page.tsx';
@@ -11,6 +11,7 @@ import { HistoryPage } from './pages/history/history_page.tsx';
 import { PassesPage } from './pages/passes/passes_page.tsx';
 import { RivalsPage } from './pages/rivals/rivals_page.tsx';
 import { SessionProvider, useSession } from './session.tsx';
+import { watchPageScrollVeil } from './components/scroll_veil.ts';
 
 
 // Outline icons in the text's colour, before the menu bar's links.
@@ -23,6 +24,12 @@ const RIVALS_ICON = renderIcon(<>
 
 // A line going up: your scores rising.
 const HISTORY_ICON = renderIcon(<path d="M1.5 12.5l4-4 3 3 6-6M10.5 5.5h4v4" />);
+// Sliders: your rivals and preferences.
+const SETUP_ICON = renderIcon(<>
+  <path d="M1.5 4h7M12 4h2.5M1.5 8h2.5M7 8h7.5M1.5 12h8M12.5 12h2" />
+  <circle cx="10.5" cy="4" r="1.5" /><circle cx="5.5" cy="8" r="1.5" /><circle cx="11" cy="12" r="1.5" />
+</>);
+
 // A check mark in a circle: charts passed.
 const PASSES_ICON = renderIcon(<><circle cx="8" cy="8" r="6.5" /><path d="M5 8.2l2 2 4-4.4" /></>);
 // A head and shoulders: your account.
@@ -33,17 +40,24 @@ const ACCOUNT_ICON = renderIcon(<><circle cx="8" cy="5.5" r="3" /><path d="M2.5 
 function Header() {
   const { status, me } = useSession();
   const signedIn = status === 'signed-in'  &&  me;
+  const hasPlayer = signedIn  &&  !! me.user.player;
   return (
     <header className="header">
       <div className="header-left">
         <nav className="nav nav-main" aria-label="Pages">
-          <NavLink to={(signedIn  ?  '/rivals'  :  '/')} end>{RIVALS_ICON}Rivals</NavLink>
-          {signedIn  &&  me.user.player  &&  (
+          {hasPlayer  &&  (
             <>
-              <span className="nav-gap" />
               <NavLink to="/passes">{PASSES_ICON}Passes</NavLink>
               <span className="nav-gap" />
+            </>
+          )}
+          <NavLink to={(signedIn  ?  '/rivals'  :  '/')} end>{RIVALS_ICON}Rivals</NavLink>
+          {hasPlayer  &&  (
+            <>
+              <span className="nav-gap" />
               <NavLink to="/history">{HISTORY_ICON}History</NavLink>
+              <span className="nav-gap" />
+              <NavLink to="/setup">{SETUP_ICON}Setup</NavLink>
             </>
           )}
         </nav>
@@ -84,15 +98,19 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 
-// The Rivals view and the Passes and History pages fill the whole window below the menu bar; the other pages keep to a
-//  readable width, with the footer below them.
-const FULL_PAGES = ['/rivals', '/passes', '/history'];
+// The Rivals view, its Setup and the Passes and History pages fill the whole window below the menu bar; the other pages
+//  keep to a readable width, with the footer below them.
+const FULL_PAGES = ['/rivals', '/setup', '/passes', '/history'];
 
 
 function Layout({ children }: { children: ReactNode }) {
   const full = FULL_PAGES.includes(useLocation().pathname);
+  const appRef = useRef<HTMLDivElement>(null);
+
+  useEffect(()  =>  watchPageScrollVeil(appRef.current!), []);
+
   return (
-    <div className={(full  ?  'app full'  :  'app')}>
+    <div className={(full  ?  'app full'  :  'app')} ref={appRef}>
       <Header />
       <main className="main">{children}</main>
       {! full  &&  (
@@ -112,7 +130,9 @@ export function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            {/* The same page at the same place, so it keeps its state (the focused rival, solo) between the two. */}
             <Route path="/rivals" element={<RivalsPage />} />
+            <Route path="/setup" element={<RivalsPage />} />
             <Route path="/passes" element={<PassesPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/admin/players" element={<AdminOnly><PlayersPage /></AdminOnly>} />

@@ -91,6 +91,31 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
   .nav-admin { order: -1; height: 3.25rem; align-items: center; padding: 0 1rem; border-bottom: 1px solid var(--border); }
 }
 
+/* Scrolling boxes fade their content out at their top and bottom while there's more to scroll to there (.more-above
+   and .more-below, set by watchScrollVeil), the top under the title stuck there (--veil-top). */
+@property --fade-above { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-below { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.scroll-veil { --veil-top: 0px; --fade-above: 0px; --fade-below: 0px; transition: --fade-above .2s ease, --fade-below .2s ease;
+  mask-image: linear-gradient(#000 var(--veil-top), transparent var(--veil-top),
+                              rgba(0,0,0,.3) calc(var(--veil-top) + var(--fade-above) * .5), #000 calc(var(--veil-top) + var(--fade-above)),
+                              #000 calc(100% - var(--fade-below)), rgba(0,0,0,.3) calc(100% - var(--fade-below) * .5), transparent); }
+.scroll-veil.more-above { --fade-above: 32px; }
+.scroll-veil.more-below { --fade-below: 32px; }
+/* The page's own veils, where it scrolls: over the bottom of the window (above the phones' tabs), and over its top, or
+   under the tabs or the title that stick there. They fade to the page's background (--page-bg). */
+.app { --page-bg: var(--bg); }
+.app.full { --page-bg: #14201A; }
+.app::before, .app::after, .app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after {
+  content: ''; position: fixed; left: 0; right: 0; z-index: 30; height: 32px; pointer-events: none; opacity: 0;
+  transition: opacity .2s ease; }
+.app::after { bottom: var(--bottom-nav-height); background: linear-gradient(transparent, var(--page-bg)); }
+.app::before, .app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { background: linear-gradient(var(--page-bg), transparent); }
+.app::before { top: 0; }
+.app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { position: absolute; top: 100%; }
+.app.more-below::after { opacity: 1; }
+/* Where tabs or a folder's title stick to the top, the veil is under them, over the rest of their column. */
+.app.more-above:not(:has(.rivals .tabs, .rivals .rival-tabs, .group-title.stuck))::before, .app.more-above .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { opacity: 1; }
+
 /* The footer keeps to the bottom of the window, below short pages too. */
 .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .main { flex: 1; width: 100%; max-width: 72rem; margin: 0 auto; padding: 1rem; }

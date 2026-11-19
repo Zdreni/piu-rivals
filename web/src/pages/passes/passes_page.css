@@ -1,7 +1,5 @@
 /* The Passes page: the levels coloured by your scores, beside a table of the selected level's charts. */
 
-.rivals .level-range { color: #9AB3A3; font: 500 14px/1 Roboto, Arial, sans-serif; }
-
 /* The played charts' colours are worked out from their scores (see GradeLevelBar); not played is the Rivals page's
    blue, darker for those too few rivals played. The counts are softer on the bars dimmed (see charts_groups.css). */
 .rivals.passes .level-bar { --played-ink: rgba(0,0,0,.5); --unplayed-ink: #A9B8C2; --few-rivals-ink: #67757E; }
@@ -46,15 +44,7 @@
 .rivals .grades-fold button[aria-expanded="true"] svg { transform: rotate(90deg); }
 .rivals .fold-count { margin-left: auto; opacity: .7; font-variant-numeric: tabular-nums; }
 
-/* Narrow screens and phones: only the levels and the results, side by side (see rivals_page.css), and the page
-   scrolls under the results' tabs. */
-@media (max-width: 1000px) {
-  .rivals.passes .dlg-main { --levels: min(340px, max(0px, 100cqw - 360px)); width: 100cqw; margin-left: 0;
-                             grid-template-columns: var(--levels) calc(100cqw - var(--levels)); }
-}
-
 @media (max-width: 600px) {
-  .rivals.passes .dlg-main { --levels: 45cqw; }
   .rivals .grades-table { --results-pad: 4px; font-size: 14px; }
   .rivals .grades-table td { padding: 5px 4px; }
   .rivals .grades-table tr.grade-cap-gap td { padding-block: 7.5px; }

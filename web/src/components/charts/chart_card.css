@@ -42,7 +42,6 @@
                                  transition: visibility 0s .25s; }
 .rivals .chart-card-head.more .chart-card-more > div { visibility: visible; transition-delay: 0s; }
 .rivals .chart-card-more > div > * { margin-top: 8px; }
-/* The buttons are as tall as the levels' top bar buttons (see .panel-toggle). */
 /* The buttons stay on one line, however narrow the card. */
 .rivals .snooze { flex: 1; display: flex; align-items: center; gap: 6px; color: #9AB3A3; font-size: 14px; white-space: nowrap; }
 .rivals .snooze-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px;
@@ -101,17 +100,6 @@
 .rivals .snooze-lengths button + button { border-left: 1px solid #2B4034; }
 .rivals .snooze-lengths button:hover { color: #4FE33F; }
 .rivals .snooze-lengths button:active { background: #3D5A49; color: #4FE33F; }
-
-/* Tablets and wide screens, while the rivals or the preferences are in and the results are too narrow for two cards
-   (always on tablets): the cards are laid out as on phones (see below), with the room on their sides as on tablets.
-   The score column fits the scores, and the names line up with the track name, so the names get the room, and the
-   cards get narrower: 265px leaves names about as much room as the narrowest card above, so two fit in 554px. */
-@media (min-width: 601px) {
-  @container (max-width: 719px) {
-    .rivals .side-open .chart-card-head { padding: 7px 8px 7px 6px; }
-    .rivals .side-open .chart-card-title { gap: 6px; }
-  }
-}
 
 @media (max-width: 600px) {
   .rivals .chart-card-head { padding: 7px 8px 7px 6px; }
