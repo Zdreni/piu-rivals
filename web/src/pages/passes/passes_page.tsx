@@ -95,6 +95,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
         <LevelGradesTable
           levelChartGrades={levelChartGrades}
           scoreCap={preferences.scoreCap}
+          npMinimalRivals={preferences.npMinimalRivals}
           selectedTab={ui.selectedTab}
           emptyMessage={emptyMessage}
           onSelectTab={(tab)  =>  changeUi({ selectedTab: tab })}

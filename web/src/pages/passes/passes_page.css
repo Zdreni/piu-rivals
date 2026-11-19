@@ -18,10 +18,11 @@
 .rivals .grades-table td.grade-ball { width: 0; padding-right: 4px; line-height: 0; }
 .rivals .grade-song { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; color: #B4C4BA; }
 .rivals .grade-broken { margin-right: .35em; font-size: .85em; }
-.rivals .grades-table tr:is(.above-cap, .fpc) :is(.grade-song, .grade-score) { opacity: .6; }
+.rivals .grades-table tr:is(.above-cap, .fpc) :is(.grade-ball, .grade-song, .grade-score) { opacity: .6; }
+.rivals .grades-table tr.below-np-min td { opacity: .6; }
 .rivals .grades-table tr.broken .grade-score { opacity: .65; }
-/* The empty row between the scores below the score cap and those above it, as tall as a chart's, its line kept by a
-   space. */
+/* The empty row between the charts and the dimmed ones after them (above the score cap, or played by too few rivals), as
+   tall as a chart's, its line kept by a space. */
 .rivals .grades-table tbody tr.grade-cap-gap:hover { background: none; }
 .rivals .grade-date { color: #9AB3A3; font-size: .875em; }
 /* A chart someone played opens its card on a click (see PassesChartPopup). */

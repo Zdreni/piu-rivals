@@ -15,13 +15,15 @@ const PASSES_TABS: PassesTab[] = ['played', 'not-played'];
 
 
 // The selected level's charts in two tabs: played, as a table of your results, the worst first, and not played, the
-//  charts most rivals played first. Scores above `scoreCap` matter less, so they're dimmed. FPCs can't be improved, so
+//  charts most rivals played first. Scores above `scoreCap` matter less, so they're dimmed, as are the charts not played
+//  that fewer rivals than `npMinimalRivals` played, which the Rivals page leaves out. FPCs can't be improved, so
 //  they're folded under the other played charts, the latest first. `emptyMessage` replaces the tab's message when
 //  there's nothing at all.
 // A click on a chart someone played opens its card (`onOpen`, with its row); its row has its chart id in data-chart.
-export function LevelGradesTable({ levelChartGrades, scoreCap, selectedTab, emptyMessage, onSelectTab, onOpen }: {
+export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, selectedTab, emptyMessage, onSelectTab, onOpen }: {
   levelChartGrades: ChartGrade[];
   scoreCap: number;
+  npMinimalRivals: number;
   selectedTab: PassesTab;
   emptyMessage: string | null;
   onSelectTab: (tab: PassesTab) => void;
@@ -39,14 +41,17 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, selectedTab, empt
   const playedTabIsOpen = selectedTab === 'played';
   const listedChartGrades = chartGradesByTab[selectedTab];
   const listedFpcCount = (playedTabIsOpen  ?  fpcChartGrades.length  :  0);
-  // An empty row sets the scores above the score cap apart from those below them.
-  const firstAboveCapIndex = (playedTabIsOpen  ?  listedChartGrades.findIndex((cg)  =>  isAboveCap(cg, scoreCap))  :  -1);
+  const isBelowNpMinimum = (cg: ChartGrade)  =>  cg.score === null  &&  cg.rivalCount < npMinimalRivals;
+  const isDimmed = (cg: ChartGrade)  =>  isAboveCap(cg, scoreCap)  ||  isBelowNpMinimum(cg);
+  // An empty row sets the dimmed charts apart from the others.
+  const firstDimmedIndex = listedChartGrades.findIndex(isDimmed);
 
-  // A broken best's score is dimmed; FPCs and those above the score cap, track and score, a little less.
+  // A broken best's score is dimmed; FPCs, those above the score cap and the not played ones too few rivals played, the
+  //  whole row, a little less.
   const renderRow = (cg: ChartGrade)  =>  {
     const isOpenable = cg.score !== null  ||  cg.rivalCount > 0;
     const classNames = [(cg.score !== null  &&  ! cg.passed  &&  'broken'), (isAboveCap(cg, scoreCap)  &&  'above-cap'), (cg.gradeGroup === 'fpc'  &&  'fpc'),
-      (isOpenable  &&  'openable')];
+      (isBelowNpMinimum(cg)  &&  'below-np-min'), (isOpenable  &&  'openable')];
 
     return (
       <tr key={cg.chartId} className={classNames.filter(Boolean).join(' ')  ||  undefined} data-chart={cg.chartId}
@@ -88,7 +93,7 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, selectedTab, empt
             <table className="grades-table">
               <tbody>
                 {listedChartGrades.map((cg, i)  =>  (
-                  (i > 0  &&  i === firstAboveCapIndex)
+                  (i > 0  &&  i === firstDimmedIndex)
                     ?  [<tr key="cap-gap" className="grade-cap-gap" aria-hidden="true"><td colSpan={4}>&nbsp;</td></tr>, renderRow(cg)]
                     :  renderRow(cg)
                 ))}
