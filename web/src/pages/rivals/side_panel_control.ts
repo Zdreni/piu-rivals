@@ -35,13 +35,13 @@ export function useSidePanel() {
   }, [sidePanelIsOpen]);
 
   // On phones, while a side panel is in, a tap on the levels (but on their top bar's buttons) slides it out; a tap on a
-  //  bar selects its level too.
+  //  bar not selected selects its level too, while one already selected keeps the levels selected with it.
   const closeSideOnLevels = (event: MouseEvent)  => {
     const target = event.target as Element;
     if (! sidePanelIsOpen  ||  ! MOBILE_VIEW.matches  ||  ! target.closest('.filters')  ||  target.closest('.panel-toggle'))
       return;
 
-    if (! target.closest('.level-bar')) {
+    if (! target.closest('.level-bar:not(.selected)')) {
       event.preventDefault();
       event.stopPropagation();
     }

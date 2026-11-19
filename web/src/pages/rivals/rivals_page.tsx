@@ -16,7 +16,7 @@ import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useOtherBests, usePlayers, withSoloPlayer } from '../../data/other_players.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
-import { shownLevel, useSelectedLevel } from '../../data/use_selected_level.ts';
+import { shownLevels, useSelectedLevels } from '../../data/use_selected_levels.ts';
 import { StatsPopup } from './stats_popup.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
 import '../../score_views.css';
@@ -59,7 +59,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
   }, [data.ready, data.version, me.id, preferences.minLevel, preferences.maxLevel, minLevel, maxLevel]);
 
   const [ui, setUi] = useState<UiState>(readUiState);
-  const { savedLevel, selectLevel } = useSelectedLevel();
+  const { savedLevels, selectLevels } = useSelectedLevels();
   // The player unrolled on either tab, and whether only you and they are compared. Kept in memory only.
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const [soloIsOn, setSoloIsOn] = useState(false);
@@ -124,9 +124,9 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     [compared, me.id, scoreCap, minLevel, maxLevel],
   );
 
-  // Snoozes are checked when a level or tab is opened, or the scores or snoozes change; until then, cards keep the
+  // Snoozes are checked when levels or a tab are opened, or the scores or snoozes change; until then, cards keep the
   //  snooze status and time left they had.
-  const snoozesCheckedAt = useMemo(()  =>  Date.now(), [savedLevel, ui.selectedTab, allChartboards, snoozes]);
+  const snoozesCheckedAt = useMemo(()  =>  Date.now(), [savedLevels, ui.selectedTab, allChartboards, snoozes]);
 
   // A solo player is always counted by results, whatever the setting says.
   const countBy = (soloPlayerId  ?  'results'  :  preferences.countBy);
@@ -136,11 +136,11 @@ function RivalsView({ me }: { me: PlayerSummary }) {
     [allChartboards, rivals, soloPlayerId, countBy, npMinimalRivals, snoozes, snoozesCheckedAt]);
 
   const { chartboards, playedChartboards, capHiddenChartboards, snoozedChartboards, levels } = view;
-  const selectedLevel = shownLevel(savedLevel, levels);
+  const selectedLevels = useMemo(()  =>  shownLevels(savedLevels, levels), [savedLevels, levels]);
   const totals = useMemo(()  =>  countCharts(chartboards, countBy, treatTieAsWin), [chartboards, countBy, treatTieAsWin]);
   const myStats = useMemo(()  =>  levelStats(chartboards, treatTieAsWin), [chartboards, treatTieAsWin]);
   const selectedLevelCharts = useMemo(()  => {
-    const atLevel = (chartboard: Chartboard)  =>  chartboard.chartLabel === selectedLevel;
+    const atLevel = (chartboard: Chartboard)  =>  selectedLevels.includes(chartboard.chartLabel);
     return {
       chartboards: playedChartboards.filter(atLevel),
       hiddenGroups: [
@@ -148,7 +148,7 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         { label: 'Score cap', chartboards: capHiddenChartboards.filter(atLevel).sort(byTargetWeight) },
       ],
     };
-  }, [playedChartboards, snoozedChartboards, capHiddenChartboards, selectedLevel]);
+  }, [playedChartboards, snoozedChartboards, capHiddenChartboards, selectedLevels]);
 
   const emptyMessage = (! compared.rivals.length
     ?  'Add rivals on the Others tab on the left to compare your scores with theirs.'
@@ -192,20 +192,20 @@ function RivalsView({ me }: { me: PlayerSummary }) {
         <PreferencesPanel preferences={preferences} levelRange={levelRange} playerIsSolo={!! soloPlayerId} onChange={settings.changePreferences} />
         <ChartsGroups
           chartboards={playedChartboards}
-          selectedLevel={selectedLevel}
+          selectedLevels={selectedLevels}
           countBy={countBy}
           treatTieAsWin={treatTieAsWin}
           sidePanel={(sidePanelIsOpen  ?  sidePanel  :  null)}
-          onSelect={(level, tab)  => {
-            selectLevel(level);
+          onSelect={(newSelectedLevels, tab)  => {
+            selectLevels(newSelectedLevels);
             if (tab)
               selectTab(tab);
           }}
           onToggleSide={toggleSide}
         />
         <SelectedLevelCharts
-          // Another level starts with every card folded again.
-          key={selectedLevel}
+          // Other levels start with every card folded again.
+          key={selectedLevels.join(' ')}
           levelChartboards={selectedLevelCharts.chartboards}
           hiddenGroups={selectedLevelCharts.hiddenGroups}
           selectedTab={ui.selectedTab}

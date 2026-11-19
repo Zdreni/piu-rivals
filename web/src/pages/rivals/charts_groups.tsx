@@ -1,9 +1,9 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties } from 'react';
 import type { SidePanel } from './side_panel_control.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { CHART_OUTCOME_LABELS, type Counts, levelStats, RESULT_OUTCOME_LABELS, sortedLevels, TAB_BY_OUTCOME, type TabId } from '../../data/stats.ts';
-import { clickedSegmentIdOrNull, LevelChart, LevelSegment, type LevelSide } from '../../components/levels/level_chart.tsx';
+import { type LevelBarSelection, LevelBarButton, LevelChart, LevelSegment, type LevelSide } from '../../components/levels/level_chart.tsx';
 
 type Stats = Record<string, { charts: Counts; results: Counts }>;
 
@@ -12,16 +12,14 @@ const plural = (n: number, word: string)  =>  `${n} ${word}${(n === 1  ?  ''  : 
 
 
 // One level's bar, split by results, wins next to the level number.
-// A click on the level already selected also passes `onSelect` the tab of the segment clicked.
-function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, onSelect }: {
+function LevelBar({ level, side, stats, countBy, treatTieAsWin, selection, heat }: {
   level: string;
   side: LevelSide;
   stats: Stats;
   countBy: CountBy;
   treatTieAsWin: boolean;
-  selected: boolean;
+  selection: LevelBarSelection;
   heat: (n: number) => string;
-  onSelect: (level: string, tab: TabId | null) => void;
 }) {
   const { charts: byCharts, results: byResults } = stats[level]!;
   const counts = stats[level]![countBy];
@@ -31,40 +29,28 @@ function LevelBar({ level, side, stats, countBy, treatTieAsWin, selected, heat, 
 
   const tieLine = (treatTieAsWin  ?  ''  :  `\n${plural(byResults.tie, `${RESULT_OUTCOME_LABELS.tie} result`)}`);
 
-  const select = (event: MouseEvent<HTMLButtonElement>)  => {
-    const outcome = clickedSegmentIdOrNull(event) as keyof Counts | null;
-    onSelect(level, ((selected  &&  outcome)  ?  TAB_BY_OUTCOME[outcome]  :  null));
-  };
-
   return (
-    <button
-      className={`level-bar ${side}${(selected  ?  ' on'  :  '')}`}
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tieLine}${tipLine('win')}`}
-      onClick={select}
-    >
-      <span className="level-segs">
-        <LevelSegment segmentId="win" className="win" n={counts.win} />
-        {! treatTieAsWin  &&  <LevelSegment segmentId="tie" className="tie" n={counts.tie} />}
-        <LevelSegment segmentId="hidden" className="hidden-loss" n={counts.hidden} label="" />
-        <LevelSegment segmentId="lose" className="lose" n={counts.lose} style={{ '--heat': heat(counts.lose) } as CSSProperties} />
-      </span>
-    </button>
+    <LevelBarButton level={level} side={side} selection={selection}
+      title={`${level}:${tipLine('lose')}${tipLine('hidden')}${tieLine}${tipLine('win')}`}>
+      <LevelSegment segmentId="win" className="win" n={counts.win} />
+      {! treatTieAsWin  &&  <LevelSegment segmentId="tie" className="tie" n={counts.tie} />}
+      <LevelSegment segmentId="hidden" className="hidden-loss" n={counts.hidden} label="" />
+      <LevelSegment segmentId="lose" className="lose" n={counts.lose} style={{ '--heat': heat(counts.lose) } as CSSProperties} />
+    </LevelBarButton>
   );
 }
 
 
 // The levels column: a bar per level, singles and doubles, split by results. Its top bar's buttons slide `sidePanel`
 //  in and out.
-export function ChartsGroups({ chartboards, selectedLevel, countBy, treatTieAsWin, sidePanel, onSelect, onToggleSide }: {
+// A click on a level already selected also passes `onSelect` the tab of the segment it was on.
+export function ChartsGroups({ chartboards, selectedLevels, countBy, treatTieAsWin, sidePanel, onSelect, onToggleSide }: {
   chartboards: Chartboard[];
-  selectedLevel: string | null;
+  selectedLevels: string[];
   countBy: CountBy;
   treatTieAsWin: boolean;
   sidePanel: SidePanel | null;
-  onSelect: (level: string, tab: TabId | null) => void;
+  onSelect: (levels: string[], tab: TabId | null) => void;
   onToggleSide: (panel: SidePanel) => void;
 }) {
   const levels = sortedLevels(chartboards);
@@ -76,9 +62,9 @@ export function ChartsGroups({ chartboards, selectedLevel, countBy, treatTieAsWi
   const maxLose = Math.max(1, ...levels.map((level)  =>  stats[level]![countBy].lose));
   const heat = (n: number)  =>  ((n / maxLose) ** 2).toFixed(3);
 
-  const renderBar = (level: string, side: LevelSide)  =>  (
-    <LevelBar key={level} level={level} side={side} selected={level === selectedLevel} stats={stats} countBy={countBy}
-      treatTieAsWin={treatTieAsWin  ||  countBy !== 'results'} heat={heat} onSelect={onSelect} />
+  const renderBar = (level: string, side: LevelSide, selection: LevelBarSelection)  =>  (
+    <LevelBar key={level} level={level} side={side} selection={selection} stats={stats} countBy={countBy}
+      treatTieAsWin={treatTieAsWin  ||  countBy !== 'results'} heat={heat} />
   );
 
   return (
@@ -98,7 +84,8 @@ export function ChartsGroups({ chartboards, selectedLevel, countBy, treatTieAsWi
           </svg>
         </button>
       </div>
-      <LevelChart levels={levels} selectedLevel={selectedLevel} renderBar={renderBar} />
+      <LevelChart levels={levels} selectedLevels={selectedLevels} renderBar={renderBar}
+        onSelect={(newSelectedLevels, segmentId)  =>  onSelect(newSelectedLevels, (segmentId  ?  TAB_BY_OUTCOME[segmentId as keyof Counts]  :  null))} />
     </div>
   );
 }

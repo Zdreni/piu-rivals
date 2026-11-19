@@ -1,5 +1,4 @@
-import type { MouseEvent } from 'react';
-import { clickedSegmentIdOrNull, LevelChart, LevelSegment, type LevelSide } from '../../components/levels/level_chart.tsx';
+import { type LevelBarSelection, LevelBarButton, LevelChart, LevelSegment, type LevelSide } from '../../components/levels/level_chart.tsx';
 import type { ChartGrade } from '../../data/chart_grades.ts';
 import { GRADE_GROUP_LABELS, GRADE_GROUPS } from '../../data/grade_groups.ts';
 import type { LevelRange } from '../../data/preferences.ts';
@@ -20,13 +19,11 @@ function scoresGradient(scores: number[], side: LevelSide) {
 
 // One level's bar: the played charts coloured by their scores, then the not played ones, which grow with their count
 //  to the power of 1 / 1.5, as on the Rivals page. The played count leaves out FPCs, which can't be improved.
-// A click on the level already selected also passes `onSelect` the tab of the segment clicked.
-function GradeLevelBar({ level, side, levelChartGrades, selected, onSelect }: {
+function GradeLevelBar({ level, side, levelChartGrades, selection }: {
   level: string;
   side: LevelSide;
   levelChartGrades: ChartGrade[];
-  selected: boolean;
-  onSelect: (level: string, tab: PassesTab | null) => void;
+  selection: LevelBarSelection;
 }) {
   const scores = levelChartGrades.flatMap((cg)  =>  ((cg.score === null)  ?  []  :  [cg.score]));
   const unplayedCount = levelChartGrades.length - scores.length;
@@ -34,38 +31,25 @@ function GradeLevelBar({ level, side, levelChartGrades, selected, onSelect }: {
   const tip = GRADE_GROUPS.map((group)  =>  `\n${GRADE_GROUP_LABELS[group]}: ${levelChartGrades.filter((cg)  =>  cg.gradeGroup === group).length}`)
     .join('');
 
-  const select = (event: MouseEvent<HTMLButtonElement>)  => {
-    const segmentId = clickedSegmentIdOrNull(event);
-    onSelect(level, ((selected  &&  segmentId)  ?  ((segmentId === 'unplayed')  ?  'not-played'  :  'played')  :  null));
-  };
-
   return (
-    <button
-      className={`level-bar ${side}${(selected  ?  ' on'  :  '')}`}
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      title={`${level}: ${scores.length} of ${levelChartGrades.length} played${tip}`}
-      onClick={select}
-    >
-      <span className="level-segs">
-        <LevelSegment segmentId="played" className="grade-played" n={scores.length}
-          label={(scores.length - fpcCount)  ||  ''}
-          style={(scores.length  ?  { background: scoresGradient(scores, side) }  :  {})} />
-        <LevelSegment segmentId="unplayed" className="grade-unplayed" n={unplayedCount} grow={unplayedCount ** (1 / 1.5)} />
-      </span>
-    </button>
+    <LevelBarButton level={level} side={side} selection={selection} title={`${level}: ${scores.length} of ${levelChartGrades.length} played${tip}`}>
+      <LevelSegment segmentId="played" className="grade-played" n={scores.length}
+        label={(scores.length - fpcCount)  ||  ''}
+        style={(scores.length  ?  { background: scoresGradient(scores, side) }  :  {})} />
+      <LevelSegment segmentId="unplayed" className="grade-unplayed" n={unplayedCount} grow={unplayedCount ** (1 / 1.5)} />
+    </LevelBarButton>
   );
 }
 
 
 // The levels column of the Passes page: a bar per level, singles and doubles, coloured by your scores.
-export function GradeLevels({ chartGrades, levels, levelRange, selectedLevel, onSelect }: {
+// A click on a level already selected also passes `onSelect` the tab of the segment it was on.
+export function GradeLevels({ chartGrades, levels, levelRange, selectedLevels, onSelect }: {
   chartGrades: ChartGrade[];
   levels: string[];
   levelRange: LevelRange;
-  selectedLevel: string | null;
-  onSelect: (level: string, tab: PassesTab | null) => void;
+  selectedLevels: string[];
+  onSelect: (levels: string[], tab: PassesTab | null) => void;
 }) {
   const chartGradesByLevel = new Map<string, ChartGrade[]>();
   for (const chartGrade of chartGrades) {
@@ -76,10 +60,11 @@ export function GradeLevels({ chartGrades, levels, levelRange, selectedLevel, on
       chartGradesByLevel.set(chartGrade.chartLabel, [chartGrade]);
   }
 
-  const renderBar = (level: string, side: LevelSide)  =>  (
-    <GradeLevelBar key={level} level={level} side={side} levelChartGrades={chartGradesByLevel.get(level)  ??  []}
-      selected={level === selectedLevel} onSelect={onSelect} />
+  const renderBar = (level: string, side: LevelSide, selection: LevelBarSelection)  =>  (
+    <GradeLevelBar key={level} level={level} side={side} levelChartGrades={chartGradesByLevel.get(level)  ??  []} selection={selection} />
   );
+
+  const tabOfSegment = (segmentId: string | null)  =>  ((segmentId === null)  ?  null  :  (segmentId === 'unplayed')  ?  'not-played'  :  'played');
 
   return (
     <div className="filters">
@@ -87,7 +72,8 @@ export function GradeLevels({ chartGrades, levels, levelRange, selectedLevel, on
       <div className="level-top">
         <span className="level-range">Levels {levelRange.minLevel}–{levelRange.maxLevel}</span>
       </div>
-      <LevelChart levels={levels} selectedLevel={selectedLevel} renderBar={renderBar} />
+      <LevelChart levels={levels} selectedLevels={selectedLevels} renderBar={renderBar}
+        onSelect={(newSelectedLevels, segmentId)  =>  onSelect(newSelectedLevels, tabOfSegment(segmentId))} />
     </div>
   );
 }

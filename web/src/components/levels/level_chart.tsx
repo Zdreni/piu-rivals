@@ -1,7 +1,10 @@
 import { type CSSProperties, Fragment, type MouseEvent, type ReactNode } from 'react';
 import { levelNum, levelType, SIDE_TYPES } from '../../data/stats.ts';
+import { useLevelSwipe } from './level_swipe.ts';
 
 export type LevelSide = 'single' | 'double';
+// A bar is selected once its level's content is shown, and pending while a swipe has passed over it but not ended.
+export type LevelBarSelection = 'selected' | 'pending' | null;
 
 
 // Narrow bars still need room for their labels, so a labelled segment never gets less than its label, plus a little
@@ -31,18 +34,44 @@ export function LevelSegment({ segmentId, className, n, label = n, style = {}, g
 }
 
 
+// A level's bar, its segments (see LevelSegment) as `children`. LevelChart handles its clicks.
+export function LevelBarButton({ level, side, selection, title, children }: {
+  level: string;
+  side: LevelSide;
+  selection: LevelBarSelection;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <button className={`level-bar ${side}${(selection  ?  ` ${selection}`  :  '')}`} type="button" aria-pressed={selection === 'selected'}
+      data-level={level} title={title}>
+      <span className="level-segs">{children}</span>
+    </button>
+  );
+}
+
+
 // The id of the segment a click on a level bar was on; null for a keyboard click (detail 0), which has none.
-export const clickedSegmentIdOrNull = (event: MouseEvent<HTMLElement>)  =>
+const clickedSegmentIdOrNull = (event: MouseEvent<HTMLElement>)  =>
   ((event.detail > 0  &&  (event.target as HTMLElement).closest<HTMLElement>('[data-segment]')?.dataset.segment)  ||  null);
 
 
 // The levels' bars, singles and doubles side by side with the level number between them, highest on top, and the
-//  other chart types' levels below them; `renderBar` draws each bar.
-export function LevelChart({ levels, selectedLevel, renderBar }: {
+//  other chart types' levels below them; `renderBar` draws each bar with a LevelBarButton.
+// A click selects one level, a ctrl (or cmd) click adds or removes one, and a swipe after a long press selects the
+//  levels it passes over (see useLevelSwipe). A click on a level already selected also passes `onSelect` the id of the segment it was on.
+export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
   levels: string[];
-  selectedLevel: string | null;
-  renderBar: (level: string, side: LevelSide) => ReactNode;
+  selectedLevels: string[];
+  renderBar: (level: string, side: LevelSide, selection: LevelBarSelection) => ReactNode;
+  onSelect: (levels: string[], segmentId: string | null) => void;
 }) {
+  const { swipedLevels, chartRef, swipeHandlers } = useLevelSwipe(levels, (levelsSwiped)  =>  onSelect(levelsSwiped, null));
+  const shownSelectedLevels = swipedLevels  ??  selectedLevels;
+  const isSelected = (level: string | undefined)  =>  level !== undefined  &&  shownSelectedLevels.includes(level);
+  const barSelection = (level: string)  =>
+    (swipedLevels?.includes(level)  ?  'pending'  :  selectedLevels.includes(level)  ?  'selected'  :  null);
+
   const sideLevels = levels.filter((level)  =>  levelType(level) in SIDE_TYPES);
   const otherLevels = levels.filter((level)  =>  ! (levelType(level) in SIDE_TYPES));
   // Every level between the highest and lowest gets a row, so missing levels keep their place.
@@ -50,32 +79,48 @@ export function LevelChart({ levels, selectedLevel, renderBar }: {
   const minNum = Math.min(...levelNums), maxNum = Math.max(...levelNums);
   const nums = (sideLevels.length  ?  Array.from({ length: maxNum - minNum + 1 }, (_, i)  =>  maxNum - i)  :  []);
   const find = (type: string, num: number)  =>  sideLevels.find((level)  =>  levelType(level) === type  &&  levelNum(level) === num);
-  const headOn = (type: string)  =>  ((selectedLevel !== null  &&  levelType(selectedLevel) === type)  ?  ' on'  :  '');
+  const headOn = (type: string)  =>  (shownSelectedLevels.some((level)  =>  levelType(level) === type)  ?  ' on'  :  '');
 
   const renderSideBar = (level: string | undefined, side: LevelSide)  =>
-    (level  ?  renderBar(level, side)  :  <span className={`level-bar ${side} placeholder`} aria-hidden="true" />);
+    (level  ?  renderBar(level, side, barSelection(level))  :  <span className={`level-bar ${side} placeholder`} aria-hidden="true" />);
+
+  const select = (event: MouseEvent<HTMLElement>)  => {
+    const level = (event.target as HTMLElement).closest<HTMLElement>('[data-level]')?.dataset.level;
+    if (! level)
+      return;
+
+    if (! event.ctrlKey  &&  ! event.metaKey) {
+      onSelect([level], (selectedLevels.includes(level)  ?  clickedSegmentIdOrNull(event)  :  null));
+      return;
+    }
+
+    // The last level selected stays selected.
+    if (! selectedLevels.includes(level))
+      onSelect(levels.filter((l)  =>  l === level  ||  selectedLevels.includes(l)), null);
+    else if (selectedLevels.length > 1)
+      onSelect(selectedLevels.filter((l)  =>  l !== level), null);
+  };
 
   return (
     <div className="level-scroll">
-      <div className="level-chart" role="radiogroup" aria-label="Levels">
+      <div className="level-chart" role="group" aria-label="Levels" ref={chartRef} onClick={select} {...swipeHandlers}>
         <span className={`level-head single${headOn('S')}`}>Singles</span>
         <span />
         <span className={`level-head${headOn('D')}`}>Doubles</span>
         {nums.map((num)  => {
           const singleLevel = find('S', num), doubleLevel = find('D', num);
-          const on = selectedLevel !== null  &&  (selectedLevel === singleLevel  ||  selectedLevel === doubleLevel);
           return (
             <Fragment key={num}>
               {renderSideBar(singleLevel, 'single')}
-              <span className={`level-num${(on  ?  ' on'  :  '')}`}>{num}</span>
+              <span className={`level-num${((isSelected(singleLevel)  ||  isSelected(doubleLevel))  ?  ' on'  :  '')}`}>{num}</span>
               {renderSideBar(doubleLevel, 'double')}
             </Fragment>
           );
         })}
         {otherLevels.map((level)  =>  (
           <div key={level} className="level-other">
-            <span className={`level-num${(level === selectedLevel  ?  ' on'  :  '')}`}>{level}</span>
-            {renderBar(level, 'double')}
+            <span className={`level-num${(isSelected(level)  ?  ' on'  :  '')}`}>{level}</span>
+            {renderBar(level, 'double', barSelection(level))}
           </div>
         ))}
       </div>
