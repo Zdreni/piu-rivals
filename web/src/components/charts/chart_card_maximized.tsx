@@ -180,7 +180,6 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
         leaving={false}
         maximized
         scoresAsGraph={false}
-        graphScoreSpans={null}
         unrolledRowId={unrolledRowId}
         onUnroll={setUnrolledRowId}
         onMenu={()  =>  {}}

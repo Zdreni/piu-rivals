@@ -8,7 +8,6 @@ import { tabsClass, useTabsFit } from './layout.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
 import { foldChartboard, type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
-import { graphScoreSpans } from '../../data/graph_spans.ts';
 import { rivalsFolding } from '../../data/rivals_folding.ts';
 import { CHART_OUTCOME_LABELS, chartTier, OUTCOME_BY_TAB, RESULT_OUTCOME_LABELS, TABS, type TabId } from '../../data/stats.ts';
 import { tabChartboards } from '../../data/tab_charts.ts';
@@ -182,9 +181,6 @@ export function SelectedLevelCharts({
       :  [{ key: tab, title: null, foldedChartboards: fold(chartboardsByTab[tab]) }]);
   }, [levelChartboards, groups, chartboardsByTab, tab, countBy, treatTieAsWin, inMobileView]);
 
-  // The graphs of the cards listed share their height, so they compare.
-  const scoreSpans = useMemo(()  =>  graphScoreSpans(listedGroups.flatMap(({ foldedChartboards })  =>  foldedChartboards)), [listedGroups]);
-
   const renderCard = (foldedChartboard: FoldedChartboard)  => {
     const chartId = foldedChartboard.chartboard.id;
     return (
@@ -203,7 +199,6 @@ export function SelectedLevelCharts({
         menuIsOpen={menu === chartId}
         maximized={false}
         scoresAsGraph
-        graphScoreSpans={scoreSpans}
         onMenu={()  =>  setMenu((menu === chartId  ?  null  :  chartId))}
         onSnooze={(days)  =>  leave(chartId, days)}
         // A wake needs no undo: the card goes back to its tab at once.

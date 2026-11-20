@@ -1,7 +1,7 @@
 import { type CSSProperties, type PointerEvent, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Score } from './format.tsx';
 import type { Entry } from '../../data/folded_chartboard.ts';
-import type { GraphScoreSpans } from '../../data/graph_spans.ts';
+import { dotXs, MAX_SCORE } from '../../data/graph_dot_xs.ts';
 import { lossPointsRedShare, lossRedShare } from '../../data/loss_red.ts';
 import { displayName } from '../../data/model.ts';
 import './scores_graph.css';
@@ -11,28 +11,18 @@ import './scores_graph.css';
 const PLOT_SIZE = 100;
 const PLOT_PAD_Y = 8;
 const DOT_RADIUS_PX = 3;
-// Few scores aren't spread over the whole width when they're close: neighbouring dots are at most this far apart,
-//  in px, per 1000 points between them, but at least MIN_DOT_GAP_PX.
-const MAX_PX_PER_THOUSAND_POINTS = 10;
-const MIN_DOT_GAP_PX = 2 * DOT_RADIUS_PX;
-const MAX_SCORE = 1_000_000;
 
 
-// A chart's scores, from the lowest on the left to the highest on the right, each with a dot, evenly spread over the
-//  width unless close (see MAX_PX_PER_THOUSAND_POINTS). Then the right edge stands for a MAX_SCORE result, and the
-//  highest is as far from it as that allows, in the room the dots leave. A line up to yours
-//  splits them: the rivals you beat or tie are dimmed, the ones who beat you red, the redder the more rivals beat you
-//  (by scores capped at `scoreCap`), and each dot the more it's ahead of yours. Without your score, they're all red.
-//  Above the cap, the area is neutral, and the red is paler.
-// With `scoreSpans`, the height is shared with the other cards' graphs (see GraphScoreSpans); scores below its reach
-//  are drawn on the bottom edge.
-// A dashed line marks a MAX_SCORE result's height, when that's inside the graph.
+// A chart's scores, from the lowest on the left to the highest on the right, each with a dot, placed by dotXs. A line
+//  up to yours splits them: the rivals you beat or tie are dimmed, the ones who beat you red, the redder the more
+//  rivals beat you (by scores capped at `scoreCap`), and each dot the more it's ahead of yours. Without your score,
+//  they're all red. Above the cap, the area is neutral, and the red is paler.
+// The height goes from the lowest score at the bottom up to a MAX_SCORE result at the top, marked by a dashed line.
 // Under a mouse, the score nearest to it is marked with its player's name (`myName` for yours).
-export function ScoresGraph({ entries, myName, scoreCap, scoreSpans }: {
+export function ScoresGraph({ entries, myName, scoreCap }: {
   entries: Entry[];
   myName: string;
   scoreCap: number;
-  scoreSpans: GraphScoreSpans | null;
 }) {
   const clipId = useId();
   const svg = useRef<SVGSVGElement>(null);
@@ -53,33 +43,16 @@ export function ScoresGraph({ entries, myName, scoreCap, scoreSpans }: {
   const ascendingEntries = [...entries].reverse();
   const scores = ascendingEntries.map((e)  =>  e.score);
   const lowest = Math.min(...scores);
-  const scoreRange = Math.max(...scores) - lowest;
-  const evenGap = (scores.length === 1  ?  0  :  PLOT_SIZE / (scores.length - 1));
-  const unitsPerPx = PLOT_SIZE / sizePx.width;
-  const scoreGap = (points: number)  =>  points * MAX_PX_PER_THOUSAND_POINTS / 1000 * unitsPerPx;
-  // Unmeasured yet, the dots are spread evenly.
-  const gaps = scores.slice(1).map((score, i)  =>  (sizePx.width === 0
-    ?  evenGap
-    :  Math.min(evenGap, Math.max(MIN_DOT_GAP_PX * unitsPerPx, scoreGap(score - scores[i]!)))));
+  const myIndex = ascendingEntries.findIndex((e)  =>  e.me);
+  // Unmeasured yet, before the first paint, they're all put in the middle.
+  const pointXs = (sizePx.width === 0
+    ?  scores.map(()  =>  PLOT_SIZE / 2)
+    :  dotXs(scores, myIndex, sizePx.width).map((x)  =>  x * PLOT_SIZE / sizePx.width));
 
-  const dotsWidth = gaps.reduce((a, b)  =>  a + b, 0);
-  const maxScoreGap = (sizePx.width === 0  ?  0  :  Math.min(PLOT_SIZE - dotsWidth, scoreGap(MAX_SCORE - scores[scores.length - 1]!)));
-  const pointXs = gaps.reduce((xs, gap)  =>  [...xs, xs[xs.length - 1]! + gap], [PLOT_SIZE - maxScoreGap - dotsWidth]);
   const pointX = (index: number)  =>  pointXs[index]!;
-  const myScore = ascendingEntries.find((e)  =>  e.me)?.score  ??  null;
   const top = PLOT_PAD_Y, bottom = PLOT_SIZE - PLOT_PAD_Y;
-  // All scores equal, they're drawn across the middle.
-  const ownPointY = (score: number)  =>  (scoreRange === 0  ?  PLOT_SIZE / 2  :  bottom - (score - lowest) / scoreRange * (bottom - top));
-
-  const pointY = (score: number)  => {
-    if (! scoreSpans  ||  myScore === null  ||  scoreSpans.above + scoreSpans.below === 0)
-      return ownPointY(score);
-
-    const myY = top + scoreSpans.above / (scoreSpans.above + scoreSpans.below) * (bottom - top);
-    return (score >= myScore
-      ?  myY - (score - myScore) / Math.max(1, scoreSpans.above) * (myY - top)
-      :  Math.min(bottom, myY + (myScore - score) / Math.max(1, scoreSpans.below) * (bottom - myY)));
-  };
+  // All scores at MAX_SCORE, they're drawn along the top.
+  const pointY = (score: number)  =>  (lowest === MAX_SCORE  ?  top  :  top + (MAX_SCORE - score) / (MAX_SCORE - lowest) * (bottom - top));
 
   // A score alone gets a short flat line.
   const line = (scores.length === 1
@@ -88,12 +61,10 @@ export function ScoresGraph({ entries, myName, scoreCap, scoreSpans }: {
 
   // The areas reach past the outer dots by their radius, in the plot's units.
   const dotRadius = (sizePx.width > 0  ?  DOT_RADIUS_PX * PLOT_SIZE / sizePx.width  :  0);
-  const maxScoreY = pointY(MAX_SCORE);
   const area = (scores.length === 1
     ?  ''
     :  `M${pointX(0) - dotRadius},${pointY(lowest)}${line.replace('M', 'L')}h${dotRadius}V${PLOT_SIZE}H${pointX(0) - dotRadius}Z`);
 
-  const myIndex = ascendingEntries.findIndex((e)  =>  e.me);
   const myX = (myIndex === -1  ?  -dotRadius  :  pointX(myIndex));
   const lossCount = ascendingEntries.filter((e)  =>  ! e.me  &&  (e.delta === null  ||  e.delta < 0)).length;
   // Where the line rises over the score cap, between the last score under it and the first above.
@@ -144,7 +115,7 @@ export function ScoresGraph({ entries, myName, scoreCap, scoreSpans }: {
     <div className="scores-graph" style={{ '--red-share': lossRedShare(lossCount) } as CSSProperties} onPointerMove={hover}
       onPointerLeave={()  =>  setHoveredIndex(null)}>
       <svg ref={svg} viewBox={`0 0 ${PLOT_SIZE} ${PLOT_SIZE}`} preserveAspectRatio="none" aria-hidden="true">
-        {maxScoreY >= 0  &&  <line className="bound" x1={0} x2={PLOT_SIZE} y1={maxScoreY} y2={maxScoreY} />}
+        <line className="bound" x1={0} x2={PLOT_SIZE} y1={top} y2={top} />
         {renderPart('area', 'below', -dotRadius, Math.min(myX, capX))}
         {renderPart('area', 'above', myX, capX)}
         {renderPart('area', 'capped', capX, PLOT_SIZE + dotRadius)}

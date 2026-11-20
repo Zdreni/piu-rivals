@@ -1,5 +1,11 @@
-/* A chart's scores graph (see ScoresGraph): its strokes keep their width however the plot is stretched. */
-.rivals .scores-graph { position: relative; height: 72px; padding: 6px 12px 8px; }
+/* A chart's scores graph (see ScoresGraph): its strokes keep their width however the plot is stretched, and the dots'
+   radius is room enough at its sides. */
+.rivals .scores-graph { --graph-pad-x: 5px; position: relative; height: 84px; padding: 2.5px var(--graph-pad-x) 4px; }
+/* Desktop's wider cards get a little more. */
+@media (min-width: 601px) { .rivals .scores-graph { --graph-pad-x: 6px; } }
+/* Its box is as wide as the card's header, and takes some of the room under the card. */
+.rivals .chart-card-box:has(> .scores-graph) { margin-left: 0; }
+.rivals .chart-card-body:has(> .chart-card-box > .scores-graph) { padding-bottom: calc(var(--card-gap) - 10px); }
 /* The rivals who beat you are as red as `--red-share` says, paler the fewer they are, and the area under them is
    filled more strongly too. */
 .rivals .scores-graph { --above: color-mix(in srgb, #FF2A00 var(--red-share), #6B5752); }
@@ -20,7 +26,7 @@
 .rivals .scores-graph .bound { stroke: #4A6354; stroke-width: 1; stroke-dasharray: 3 3; }
 /* Each score's dot is a zero-length stroke with round caps, so it stays round however the plot is stretched. They're
    see-through, so where many overlap they show darker. */
-.rivals .scores-graph .dot { fill: none; stroke-linecap: round; stroke-opacity: .45; }
+.rivals .scores-graph .dot { fill: none; stroke-linecap: round; stroke-opacity: .7; }
 .rivals .scores-graph .dot.above { stroke: color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752); }
 .rivals .scores-graph .dot.above.capped {
   stroke: color-mix(in srgb, color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752) 50%, #A89E86);
@@ -31,10 +37,15 @@
 .rivals .scores-graph .hovered { stroke: #7FC8FF; stroke-width: 1.5; }
 .rivals .scores-graph .hovered-dot { fill: none; stroke: #7FC8FF; stroke-linecap: round; }
 .rivals .scores-graph .hovered-score {
-  position: absolute; top: 0; left: calc(12px + (100% - 24px) * var(--hovered-share));
+  position: absolute; top: 0; left: calc(var(--graph-pad-x) + (100% - 2 * var(--graph-pad-x)) * var(--hovered-share));
   transform: translateX(calc(-100% * var(--hovered-share)));
   display: flex; gap: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(16, 26, 20, .85);
   font-size: 11px; white-space: nowrap; color: #EAF5EC; pointer-events: none;
 }
 .rivals .scores-graph .hovered-score.at-bottom { top: auto; bottom: 0; }
 .rivals .scores-graph .hovered-player { color: #7FC8FF; }
+/* The card's box around a graph is darker than the page, so the graph stands out from it, with a lighter shadow. */
+.rivals .chart-card-box:has(> .scores-graph) { background: #0E1712; box-shadow: 0 2px 3px rgba(0, 0, 0, .2); }
+@media (hover: hover) {
+  .rivals .chart-card.maximizable:hover .chart-card-box:has(> .scores-graph) { background: #131E18; }
+}
