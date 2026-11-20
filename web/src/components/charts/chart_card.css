@@ -2,13 +2,11 @@
 /* Terraced, lit from above: the page's colour around the cards is the ground, the results stand on it, with rounded
    corners at the bottom and a shadow on the ground, and the track bar, the highest and lightest, stands on them, with
    rounded corners, a lit edge at the top and a shadow on the results. The bar and the results are as wide, with the
-   room on their sides between them and the next card's. The bar's shadow falls over the results, and its snooze menu,
-   while open, over the cards below. */
+   room on their sides between them and the next card's. The bar's shadow falls over the results. */
 .rivals .chart-card { display: flex; flex-direction: column; }
 .rivals .chart-card-head { position: relative; z-index: 1; margin: 0 var(--results-pad); padding: 10px 12px 10px 8px; background: #2D3D34;
                            border-top: 1px solid #4B6556; border-radius: 6px; box-shadow: 0 4px 6px rgba(0, 0, 0, .6);
                            cursor: pointer; }
-.rivals .chart-card-head.menu-open { z-index: 2; }
 .rivals .chart-card-title { display: flex; align-items: baseline; gap: 10px; }
 .rivals .chart-card-body { flex: 1; padding: 0 var(--results-pad) var(--card-gap); }
 /* The results are a little narrower than the bar, lined up with its right end, and go up under it, their top edge
@@ -32,38 +30,10 @@
                        box-shadow: 0 0 2.5px var(--ball-deep); }
 .rivals .chart-label.single { --ball: #FF6A45; --ball-deep: #A3200A; --ball-core: #5A150A; --ring: #FFD2B0; --ring-mid: #A8653F; }
 .rivals .chart-label.double { --ball: #4FEA6E; --ball-deep: #138A33; --ball-core: #0D4D20; --ring: #C5F5CF; --ring-mid: #559762; }
-/* A click on the header unrolls it (see CardHead): the track's full name wraps across the card, and, outside the Hidden
-   tab, the snooze line rolls out under it like a result's details (see .result-details). */
+/* A click on the header unrolls it (see CardHead): the track's full name wraps across the card. */
 .rivals .chart-card-head.unrolled .track { white-space: normal; }
-.rivals .chart-card-head.more .chart-card-title > .card-close { display: none; }
-.rivals .chart-card-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
-.rivals .chart-card-head.more .chart-card-more { grid-template-rows: 1fr; }
-.rivals .chart-card-more > div { display: flex; align-items: center; gap: 10px; min-height: 0; overflow: hidden; visibility: hidden;
-                                 transition: visibility 0s .25s; }
-.rivals .chart-card-head.more .chart-card-more > div { visibility: visible; transition-delay: 0s; }
-.rivals .chart-card-more > div > * { margin-top: 8px; }
-/* The buttons stay on one line, however narrow the card. */
+/* The snooze panel's buttons stay on one line, however narrow the card. */
 .rivals .snooze { flex: 1; display: flex; align-items: center; gap: 6px; color: #9AB3A3; font-size: 14px; white-space: nowrap; }
-.rivals .snooze-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px;
-                         border: 1px solid #2B4034; border-radius: 4px; background: #1C2B22; color: #9AB3A3;
-                         font: 500 15px/1 Roboto, Arial, sans-serif; cursor: pointer; }
-.rivals .snooze-button:hover { color: #4FE33F; border-color: #4FE33F; }
-.rivals .snooze-button.on { background: #3A1813; color: #FF8A70; border-color: #FF2A00; }
-/* The "Snooze..." button's menu of lengths opens under it, over the cards below, and the line lets it out. While it's
-   open, the button is red and the card is dimmed but for its buttons, chart too; a click anywhere else closes it (see
-   SelectedLevelCharts). */
-.rivals .chart-card-head.menu-open .chart-card-more > div { overflow: visible; }
-.rivals .snooze-anchor { position: relative; display: inline-flex; }
-.rivals .snooze-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 1; display: flex; flex-direction: column;
-                       min-width: 100%; padding: 4px; background: #1C2B22; border: 1px solid #2B4034; border-radius: 6px;
-                       box-shadow: 0 8px 20px rgba(0,0,0,.55); }
-.rivals .snooze-menu button { height: 40px; padding: 0 16px; border-radius: 4px; text-align: left; white-space: nowrap; color: #EAF5EC;
-                              font: 500 15px/1 Roboto, Arial, sans-serif; cursor: pointer; }
-.rivals .snooze-menu button:hover, .rivals .snooze-menu button:focus-visible { background: #2B4034; color: #4FE33F; outline: none; }
-/* The length pressed, and then picked while the card fades out. */
-.rivals .snooze-menu button:active, .rivals .snooze-menu button.picked { background: #3D5A49; color: #4FE33F; }
-.rivals .chart-card-title, .rivals .chart-card-body { transition: opacity .2s ease; }
-.rivals .chart-card.snoozing :is(.chart-card-title, .chart-card-body) { opacity: .2; }
 /* A card snoozed or woken fades out, then the cards after it move into its place (see SelectedLevelCharts). */
 .rivals .chart-card { transition: opacity .2s ease; }
 .rivals .chart-card.leaving { opacity: 0; pointer-events: none; }
@@ -105,11 +75,6 @@
   .rivals .chart-card-head { padding: 7px 8px 7px 6px; }
   .rivals .chart-card-title { gap: 6px; }
   .rivals .chart-card-box { margin-left: 8px; }
-  .rivals .snooze-button { height: 40px; }
   .rivals .chart-card-head .track { font-size: 16px; }
   .rivals .show-others { font-size: 12px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rivals .chart-card-more, .rivals .chart-card-more > div, .rivals .chart-card-title, .rivals .chart-card-body { transition: none; }
 }

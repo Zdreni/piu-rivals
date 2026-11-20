@@ -7,7 +7,7 @@ import { REDUCED_MOTION, useMobileView } from '../../components/media.ts';
 import { tabsClass, useTabsFit } from './layout.ts';
 import type { Chartboard } from '../../data/model.ts';
 import type { CountBy } from '../../data/preferences.ts';
-import { foldChartboard, type FoldedChartboard, NO_UNFOLDED_RIVALS, type UnfoldedRivalCounts } from '../../data/folded_chartboard.ts';
+import { foldChartboard, type FoldedChartboard, NO_UNFOLDED_RIVALS } from '../../data/folded_chartboard.ts';
 import { rivalsFolding } from '../../data/rivals_folding.ts';
 import { CHART_OUTCOME_LABELS, chartTier, OUTCOME_BY_TAB, RESULT_OUTCOME_LABELS, TABS, type TabId } from '../../data/stats.ts';
 import { tabChartboards } from '../../data/tab_charts.ts';
@@ -48,12 +48,6 @@ export function SelectedLevelCharts({
   onSelectTab: (tab: TabId) => void;
   onSnooze: (chartId: number, days: SnoozeDays | null) => void;
 }) {
-  // By chart, how many of its folded scores were shown (see ChartCard).
-  const [unfoldedRivalCountsByChart, setUnfoldedRivalCountsByChart] = useState<Map<number, UnfoldedRivalCounts>>(new Map());
-  // The one result row or card header unrolled, as `${chart id} ${player id}` (or "me" for yours, "head" for the header).
-  const [unrolledRowId, setUnrolledRowId] = useState<string | null>(null);
-  // The chart whose snooze menu is open. Another level starts without it.
-  const [menu, setMenu] = useState<number | null>(null);
   // The card fading out before its chart is snoozed or woken.
   const [leavingChartId, setLeavingChartId] = useState<number | null>(null);
   // The tab a chart just went into, snoozed or woken, which splashes (see .tab-flash); `n` restarts the splash.
@@ -82,16 +76,13 @@ export function SelectedLevelCharts({
     }
   });
 
-  // Snoozes (days) or wakes (null) the chart once its card has faded out; the header rolls back and the snooze menu
-  //  closes with it, so the length picked stays lit while the card fades.
+  // Snoozes (days) or wakes (null) the chart once its card has faded out.
   const leave = (chartId: number, days: SnoozeDays | null)  => {
     const send = ()  => {
       if (! REDUCED_MOTION.matches)
         movedFrom.current = flipRects(bodyRef.current);
 
       setLeavingChartId(null);
-      setUnrolledRowId(null);
-      setMenu(null);
       onSnooze(chartId, days);
 
       // A woken chart goes into the tab of its scores.
@@ -101,8 +92,8 @@ export function SelectedLevelCharts({
         setFlash((previousFlash)  =>  ({ tab: into, n: (previousFlash?.n  ??  0) + 1 }));
     };
 
-    // Counted by results, a chart woken in "Won" or "Tied" stays there, so its card doesn't fade out.
-    if (REDUCED_MOTION.matches  ||  (days === null  &&  tab !== 'hidden'  &&  ! canSnooze)) {
+    // Counted by results, a chart snoozed or woken in "Won" or "Tied" stays there, so its card doesn't fade out.
+    if (REDUCED_MOTION.matches  ||  (countBy === 'results'  &&  (tab === 'you-win'  ||  tab === 'tie'))) {
       send();
       return;
     }
@@ -110,31 +101,6 @@ export function SelectedLevelCharts({
     setLeavingChartId(chartId);
     window.setTimeout(send, LEAVE_MS);
   };
-
-  // While a snooze menu is open, a click anywhere but in it, or on its button, does nothing else than close it: it's
-  //  caught on the window, before the page sees it. Escape closes it too.
-  useEffect(()  => {
-    if (menu === null)
-      return;
-
-    const close = (event: globalThis.MouseEvent)  => {
-      if ((event.target as Element).closest?.('.snooze-menu, .snooze-toggle'))
-        return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      setMenu(null);
-    };
-
-    const escape = (event: KeyboardEvent)  =>  event.key === 'Escape'  &&  setMenu(null);
-
-    window.addEventListener('click', close, true);
-    window.addEventListener('keydown', escape);
-    return ()  => {
-      window.removeEventListener('click', close, true);
-      window.removeEventListener('keydown', escape);
-    };
-  }, [menu]);
 
   const inMobileView = useMobileView();
   const { groups, chartboardsByTab, tabCounts } = useMemo(()  => {
@@ -166,9 +132,6 @@ export function SelectedLevelCharts({
   // Tabs are named after what their numbers count.
   const tabLabel = (id: TabId)  =>  (countBy === 'charts'  ?  CHART_OUTCOME_LABELS  :  RESULT_OUTCOME_LABELS)[OUTCOME_BY_TAB[id]];
 
-  // Charts in the "Hidden" tab are hidden already. Counted by results, a snooze hides only losses, so it isn't offered
-  //  where it would leave the card in place.
-  const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win');
   // The open tab's cards, folded once it's opened. Counted by results, a tab's charts have only its results, so the
   //  cards are folded from the full chartboards, to list the rivals they need (see rivalsFolding).
   const listedGroups = useMemo(()  => {
@@ -188,26 +151,22 @@ export function SelectedLevelCharts({
         key={chartId}
         foldedChartboard={foldedChartboard}
         myName={myName}
-        unfoldedRivalCounts={unfoldedRivalCountsByChart.get(chartId)  ??  NO_UNFOLDED_RIVALS}
-        onShow={(counts)  =>  setUnfoldedRivalCountsByChart(new Map(unfoldedRivalCountsByChart).set(chartId, counts))}
+        // A click only maximizes the card, so its graph's folds and its header aren't unrolled here.
+        unfoldedRivalCounts={NO_UNFOLDED_RIVALS}
+        onShow={()  =>  {}}
         showGain={false}
         scoreCap={scoreCap}
         snoozesCheckedAt={snoozesCheckedAt}
-        unrolledRowId={(unrolledRowId?.startsWith(`${chartId} `)  ?  unrolledRowId.slice(`${chartId} `.length)  :  null)}
-        onUnroll={(playerId)  =>  setUnrolledRowId((playerId === null  ?  null  :  `${chartId} ${playerId}`))}
-        canSnooze={canSnooze}
-        menuIsOpen={menu === chartId}
+        unrolledRowId={null}
+        onUnroll={()  =>  {}}
+        canSnooze
         maximized={false}
         scoresAsGraph
-        onMenu={()  =>  setMenu((menu === chartId  ?  null  :  chartId))}
         onSnooze={(days)  =>  leave(chartId, days)}
         // A wake needs no undo: the card goes back to its tab at once.
         leaving={leavingChartId === chartId}
         onWake={()  =>  leave(chartId, null)}
-        onMaximize={()  => {
-          setMenu(null);
-          setMaximizedChartId(chartId);
-        }}
+        onMaximize={()  =>  setMaximizedChartId(chartId)}
       />
     );
   };
@@ -252,7 +211,7 @@ export function SelectedLevelCharts({
           foldedChartboard={maximizedFoldedChartboard}
           myName={myName}
           scoreCap={scoreCap}
-          canSnooze={canSnooze}
+          canSnooze
           snoozesCheckedAt={snoozesCheckedAt}
           source={()  =>  bodyRef.current?.querySelector<HTMLElement>(`[data-flip="chart ${maximizedChartboard.id}"]`)  ??  null}
           maxWidth={null}

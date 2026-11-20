@@ -80,13 +80,11 @@ function HistoryView({ me }: { me: PlayerSummary }) {
         scoreCap={scoreCap}
         canSnooze={false}
         snoozesCheckedAt={0}
-        menuIsOpen={false}
         leaving={false}
         maximized={false}
         scoresAsGraph={false}
         unrolledRowId={(touchedCardRow?.chartId === chartId  ?  touchedCardRow.unrolledRowId  :  ME)}
         onUnroll={(rowId)  =>  setTouchedCardRow({ chartId, unrolledRowId: rowId })}
-        onMenu={()  =>  {}}
         onSnooze={()  =>  {}}
         onWake={()  =>  {}}
       />

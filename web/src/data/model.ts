@@ -1,8 +1,5 @@
 import type { BestResult, Chart } from '@piu-rivals/shared';
-import { DEFAULT_MIN_LEVEL, type LevelRange, levelInRange, MAX_LEVEL, MAX_SCORE_CAP } from './preferences.ts';
-
-// The level range when the settings don't apply.
-export const DEFAULT_LEVELS: LevelRange = { minLevel: DEFAULT_MIN_LEVEL, maxLevel: MAX_LEVEL };
+import { type LevelRange, levelInRange, MAX_SCORE_CAP } from './preferences.ts';
 
 // The result stats of a best score: its perfect, great, good, bad and miss counts, and its max combo if known; null
 //  when its play has no counts (some older imports).

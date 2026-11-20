@@ -1,5 +1,5 @@
 import type { SnoozeDays } from '@piu-rivals/shared';
-import { type MouseEvent, type ReactNode, useState } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { timeLeft } from './format.tsx';
 import { ResultItem } from './result_item.tsx';
 import { ScoresGraph } from './scores_graph.tsx';
@@ -31,35 +31,16 @@ const press = (action: () => void)  =>  (event: MouseEvent)  => {
 };
 
 
-// A card's header: the track and the chart, unrolled by a click, with the snooze menu when `canSnooze` and a close
-//  button when `maximized`.
-function CardHead({ chartboard, unrolled, canSnooze, menuIsOpen, maximized, onToggle, onClose, onMenu, onSnooze }: {
+// A card's header: the track and the chart, unrolled by a click, with a close button when `maximized`.
+function CardHead({ chartboard, unrolled, maximized, onToggle, onClose }: {
   chartboard: Chartboard;
   unrolled: boolean;
-  canSnooze: boolean;
-  menuIsOpen: boolean;
   maximized: boolean;
   onToggle?: () => void;
   onClose?: () => void;
-  onMenu: () => void;
-  onSnooze: (days: SnoozeDays) => void;
 }) {
-  const more = unrolled  &&  canSnooze;
-  // The length picked in the menu, lit while the card fades out.
-  const [pickedDays, setPickedDays] = useState<SnoozeDays | null>(null);
-
-  const toggleMenu = press(()  => {
-    setPickedDays(null);
-    onMenu();
-  });
-
-  const pick = (days: SnoozeDays)  =>  press(()  => {
-    setPickedDays(days);
-    onSnooze(days);
-  });
-
   return (
-    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(more  ?  ' more'  :  '')}${(menuIsOpen  ?  ' menu-open'  :  '')}${(maximized  ?  ' maximized'  :  '')}`}
+    <header className={`chart-card-head${((unrolled  ||  maximized)  ?  ' unrolled'  :  '')}${(maximized  ?  ' maximized'  :  '')}`}
       onClick={onToggle}>
       <div className="chart-card-title">
         <ChartBall chartLabel={chartboard.chartLabel} />
@@ -70,30 +51,6 @@ function CardHead({ chartboard, unrolled, canSnooze, menuIsOpen, maximized, onTo
           </button>
         )}
       </div>
-      {canSnooze  &&  (
-        <div className="chart-card-more">
-          <div>
-            <span className="snooze">
-              <span className="snooze-anchor">
-                <button className={`snooze-button snooze-toggle${(menuIsOpen  ?  ' on'  :  '')}`} type="button" aria-haspopup="menu"
-                  aria-expanded={menuIsOpen} title="Hide this chart for a while" onClick={toggleMenu}>
-                  Snooze…
-                </button>
-                {menuIsOpen  &&  (
-                  <span className="snooze-menu" role="menu">
-                    {SNOOZE_DAYS_OPTIONS.map((days)  =>  (
-                      <button key={days} className={(pickedDays === days  ?  'picked'  :  undefined)} type="button" role="menuitem"
-                        onClick={pick(days)}>
-                        {days === 1  ?  '1 day'  :  `${days} days`}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
-            </span>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
@@ -152,8 +109,8 @@ function FoldCount({ entries, count, treatTieAsWin }: { entries: Entry[]; count:
 //  best rose; `leaving`, the card fades out. With `scoresAsGraph`, the scores are drawn as a graph (see ScoresGraph)
 //  instead, folded ones too. With `onMaximize`, a click on the card only maximizes it.
 export function ChartCard({
-  foldedChartboard, myName, unfoldedRivalCounts, showGain, scoreCap, canSnooze, snoozesCheckedAt, menuIsOpen, leaving, maximized,
-  scoresAsGraph, onShow, unrolledRowId, onUnroll, onMenu, onSnooze, onWake, onMaximize, onClose,
+  foldedChartboard, myName, unfoldedRivalCounts, showGain, scoreCap, canSnooze, snoozesCheckedAt, leaving, maximized,
+  scoresAsGraph, onShow, unrolledRowId, onUnroll, onSnooze, onWake, onMaximize, onClose,
 }: {
   foldedChartboard: FoldedChartboard;
   myName: string;
@@ -162,14 +119,12 @@ export function ChartCard({
   scoreCap: number;
   canSnooze: boolean;
   snoozesCheckedAt: number;
-  menuIsOpen: boolean;
   leaving: boolean;
   maximized: boolean;
   scoresAsGraph: boolean;
   onShow: (unfoldedRivalCounts: UnfoldedRivalCounts) => void;
   unrolledRowId: string | null;
   onUnroll: (playerId: string | null) => void;
-  onMenu: () => void;
   onSnooze: (days: SnoozeDays) => void;
   onWake: () => void;
   onMaximize?: () => void;
@@ -207,20 +162,19 @@ export function ChartCard({
   });
 
   return (
-    <section className={`chart-card${(menuIsOpen  ?  ' snoozing'  :  '')}${(leaving  ?  ' leaving'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(onMaximize  ?  ' maximizable'  :  '')}`}
+    <section className={`chart-card${(leaving  ?  ' leaving'  :  '')}${(maximized  ?  ' maximized'  :  '')}${(onMaximize  ?  ' maximizable'  :  '')}`}
       data-flip={(maximized  ?  undefined  :  `chart ${chartboard.id}`)}
       onClickCapture={onMaximize  &&  ((event)  => {
-        // The header's buttons, e.g. Wake on a snoozed chart, do their own thing.
-        if ((event.target as Element).closest('.snooze-button, .snooze-lengths'))
+        // The snooze panel's buttons, e.g. Wake on a snoozed chart, do their own thing.
+        if ((event.target as Element).closest('.snooze-lengths'))
           return;
 
         event.preventDefault();
         event.stopPropagation();
         onMaximize();
       })}>
-      <CardHead chartboard={chartboard} unrolled={unrolledRowId === HEAD} canSnooze={canSnooze  &&  snoozeTimeLeft === null  &&  ! maximized}
-        menuIsOpen={menuIsOpen} maximized={maximized} onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} onMenu={onMenu}
-        onSnooze={onSnooze} />
+      <CardHead chartboard={chartboard} unrolled={unrolledRowId === HEAD} maximized={maximized}
+        onToggle={(! maximized  ?  toggler(HEAD)  :  onClose)} onClose={onClose} />
       {maximized  &&  snoozePanel}
       <div className="chart-card-body">
         <div className="chart-card-box">

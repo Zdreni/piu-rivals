@@ -176,13 +176,11 @@ export function ChartCardMaximized({ foldedChartboard, myName, scoreCap, canSnoo
         scoreCap={scoreCap}
         canSnooze={canSnooze}
         snoozesCheckedAt={snoozesCheckedAt}
-        menuIsOpen={false}
         leaving={false}
         maximized
         scoresAsGraph={false}
         unrolledRowId={unrolledRowId}
         onUnroll={setUnrolledRowId}
-        onMenu={()  =>  {}}
         onSnooze={(days)  =>  close.current(()  =>  onSnooze(days))}
         onWake={()  =>  close.current(()  =>  onSnooze(null))}
         onClose={()  =>  close.current()}

@@ -29,8 +29,8 @@ export function passesChartboard(chart: Chart, myId: string, bests: Map<string, 
 }
 
 
-// The Rivals page's maximized card of `chartboard`, opened from its row on the Passes page (`source`): coloured and
-//  snoozed as in the Rivals tab it's in there.
+// The Rivals page's maximized card of `chartboard`, opened from its row on the Passes page (`source`): coloured as
+//  in the Rivals tab it's in there.
 export function PassesChartPopup({ chartboard, myName, scoreCap, countBy, snoozesCheckedAt, source, onClose, onSnooze }: {
   chartboard: Chartboard;
   myName: string;
@@ -48,15 +48,12 @@ export function PassesChartPopup({ chartboard, myName, scoreCap, countBy, snooze
     [chartboard, tab, countBy, inMobileView],
   );
 
-  // As on the Rivals page: a hidden chart is hidden already, and counted by results, a snooze hides only losses and
-  //  non-matches.
-  const canSnooze = tab !== 'hidden'  &&  (countBy === 'charts'  ||  tab === 'rivals-win'  ||  tab === 'not-played');
   return (
     <ChartCardMaximized
       foldedChartboard={foldedChartboard}
       myName={myName}
       scoreCap={scoreCap}
-      canSnooze={canSnooze}
+      canSnooze
       snoozesCheckedAt={snoozesCheckedAt}
       source={source}
       maxWidth={MAX_POPUP_WIDTH_PX}

@@ -20,7 +20,6 @@
 .rivals .card-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .rivals .card-close:hover { color: #EAF5EC; }
 .rivals.card-overlay .snooze { gap: 10px; font-size: 15px; }
-.rivals.card-overlay .snooze-button { height: 40px; padding: 0 12px; }
 .rivals.card-overlay .chart-card-body { min-height: 0; padding: 0; background: none; overflow-y: auto; overscroll-behavior: contain; }
 .rivals.card-overlay .chart-card-box { margin: 0; padding-top: 0; border-radius: 0; box-shadow: none; }
 .rivals.card-overlay .chart-card-results > .show-others:first-child { margin-top: -4px; padding-top: 6px; }
