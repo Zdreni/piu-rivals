@@ -18,6 +18,7 @@ import { useRivalSettings } from '../../data/use_rival_settings.ts';
 import { shownLevels, useSelectedLevels } from '../../data/use_selected_levels.ts';
 import { StatsPopup } from './stats_popup.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
+import { scrollToListTop } from '../../components/scroll_to_list_top.ts';
 import '../../score_views.css';
 
 
@@ -96,6 +97,13 @@ function RivalsView({ me, setupIsOpen }: { me: PlayerSummary; setupIsOpen: boole
   }, []);
 
   const selectTab = useCallback((tab: TabId)  =>  changeUi({ selectedTab: tab }), [changeUi]);
+  const mainRef = useRef<HTMLDivElement>(null);
+  // Other levels start at the top of their cards.
+  const selectLevelsAtTop = (newSelectedLevels: string[])  => {
+    selectLevels(newSelectedLevels);
+    if (newSelectedLevels.join(' ') !== selectedLevels.join(' '))
+      scrollToListTop(mainRef.current);
+  };
 
   // Solo goes with the focused player, so focusing another one ends it.
   const focus = (playerId: string | null)  => {
@@ -214,7 +222,7 @@ function RivalsView({ me, setupIsOpen }: { me: PlayerSummary; setupIsOpen: boole
   return (
     <div className="rivals">
       <StatusToast status={status} />
-      <div className="dlg-main">
+      <div className="dlg-main" ref={mainRef}>
         <ChartsGroups
           chartboards={playedChartboards}
           selectedLevels={selectedLevels}
@@ -222,7 +230,7 @@ function RivalsView({ me, setupIsOpen }: { me: PlayerSummary; setupIsOpen: boole
           treatTieAsWin={treatTieAsWin}
           levelRange={levelRange}
           onSelect={(newSelectedLevels, tab)  => {
-            selectLevels(newSelectedLevels);
+            selectLevelsAtTop(newSelectedLevels);
             if (tab)
               selectTab(tab);
           }}

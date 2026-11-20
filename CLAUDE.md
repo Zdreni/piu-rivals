@@ -8,6 +8,8 @@
 
 - Discuss every large enough change before building it, and wait for a yes. Small changes to the HTML or CSS structure alone may skip that. Changes to many classes or modules of the site, to the API, and above all to the database structure always need it: explain why the change is needed, and why the existing routes or database structure aren't enough.
 
+- When a change of behavior or style is asked for in one place, look for code and components elsewhere that work the same way (e.g. another page with the same level selection or list), and ask whether they should be changed that way too.
+
 - ALWAYS ask for confirmation before adding a database migration or changing the schema. First explain why the change is needed, and why the data already there isn't enough. Then wait for a yes.
 
 - Review every architectural decision (database, backend, API, where data is kept or worked out) before building it: its pros, its cons, and its limitations, including edge cases (e.g. other devices, cleared caches, rescans, first loads, ordering, data already stored). Compare it with the alternatives worth considering.

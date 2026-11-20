@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../../session.tsx';
 import { StatusToast } from '../../components/status_toast.tsx';
+import { scrollToListTop } from '../../components/scroll_to_list_top.ts';
 import { buildChartGrades } from '../../data/chart_grades.ts';
 import { useKnownCharts } from '../../data/known_charts.ts';
 import { autoLevels, resolveLevels } from '../../data/preferences.ts';
@@ -40,6 +41,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
   // The chart whose card is open, and the page it opens over, to find the chart's row in.
   const [openChartId, setOpenChartId] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
 
   useAutoRefresh(()  => {
     void settings.refresh();
@@ -80,7 +82,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
   return (
     <div className="rivals passes" ref={rootRef}>
       <StatusToast status={status} />
-      <div className="dlg-main">
+      <div className="dlg-main" ref={mainRef}>
         <GradeLevels
           chartGrades={chartGrades}
           levels={levels}
@@ -89,6 +91,10 @@ function PassesView({ me }: { me: PlayerSummary }) {
           selectedLevels={selectedLevels}
           onSelect={(newSelectedLevels, tab)  => {
             selectLevels(newSelectedLevels);
+            // Other levels start at the top of their charts.
+            if (newSelectedLevels.join(' ') !== selectedLevels.join(' '))
+              scrollToListTop(mainRef.current);
+
             if (tab)
               changeUi({ selectedTab: tab });
           }}
