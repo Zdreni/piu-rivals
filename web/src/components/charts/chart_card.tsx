@@ -225,7 +225,10 @@ export function ChartCard({
       <div className="chart-card-body">
         <div className="chart-card-box">
           {! maximized  &&  snoozePanel}
-          {(scoresAsGraph
+          {/* On the Passes page, a card opens on charts nobody has played too. */}
+          {(! listedEntries(foldedChartboard).length
+            ?  <p className="chart-card-no-scores">No scores yet.</p>
+            :  scoresAsGraph
             ?  <ScoresGraph entries={listedEntries(foldedChartboard)} myName={myName} scoreCap={scoreCap} />
             // Without your score there are no diffs, so their columns are dropped.
             :  <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>)}

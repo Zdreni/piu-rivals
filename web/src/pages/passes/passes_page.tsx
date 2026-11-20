@@ -12,7 +12,7 @@ import { useAutoRefresh } from '../../data/use_auto_refresh.ts';
 import { useBests } from '../../data/use_bests.ts';
 import { useRivalSettings } from '../../data/use_rival_settings.ts';
 import { shownLevels, useSelectedLevels } from '../../data/use_selected_levels.ts';
-import { PassesChartPopup, passesChartboardOrNull } from './chart_popup.tsx';
+import { PassesChartPopup, passesChartboard } from './chart_popup.tsx';
 import { GradeLevels } from './grade_levels.tsx';
 import { LevelGradesTable } from './level_grades_table.tsx';
 import { type PassesUiState, readPassesUiState, savePassesUiState } from './ui_state.ts';
@@ -40,6 +40,9 @@ function PassesView({ me }: { me: PlayerSummary }) {
   const { savedLevels, selectLevels } = useSelectedLevels();
   // The chart whose card is open, and the page it opens over, to find the chart's row in.
   const [openChartId, setOpenChartId] = useState<number | null>(null);
+  // The open tab splashes when a chart in it is snoozed or woken, as on the Rivals page (see .tab-flash); `n` restarts
+  //  the splash.
+  const [snoozeFlash, setSnoozeFlash] = useState<{ woken: boolean; n: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +73,7 @@ function PassesView({ me }: { me: PlayerSummary }) {
   const snoozesCheckedAt = useMemo(()  =>  Date.now(), [openChartId, data.version, snoozes]);
   const openChart = ((openChartId === null)  ?  undefined  :  data.charts.get(openChartId)  ??  known.charts.get(openChartId));
   const openChartboard = useMemo(
-    ()  =>  (openChart  ?  passesChartboardOrNull(openChart, me.id, data.bests, rivals, preferences.scoreCap, levelRange, snoozes, snoozesCheckedAt)  :  null),
+    ()  =>  (openChart  ?  passesChartboard(openChart, me.id, data.bests, rivals, preferences.scoreCap, levelRange, snoozes, snoozesCheckedAt)  :  null),
     [openChart, me.id, data.version, data.bests, rivals, preferences.scoreCap, minLevel, maxLevel, snoozes, snoozesCheckedAt],
   );
 
@@ -103,6 +106,10 @@ function PassesView({ me }: { me: PlayerSummary }) {
           levelChartGrades={levelChartGrades}
           scoreCap={preferences.scoreCap}
           npMinimalRivals={preferences.npMinimalRivals}
+          snoozes={snoozes}
+          snoozesCheckedAt={snoozesCheckedAt}
+          snoozeFlash={snoozeFlash}
+          onSnoozeFlashEnd={()  =>  setSnoozeFlash(null)}
           selectedTab={ui.selectedTab}
           emptyMessage={emptyMessage}
           onSelectTab={(tab)  =>  changeUi({ selectedTab: tab })}
@@ -119,7 +126,10 @@ function PassesView({ me }: { me: PlayerSummary }) {
           snoozesCheckedAt={snoozesCheckedAt}
           source={()  =>  rootRef.current?.querySelector<HTMLElement>(`.grades-table tr[data-chart="${openChartboard.id}"]`)  ??  null}
           onClose={()  =>  setOpenChartId(null)}
-          onSnooze={(days)  =>  settings.snooze(openChartboard.id, days)}
+          onSnooze={(days)  => {
+            settings.snooze(openChartboard.id, days);
+            setSnoozeFlash((previousFlash)  =>  ({ woken: days === null, n: (previousFlash?.n  ??  0) + 1 }));
+          }}
         />
       )}
     </div>

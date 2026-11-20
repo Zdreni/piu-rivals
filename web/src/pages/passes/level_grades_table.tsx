@@ -15,39 +15,52 @@ const PASSES_TABS: PassesTab[] = ['played', 'not-played'];
 
 // The selected level's charts in two tabs: played, as a table of your results, the worst first, and not played, the
 //  charts most rivals played first. Scores above `scoreCap` matter less, so they're dimmed, as are the charts not played
-//  that fewer rivals than `npMinimalRivals` played, which the Rivals page leaves out. FPCs can't be improved, so
-//  they're folded under the other played charts, the latest first. `emptyMessage` replaces the tab's message when
-//  there's nothing at all.
-// A click on a chart someone played opens its card (`onOpen`, with its row); its row has its chart id in data-chart.
-export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, selectedTab, emptyMessage, onSelectTab, onOpen }: {
+//  that fewer rivals than `npMinimalRivals` played, which the Rivals page leaves out. Snoozed charts are dimmed too,
+//  after those. FPCs can't be improved, so they're folded under the other played charts, the latest first.
+//  `emptyMessage` replaces the tab's message when there's nothing at all.
+// A click on a chart opens its card (`onOpen`, with its row); its row has its chart id in data-chart.
+// With `snoozeFlash`, the open tab splashes for a chart just snoozed or woken in it.
+export function LevelGradesTable({
+  levelChartGrades, scoreCap, npMinimalRivals, snoozes, snoozesCheckedAt, snoozeFlash, onSnoozeFlashEnd, selectedTab, emptyMessage,
+  onSelectTab, onOpen,
+}: {
   levelChartGrades: ChartGrade[];
   scoreCap: number;
   npMinimalRivals: number;
+  // Snooze ends by chart id; those up to `snoozesCheckedAt` are over.
+  snoozes: Map<number, number>;
+  snoozesCheckedAt: number;
+  // `n` restarts the splash.
+  snoozeFlash: { woken: boolean; n: number } | null;
+  onSnoozeFlashEnd: () => void;
   selectedTab: PassesTab;
   emptyMessage: string | null;
   onSelectTab: (tab: PassesTab) => void;
   onOpen: (chartId: number) => void;
 }) {
   const [fpcsAreUnfolded, setFpcsAreUnfolded] = useState(false);
+  const isSnoozed = (cg: ChartGrade)  =>  (snoozes.get(cg.chartId)  ??  0) > snoozesCheckedAt;
+  // The sorts already put the charts above the cap or played by too few rivals last; the snoozed ones go after them.
+  const snoozedLast = (chartGrades: ChartGrade[])  =>  [...chartGrades.filter((cg)  =>  ! isSnoozed(cg)), ...chartGrades.filter(isSnoozed)];
   const { chartGradesByTab, fpcChartGrades } = useMemo(()  =>  ({
     chartGradesByTab: {
-      played: levelChartGrades.filter((cg)  =>  cg.score !== null  &&  cg.gradeGroup !== 'fpc').sort(byScore),
-      'not-played': levelChartGrades.filter((cg)  =>  cg.score === null).sort(byRivalCount),
+      played: snoozedLast(levelChartGrades.filter((cg)  =>  cg.score !== null  &&  cg.gradeGroup !== 'fpc').sort(byScore)),
+      'not-played': snoozedLast(levelChartGrades.filter((cg)  =>  cg.score === null).sort(byRivalCount)),
     },
     fpcChartGrades: levelChartGrades.filter((cg)  =>  cg.gradeGroup === 'fpc').sort(byNewestDate),
-  }), [levelChartGrades]);
+  }), [levelChartGrades, snoozes, snoozesCheckedAt]);
 
   const playedTabIsOpen = selectedTab === 'played';
   const listedChartGrades = chartGradesByTab[selectedTab];
   const listedFpcCount = (playedTabIsOpen  ?  fpcChartGrades.length  :  0);
   const isBelowNpMinimum = (cg: ChartGrade)  =>  cg.score === null  &&  cg.rivalCount < npMinimalRivals;
-  const isDimmed = (cg: ChartGrade)  =>  isAboveCap(cg, scoreCap)  ||  isBelowNpMinimum(cg);
+  const isDimmed = (cg: ChartGrade)  =>  isAboveCap(cg, scoreCap)  ||  isBelowNpMinimum(cg)  ||  isSnoozed(cg);
 
-  // The not played tab counts the charts enough rivals played and the others apart, as "A + B".
+  // Each tab counts its charts and the dimmed ones apart, as "A + B".
   const tabCount = (tab: PassesTab)  =>  {
     const tabChartGrades = chartGradesByTab[tab];
-    const fewRivalsCount = ((tab === 'not-played')  ?  tabChartGrades.filter(isBelowNpMinimum).length  :  0);
-    return (fewRivalsCount  ?  `${tabChartGrades.length - fewRivalsCount} + ${fewRivalsCount}`  :  tabChartGrades.length);
+    const dimmedCount = tabChartGrades.filter(isDimmed).length;
+    return (dimmedCount  ?  `${tabChartGrades.length - dimmedCount} + ${dimmedCount}`  :  tabChartGrades.length);
   };
 
   // An empty row sets the dimmed charts apart from the others.
@@ -56,13 +69,11 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
   // A broken best's score is dimmed; FPCs, those above the score cap and the not played ones too few rivals played, the
   //  whole row, a little less.
   const renderRow = (cg: ChartGrade)  =>  {
-    const isOpenable = cg.score !== null  ||  cg.rivalCount > 0;
     const classNames = [(cg.score !== null  &&  ! cg.passed  &&  'broken'), (isAboveCap(cg, scoreCap)  &&  'above-cap'), (cg.gradeGroup === 'fpc'  &&  'fpc'),
-      (isBelowNpMinimum(cg)  &&  'below-np-min'), (isOpenable  &&  'openable')];
+      (isBelowNpMinimum(cg)  &&  'below-np-min'), (isSnoozed(cg)  &&  'snoozed')];
 
     return (
-      <tr key={cg.chartId} className={classNames.filter(Boolean).join(' ')  ||  undefined} data-chart={cg.chartId}
-        onClick={(isOpenable  ?  ()  =>  onOpen(cg.chartId)  :  undefined)}>
+      <tr key={cg.chartId} className={classNames.filter(Boolean).join(' ')  ||  undefined} data-chart={cg.chartId} onClick={()  =>  onOpen(cg.chartId)}>
         <td className="grade-ball"><ChartBall chartLabel={cg.chartLabel} /></td>
         <td className="grade-song" title={cg.trackTitle}>{cg.track}</td>
         {(playedTabIsOpen
@@ -77,7 +88,7 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
               <td className="grade-date">{cg.date  ??  ''}</td>
             </>
           )
-          :  <td className="num">{cg.rivalCount  ||  ''}</td>)}
+          :  <td className="num"><span className="grade-rivals">{cg.rivalCount  ||  ''}</span></td>)}
       </tr>
     );
   };
@@ -91,6 +102,10 @@ export function LevelGradesTable({ levelChartGrades, scoreCap, npMinimalRivals, 
             <span className="tab-label">{TAB_LABELS[id]}</span>
             <span className="tab-label short">{TAB_LABELS[id]}</span>
             <span className="tab-count">{tabCount(id)}</span>
+            {snoozeFlash  &&  id === selectedTab  &&  (
+              <span key={snoozeFlash.n} className={`tab-flash${(snoozeFlash.woken  ?  ' woken'  :  '')}`} aria-hidden="true"
+                onAnimationEnd={onSnoozeFlashEnd} />
+            )}
           </button>
         ))}
       </div>

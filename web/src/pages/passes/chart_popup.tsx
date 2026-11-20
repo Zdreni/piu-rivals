@@ -12,14 +12,17 @@ import { chartTier } from '../../data/stats.ts';
 const MAX_POPUP_WIDTH_PX = 440;
 
 
-// The leaderboard of `chart`, with your best and those of the rivals switched on, and its snooze, or null when none of
-//  you has played it.
-export function passesChartboardOrNull(chart: Chart, myId: string, bests: Map<string, PlayerBests>, rivals: Rival[], scoreCap: number,
-  levelRange: LevelRange, snoozes: Map<number, number>, snoozesCheckedAt: number): Chartboard | null {
+// The leaderboard of `chart`, with your best and those of the rivals switched on, and its snooze; empty when none of
+//  you has played it, so it can still be snoozed.
+export function passesChartboard(chart: Chart, myId: string, bests: Map<string, PlayerBests>, rivals: Rival[], scoreCap: number,
+  levelRange: LevelRange, snoozes: Map<number, number>, snoozesCheckedAt: number): Chartboard {
   const shownRivals = rivals.filter((r)  =>  ! r.hidden).map((r)  =>  ({ id: r.id, name: r.name  ??  r.id }));
-  const [chartboard] = buildChartboards(new Map([[chart.id, chart]]), bests, myId, shownRivals, scoreCap, levelRange, true);
-  if (! chartboard)
-    return null;
+  const [playedChartboard] = buildChartboards(new Map([[chart.id, chart]]), bests, myId, shownRivals, scoreCap, levelRange, true);
+  const chartboard = playedChartboard  ??  {
+    id: chart.id, track: chart.songShortTitle, trackTitle: chart.songTitle, chartLabel: `${chart.chartType}${chart.level}`,
+    mine: null, myDate: null, myResultStats: null, myPlayId: null, myImprovement: null, rivals: [], unplayed: true, weight: 0,
+    snoozedUntil: null,
+  };
 
   const until = snoozes.get(chart.id);
   return ((until !== undefined  &&  until > snoozesCheckedAt)  ?  { ...chartboard, snoozedUntil: until }  :  chartboard);
