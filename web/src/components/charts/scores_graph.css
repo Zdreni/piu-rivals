@@ -1,5 +1,5 @@
 /* A chart's scores graph (see ScoresGraph): its strokes keep their width however the plot is stretched. */
-.rivals .scores-graph { height: 72px; padding: 6px 12px 8px; }
+.rivals .scores-graph { position: relative; height: 72px; padding: 6px 12px 8px; }
 /* The rivals who beat you are as red as `--red-share` says, paler the fewer they are, and the area under them is
    filled more strongly too. */
 .rivals .scores-graph { --above: color-mix(in srgb, #FF2A00 var(--red-share), #6B5752); }
@@ -16,6 +16,8 @@
 /* There the line and dots of the rivals who beat you are half sand. */
 .rivals .scores-graph .above.capped .line { stroke: color-mix(in srgb, var(--above) 50%, #A89E86); }
 .rivals .scores-graph .mine { stroke: #FFC433; stroke-width: 2; }
+/* Where a 1,000,000 score would be. */
+.rivals .scores-graph .bound { stroke: #4A6354; stroke-width: 1; stroke-dasharray: 3 3; }
 /* Each score's dot is a zero-length stroke with round caps, so it stays round however the plot is stretched. They're
    see-through, so where many overlap they show darker. */
 .rivals .scores-graph .dot { fill: none; stroke-linecap: round; stroke-opacity: .45; }
@@ -25,3 +27,14 @@
 }
 .rivals .scores-graph .dot.below { stroke: #5F7366; }
 .rivals .scores-graph .dot.mine { stroke: #FFC433; stroke-opacity: 1; }
+/* The score under the mouse: its line and dot, and its player and score at the graph's top or bottom. */
+.rivals .scores-graph .hovered { stroke: #7FC8FF; stroke-width: 1.5; }
+.rivals .scores-graph .hovered-dot { fill: none; stroke: #7FC8FF; stroke-linecap: round; }
+.rivals .scores-graph .hovered-score {
+  position: absolute; top: 0; left: calc(12px + (100% - 24px) * var(--hovered-share));
+  transform: translateX(calc(-100% * var(--hovered-share)));
+  display: flex; gap: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(16, 26, 20, .85);
+  font-size: 11px; white-space: nowrap; color: #EAF5EC; pointer-events: none;
+}
+.rivals .scores-graph .hovered-score.at-bottom { top: auto; bottom: 0; }
+.rivals .scores-graph .hovered-player { color: #7FC8FF; }

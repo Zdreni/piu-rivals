@@ -228,7 +228,7 @@ export function ChartCard({
         <div className="chart-card-box">
           {! maximized  &&  snoozePanel}
           {(scoresAsGraph
-            ?  <ScoresGraph entries={listedEntries(foldedChartboard)} scoreCap={scoreCap} scoreSpans={graphScoreSpans} />
+            ?  <ScoresGraph entries={listedEntries(foldedChartboard)} myName={myName} scoreCap={scoreCap} scoreSpans={graphScoreSpans} />
             // Without your score there are no diffs, so their columns are dropped.
             :  <div className={`chart-card-results${(chartboard.mine === null  ?  ' no-diffs'  :  '')}`}>{rows}</div>)}
         </div>
