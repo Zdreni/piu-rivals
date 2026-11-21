@@ -107,10 +107,14 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
         :  'dot below');
 
   // A rival's dot is as red as they're ahead of you, by scores capped (see lossPointsRedShare).
-  const dotStyle = (entry: Entry): CSSProperties  =>  ({
-    strokeWidth: 2 * DOT_RADIUS_PX,
-    ...((! entry.me  &&  entry.delta !== null)  ?  { '--dot-red-share': lossPointsRedShare(Math.max(0, -entry.delta)) }  :  {}),
-  });
+  const dotStyle = (entry: Entry): CSSProperties | undefined  =>
+    ((! entry.me  &&  entry.delta !== null)
+      ?  { '--dot-red-share': lossPointsRedShare(Math.max(0, -entry.delta)) } as CSSProperties
+      :  undefined);
+
+  // The dots are drawn in pixels, over the stretched plot, since iOS stretches round line caps with it.
+  const pixelX = (x: number)  =>  x / PLOT_SIZE * sizePx.width;
+  const pixelY = (y: number)  =>  y / PLOT_SIZE * sizePx.height;
 
   // The area's or the line's part (`shape`) between `fromX` and `toX`; none when that's empty.
   const renderPart = (shape: 'area' | 'line', className: string, fromX: number, toX: number)  =>  toX > fromX  &&  (
@@ -159,14 +163,18 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
         {myIndex !== -1  &&  <line className="mine" x1={myX} x2={myX} y1={pointY(scores[myIndex]!)}
           y2={Math.max(pointY(scores[myIndex]!), myLineBottom)} />}
         {hoveredEntry  &&  <line className="hovered" x1={hoveredX} x2={hoveredX} y1={pointY(hoveredEntry.score)} y2={PLOT_SIZE} />}
-        {ascendingEntries.map((entry, i)  =>  (
-          <path key={(entry.me  ?  'me'  :  entry.playerId)} className={dotClass(entry, i)} d={`M${pointX(i)},${pointY(entry.score)}h0`}
-            style={dotStyle(entry)} />
-        ))}
-        {hoveredEntry  &&  (
-          <path className="hovered-dot" d={`M${hoveredX},${pointY(hoveredEntry.score)}h0`} style={{ strokeWidth: 2 * DOT_RADIUS_PX + 2 }} />
-        )}
       </svg>
+      {sizePx.width > 0  &&  (
+        <svg className="dots" width={sizePx.width} height={sizePx.height} aria-hidden="true">
+          {ascendingEntries.map((entry, i)  =>  (
+            <circle key={(entry.me  ?  'me'  :  entry.playerId)} className={dotClass(entry, i)} cx={pixelX(pointX(i))}
+              cy={pixelY(pointY(entry.score))} r={DOT_RADIUS_PX} style={dotStyle(entry)} />
+          ))}
+          {hoveredEntry  &&  (
+            <circle className="hovered-dot" cx={pixelX(hoveredX)} cy={pixelY(pointY(hoveredEntry.score))} r={DOT_RADIUS_PX + 1} />
+          )}
+        </svg>
+      )}
       {myScoreIsFramed  &&  (
         <div ref={myScoreFrame} className="my-score" style={{ left: myScoreFrameLeftPx }}>
           {Math.floor(scores[myIndex]! / 1000)}<span className="my-score-tail">k</span>

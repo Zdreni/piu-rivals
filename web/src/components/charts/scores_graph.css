@@ -1,8 +1,8 @@
 /* A chart's scores graph (see ScoresGraph): its strokes keep their width however the plot is stretched, and the dots'
    radius is room enough at its sides. */
 .rivals .scores-graph {
-  --graph-pad-x: 5px; --graph-pad-bottom: 4px; position: relative; height: 84px;
-  padding: 2.5px var(--graph-pad-x) var(--graph-pad-bottom);
+  --graph-pad-x: 5px; --graph-pad-top: 2.5px; --graph-pad-bottom: 4px; position: relative; height: 84px;
+  padding: var(--graph-pad-top) var(--graph-pad-x) var(--graph-pad-bottom);
 }
 /* Desktop's wider cards get a little more. */
 @media (min-width: 601px) { .rivals .scores-graph { --graph-pad-x: 6px; } }
@@ -27,15 +27,18 @@
 .rivals .scores-graph .mine { stroke: #FFC433; stroke-width: 2; }
 /* Where a 1,000,000 score would be. */
 .rivals .scores-graph .bound { stroke: #4A6354; stroke-width: 1; stroke-dasharray: 3 3; }
-/* Each score's dot is a zero-length stroke with round caps, so it stays round however the plot is stretched. They're
+/* The dots are drawn in pixels, over the plot's box, so they stay round however the plot is stretched. They're
    see-through, so where many overlap they show darker. */
-.rivals .scores-graph .dot { fill: none; stroke-linecap: round; stroke-opacity: .7; }
-.rivals .scores-graph .dot.above { stroke: color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752); }
-.rivals .scores-graph .dot.above.capped {
-  stroke: color-mix(in srgb, color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752) 50%, #A89E86);
+.rivals .scores-graph svg.dots {
+  position: absolute; top: var(--graph-pad-top); left: var(--graph-pad-x); width: auto; height: auto; pointer-events: none;
 }
-.rivals .scores-graph .dot.below { stroke: #5F7366; }
-.rivals .scores-graph .dot.mine { stroke: #FFC433; stroke-opacity: 1; }
+.rivals .scores-graph .dot { stroke: none; fill-opacity: .7; }
+.rivals .scores-graph .dot.above { fill: color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752); }
+.rivals .scores-graph .dot.above.capped {
+  fill: color-mix(in srgb, color-mix(in srgb, #FF2A00 var(--dot-red-share, var(--red-share)), #6B5752) 50%, #A89E86);
+}
+.rivals .scores-graph .dot.below { fill: #5F7366; }
+.rivals .scores-graph .dot.mine { fill: #FFC433; fill-opacity: 1; }
 /* Your score, framed over your line at the plot's bottom (see ScoresGraph), open at the bottom, as dark as the card's
    box. */
 .rivals .scores-graph .my-score {
@@ -47,7 +50,7 @@
 .rivals .scores-graph .my-score-tail { font-size: 9px; opacity: .6; }
 /* The score under the mouse: its line and dot, and its player and score at the graph's top or bottom. */
 .rivals .scores-graph .hovered { stroke: #7FC8FF; stroke-width: 1.5; }
-.rivals .scores-graph .hovered-dot { fill: none; stroke: #7FC8FF; stroke-linecap: round; }
+.rivals .scores-graph .hovered-dot { stroke: none; fill: #7FC8FF; }
 .rivals .scores-graph .hovered-score {
   position: absolute; top: 0; left: calc(var(--graph-pad-x) + (100% - 2 * var(--graph-pad-x)) * var(--hovered-share));
   transform: translateX(calc(-100% * var(--hovered-share)));
