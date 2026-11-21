@@ -3,6 +3,7 @@ import { Delta, ScoreGain, Score } from './format.tsx';
 import { type Chartboard, displayName, type ResultStats } from '../../data/model.ts';
 import type { Entry } from '../../data/folded_chartboard.ts';
 import { resultOutcome, type Outcome } from '../../data/stats.ts';
+import { formatTimeAgo } from '../../util.ts';
 
 // Lowest tier first, each count with its letters after it, e.g. "2m 0b 3gd 21gr 1850pf".
 const HOVER_UNROLL_DELAY_MS = 350;
@@ -38,7 +39,7 @@ function ResultDetails({ unrolled, resultStats, date, score, gain }: {
               )}
             </span>
           )}
-          <span className="result-date">{date}</span>
+          {date  &&  <span className="result-date" title={date}>{formatTimeAgo(date)}</span>}
         </span>
         {gain  &&  <span className="result-details-gain">{gain}</span>}
         {score !== null  &&  <span className="num result-details-score"><Score value={score} tailClass="tail" /></span>}

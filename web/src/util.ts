@@ -83,4 +83,52 @@ export function formatAgo(iso: string | null | undefined): string {
 }
 
 
+const MINUTE_MS = 60_000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+
+// "5 minutes ago", "3 hours ago", "4 days ago", "2 weeks ago", "5 months ago", "3 years ago", each unit used up to a
+//  limit of its count (120 minutes, 48 hours, 14 days, 9 weeks, 24 months).
+// A date without a time ("2026-10-01") is a local day, so it says "today" instead of minutes or hours.
+export function formatTimeAgo(iso: string): string {
+  if (DATE_ONLY.test(iso)) {
+    // Date.parse reads a date alone as UTC midnight, so today's local date is compared at UTC midnight too.
+    const now = new Date();
+    const days = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.parse(iso)) / DAY_MS);
+    return (days < 1  ?  'today'  :  daysAgo(days));
+  }
+
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / MINUTE_MS));
+  if (minutes < 1)
+    return 'just now';
+
+  if (minutes < 120)
+    return unitAgo(minutes, 'minute');
+
+  if (minutes < 48 * 60)
+    return unitAgo(Math.floor(minutes / 60), 'hour');
+
+  return daysAgo(Math.floor(minutes / (24 * 60)));
+}
+
+
+const unitAgo = (count: number, unit: string)  =>  `${count} ${unit}${(count === 1  ?  ''  :  's')} ago`;
+
+
+function daysAgo(days: number): string {
+  if (days < 14)
+    return unitAgo(days, 'day');
+
+  if (days < 9 * 7)
+    return unitAgo(Math.floor(days / 7), 'week');
+
+  const months = Math.floor(days / 30.4375);
+  if (months < 24)
+    return unitAgo(months, 'month');
+
+  return unitAgo(Math.floor(days / 365.25), 'year');
+}
+
+
 export const playerLabel = (player: { id: string; name: string | null })  =>  player.name  ||  player.id;
