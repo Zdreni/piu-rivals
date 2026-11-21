@@ -76,8 +76,8 @@ function frameStyleOrNull(framedLevels: string[], maxNum: number): CSSProperties
 // The levels' bars, singles and doubles side by side with the level number between them, highest on top, and the
 //  other chart types' levels below them; `renderBar` draws each bar with a LevelBarButton.
 // A click selects one level, or both of a level number, and a drag a rectangle of singles and doubles (see
-//  useLevelDrag), framed as a whole. A click on a level already selected also passes `onSelect` the id of the segment
-//  it was on.
+//  useLevelDrag), framed as a whole. A click on the level that is already the whole selection also passes `onSelect`
+//  the id of the segment it was on.
 export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
   levels: string[];
   selectedLevels: string[];
@@ -107,7 +107,8 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
     const target = event.target as HTMLElement;
     const level = target.closest<HTMLElement>('[data-level]')?.dataset.level;
     if (level) {
-      onSelect([level], (selectedLevels.includes(level)  ?  clickedSegmentIdOrNull(event)  :  null));
+      const levelIsSelection = (selectedLevels.length === 1  &&  selectedLevels[0] === level);
+      onSelect([level], (levelIsSelection  ?  clickedSegmentIdOrNull(event)  :  null));
       return;
     }
 
