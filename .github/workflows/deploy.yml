@@ -96,20 +96,12 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o BatchMode=yes "$USER@$HOST" "$GITHUB_SHA"
 
-  deploy-web:
-    needs: [changes, test-server, deploy-server]
-    # Also when the server had nothing to deploy (its jobs skipped), but not when its tests or deploy failed.
-    if: >-
-      !cancelled() && needs.changes.outputs.web == 'true'
-      && needs.test-server.result != 'failure' && needs.deploy-server.result != 'failure'
+  # Built in its own job, so re-running a failed deploy-web reuses this artifact: deploy-pages refuses
+  # a run with two artifacts named github-pages, which a re-run that uploaded again would leave.
+  build-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -121,9 +113,25 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - run: npm run build --workspace web
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
+
+  deploy-web:
+    needs: [build-web, test-server, deploy-server]
+    # Also when the server had nothing to deploy (its jobs skipped), but not when its tests or deploy failed.
+    if: >-
+      !cancelled() && needs.build-web.result == 'success'
+      && needs.test-server.result != 'failure' && needs.deploy-server.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
