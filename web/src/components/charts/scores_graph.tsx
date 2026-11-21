@@ -11,7 +11,7 @@ import './scores_graph.css';
 const PLOT_SIZE = 100;
 const PLOT_PAD_Y = 8;
 const DOT_RADIUS_PX = 3;
-const MY_SCORE_FRAME_GAP_PX = 2;
+const MY_SCORE_FRAME_GAP_PX = 6;
 
 
 // A chart's scores, from the lowest on the left to the highest on the right, each with a dot, placed by dotXs. A line
