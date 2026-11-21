@@ -11,6 +11,7 @@ import './scores_graph.css';
 const PLOT_SIZE = 100;
 const PLOT_PAD_Y = 8;
 const DOT_RADIUS_PX = 3;
+const MY_SCORE_FRAME_GAP_PX = 2;
 
 
 // A chart's scores, from the lowest on the left to the highest on the right, each with a dot, placed by dotXs. A line
@@ -18,7 +19,9 @@ const DOT_RADIUS_PX = 3;
 //  rivals beat you (by scores capped at `scoreCap`), and each dot the more it's ahead of yours. Without your score,
 //  they're all red. Above the cap, the area is neutral, and the red is paler.
 // The height goes from the lowest score at the bottom up to a MAX_SCORE result at the top, marked by a dashed line.
-// Under a mouse, the score nearest to it is marked with its player's name (`myName` for yours).
+// Your score is framed at the bottom over your line, kept inside the graph, in thousands rounded down, so 999,638
+//  doesn't show as 1000k.
+// Under a mouse, the score nearest to it is marked with its player's name (`myName` for yours) instead.
 export function ScoresGraph({ entries, myName, scoreCap }: {
   entries: Entry[];
   myName: string;
@@ -26,18 +29,35 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
 }) {
   const clipId = useId();
   const svg = useRef<SVGSVGElement>(null);
-  const [sizePx, setSizePx] = useState({ width: 0, height: 0 });
+  const myScoreFrame = useRef<HTMLDivElement>(null);
+  const [sizePx, setSizePx] = useState({ width: 0, height: 0, left: 0 });
+  const [myScoreFrameSizePx, setMyScoreFrameSizePx] = useState({ width: 0, height: 0 });
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useLayoutEffect(()  => {
     const element = svg.current!;
-    const measure = ()  =>  setSizePx({ width: element.clientWidth, height: element.clientHeight });
+    const measure = ()  =>  setSizePx({
+      width: element.clientWidth,
+      height: element.clientHeight,
+      left: parseFloat(getComputedStyle(element.parentElement!).paddingLeft),
+    });
+
     measure();
 
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(element);
     return ()  =>  resizeObserver.disconnect();
   }, []);
+
+  // Hidden under a mouse, it keeps the last size.
+  useLayoutEffect(()  => {
+    const frame = myScoreFrame.current;
+    if (! frame)
+      return;
+
+    const width = frame.offsetWidth, height = frame.offsetHeight;
+    setMyScoreFrameSizePx((size)  =>  ((size.width === width  &&  size.height === height)  ?  size  :  { width, height }));
+  });
 
   // Rivals tied with you are listed after you, so they come before you here.
   const ascendingEntries = [...entries].reverse();
@@ -50,7 +70,10 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
     :  dotXs(scores, myIndex, sizePx.width).map((x)  =>  x * PLOT_SIZE / sizePx.width));
 
   const pointX = (index: number)  =>  pointXs[index]!;
-  const top = PLOT_PAD_Y, bottom = PLOT_SIZE - PLOT_PAD_Y;
+  // With your score framed, the lowest dots are kept above the frame, so it covers none of them.
+  const framedBottomPad = (myScoreFrameSizePx.height + DOT_RADIUS_PX + MY_SCORE_FRAME_GAP_PX) / sizePx.height * PLOT_SIZE;
+  const top = PLOT_PAD_Y;
+  const bottom = PLOT_SIZE - ((myIndex !== -1  &&  sizePx.height > 0)  ?  framedBottomPad  :  PLOT_PAD_Y);
   // All scores at MAX_SCORE, they're drawn along the top.
   const pointY = (score: number)  =>  (lowest === MAX_SCORE  ?  top  :  top + (MAX_SCORE - score) / (MAX_SCORE - lowest) * (bottom - top));
 
@@ -108,7 +131,18 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
     setHoveredIndex(distances.indexOf(Math.min(...distances)));
   };
 
+  // Centered on your line, but within the graph's padding box.
+  const myScoreFrameLeftPx = Math.min(Math.max(0, sizePx.left + myX / PLOT_SIZE * sizePx.width - myScoreFrameSizePx.width / 2),
+    2 * sizePx.left + sizePx.width - myScoreFrameSizePx.width);
+
   const hoveredEntry = (hoveredIndex === null  ?  undefined  :  ascendingEntries[hoveredIndex]);
+  const myScoreIsFramed = (myIndex !== -1  &&  ! hoveredEntry);
+  // Your line ends 1px inside the frame's top border, so none of it shows below the frame where its edge falls between
+  //  pixels.
+  const myLineBottom = ((myScoreIsFramed  &&  sizePx.height > 0)
+    ?  PLOT_SIZE - (myScoreFrameSizePx.height - 1) / sizePx.height * PLOT_SIZE
+    :  PLOT_SIZE);
+
   const hoveredX = (hoveredIndex === null  ?  0  :  pointX(hoveredIndex));
 
   return (
@@ -122,7 +156,8 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
         {renderPart('line', 'below', -dotRadius, myX)}
         {renderPart('line', 'above', myX, capX)}
         {renderPart('line', 'above capped', Math.max(myX, capX), PLOT_SIZE + dotRadius)}
-        {myIndex !== -1  &&  <line className="mine" x1={myX} x2={myX} y1={pointY(scores[myIndex]!)} y2={PLOT_SIZE} />}
+        {myIndex !== -1  &&  <line className="mine" x1={myX} x2={myX} y1={pointY(scores[myIndex]!)}
+          y2={Math.max(pointY(scores[myIndex]!), myLineBottom)} />}
         {hoveredEntry  &&  <line className="hovered" x1={hoveredX} x2={hoveredX} y1={pointY(hoveredEntry.score)} y2={PLOT_SIZE} />}
         {ascendingEntries.map((entry, i)  =>  (
           <path key={(entry.me  ?  'me'  :  entry.playerId)} className={dotClass(entry, i)} d={`M${pointX(i)},${pointY(entry.score)}h0`}
@@ -132,6 +167,11 @@ export function ScoresGraph({ entries, myName, scoreCap }: {
           <path className="hovered-dot" d={`M${hoveredX},${pointY(hoveredEntry.score)}h0`} style={{ strokeWidth: 2 * DOT_RADIUS_PX + 2 }} />
         )}
       </svg>
+      {myScoreIsFramed  &&  (
+        <div ref={myScoreFrame} className="my-score" style={{ left: myScoreFrameLeftPx }}>
+          {Math.floor(scores[myIndex]! / 1000)}<span className="my-score-tail">k</span>
+        </div>
+      )}
       {/* Shifted left by as much of its width as it's far along, so it stays inside the graph; at the bottom when the
            score is high, so it doesn't hide its dot. */}
       {hoveredEntry  &&  (
