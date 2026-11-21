@@ -75,8 +75,9 @@ function frameStyleOrNull(framedLevels: string[], maxNum: number): CSSProperties
 
 // The levels' bars, singles and doubles side by side with the level number between them, highest on top, and the
 //  other chart types' levels below them; `renderBar` draws each bar with a LevelBarButton.
-// A click selects one level, and a drag a rectangle of singles and doubles (see useLevelDrag), framed as a whole. A
-//  click on a level already selected also passes `onSelect` the id of the segment it was on.
+// A click selects one level, or both of a level number, and a drag a rectangle of singles and doubles (see
+//  useLevelDrag), framed as a whole. A click on a level already selected also passes `onSelect` the id of the segment
+//  it was on.
 export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
   levels: string[];
   selectedLevels: string[];
@@ -103,9 +104,18 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
     (level  ?  renderBar(level, side, barSelection(level))  :  <span className={`level-bar ${side} placeholder`} aria-hidden="true" />);
 
   const select = (event: MouseEvent<HTMLElement>)  => {
-    const level = (event.target as HTMLElement).closest<HTMLElement>('[data-level]')?.dataset.level;
-    if (level)
+    const target = event.target as HTMLElement;
+    const level = target.closest<HTMLElement>('[data-level]')?.dataset.level;
+    if (level) {
       onSelect([level], (selectedLevels.includes(level)  ?  clickedSegmentIdOrNull(event)  :  null));
+      return;
+    }
+
+    // A click on a level number selects both its single and its double.
+    const num = target.closest<HTMLElement>('[data-num]')?.dataset.num;
+    const numLevels = (num  ?  sideLevels.filter((level)  =>  levelNum(level) === Number(num))  :  []);
+    if (numLevels.length)
+      onSelect(numLevels, null);
   };
 
   const selectedFrameStyle = (draggedLevels  ?  null  :  frameStyleOrNull(selectedLevels.filter((level)  =>  sideLevels.includes(level)), maxNum));
@@ -120,10 +130,14 @@ export function LevelChart({ levels, selectedLevels, renderBar, onSelect }: {
         <span className={`level-head${headOn('D')}`}>Doubles</span>
         {nums.map((num)  => {
           const singleLevel = find('S', num), doubleLevel = find('D', num);
+          const numClassName = `level-num${((isSelected(singleLevel)  ||  isSelected(doubleLevel))  ?  ' on'  :  '')}`;
           return (
             <Fragment key={num}>
               {renderSideBar(singleLevel, 'single')}
-              <span className={`level-num${((isSelected(singleLevel)  ||  isSelected(doubleLevel))  ?  ' on'  :  '')}`} data-num={num}>{num}</span>
+              {/* A button, or a phone moves a finger's tap on it to a bar beside it, which is one. */}
+              {(singleLevel  ||  doubleLevel)
+                ?  <button className={numClassName} type="button" data-num={num} title={`Level ${num}, singles and doubles`}>{num}</button>
+                :  <span className={numClassName} data-num={num}>{num}</span>}
               {renderSideBar(doubleLevel, 'double')}
             </Fragment>
           );

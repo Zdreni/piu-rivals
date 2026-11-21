@@ -18,6 +18,8 @@ interface Drag {
   y: number;
   timer: number;
   start: Cell;
+  // Whether it started on a level number, so its rectangle has both sides.
+  hasBothSides: boolean;
   // The corner the pointer is at, and the levels in the rectangle, once the drag has started.
   end: Cell | null;
   levels: string[];
@@ -51,12 +53,20 @@ function cellAtOrNull(chart: HTMLElement, x: number, y: number, lastSide: LevelS
 
 
 // The levels of `sideLevels` in the rectangle between cells `a` and `b`, both sides when they're on different ones.
-const rectangleLevels = (sideLevels: string[], a: Cell, b: Cell)  =>  sideLevels.filter((level)  =>
+const rectangleLevels = (sideLevels: string[], a: Cell, b: Cell, hasBothSides: boolean)  =>  sideLevels.filter((level)  =>
   levelNum(level) >= Math.min(a.num, b.num)  &&  levelNum(level) <= Math.max(a.num, b.num)
-  &&  (a.side !== b.side  ||  levelSide(level) === a.side));
+  &&  (hasBothSides  ||  a.side !== b.side  ||  levelSide(level) === a.side));
 
 
-// Selecting a rectangle of singles and doubles (`sideLevels`) by dragging from one bar to another: right away with a
+// The level number of the cell `element` is in, if that cell is in `chart`.
+function numCellNumOrNull(element: Element | null, chart: HTMLElement) {
+  const cell = element?.closest<HTMLElement>('[data-num]');
+  return ((cell  &&  chart.contains(cell))  ?  Number(cell.dataset.num)  :  null);
+}
+
+
+// Selecting a rectangle of singles and doubles (`sideLevels`) by dragging from one bar to another, or from a level
+//  number, which takes both sides of each row: right away with a
 //  mouse, and after a long press with a finger, so that a swipe right away still scrolls the levels. It ends with
 //  `onDrag` and the rectangle's levels, in the order of `sideLevels`, and the click it may leave behind is dropped. A
 //  mouse that stays on its bar is left to that bar's click. `draggedLevels` are the rectangle's levels so far, null
@@ -91,7 +101,7 @@ export function useLevelDrag(sideLevels: string[], onDrag: (draggedLevels: strin
 
   const extend = (drag: Drag, end: Cell)  => {
     drag.end = end;
-    drag.levels = rectangleLevels(sideLevels, drag.start, end);
+    drag.levels = rectangleLevels(sideLevels, drag.start, end, drag.hasBothSides);
     setDraggedLevels(drag.levels);
   };
 
@@ -101,11 +111,16 @@ export function useLevelDrag(sideLevels: string[], onDrag: (draggedLevels: strin
     endDrag();
 
     const level = barLevelOrNull(event.target as Element, event.currentTarget);
-    if (event.button !== 0  ||  ! level  ||  ! sideLevels.includes(level))
+    const num = numCellNumOrNull(event.target as Element, event.currentTarget);
+    const startsOnBar = (level !== null  &&  sideLevels.includes(level));
+    if (event.button !== 0  ||  (! startsOnBar  &&  num === null))
       return;
 
-    const start = { num: levelNum(level), side: levelSide(level) };
-    const drag: Drag = { chart: event.currentTarget, x: event.clientX, y: event.clientY, timer: 0, start, end: null, levels: [] };
+    // A drag from a level number starts on the singles' side, so only a move to another row makes it a drag.
+    const start: Cell = (startsOnBar  ?  { num: levelNum(level!), side: levelSide(level!) }  :  { num: num!, side: 'single' });
+    const drag: Drag = {
+      chart: event.currentTarget, x: event.clientX, y: event.clientY, timer: 0, start, hasBothSides: ! startsOnBar, end: null, levels: [],
+    };
     if (event.pointerType === 'touch') {
       drag.timer = window.setTimeout(()  => {
         if (dragRef.current !== drag)

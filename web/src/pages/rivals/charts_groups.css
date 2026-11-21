@@ -19,6 +19,7 @@
 .rivals .level-head.single { text-align: right; }
 .rivals .level-num { display: flex; align-items: center; justify-content: center; font-size: 18px; color: #9AB3A3;
                      font-variant-numeric: tabular-nums; }
+.rivals button.level-num { padding: 0; border: 0; background: none; font-family: inherit; line-height: inherit; cursor: pointer; }
 .rivals .level-num.on, .rivals .level-head.on { color: #EAF5EC; font-weight: 600; }
 .rivals .level-bar { position: relative; display: block; height: 92%; align-self: center; padding: 0; border: 1px solid rgba(255,255,255,.04); box-sizing: border-box;
                      border-radius: 3px; overflow: hidden; background: #1C2B22; cursor: pointer; opacity: var(--bar-dim); }
