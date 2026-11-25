@@ -43,7 +43,7 @@ export async function scrapePlayer(
   onSession: (progress: SessionProgress) => Promise<void> | void = ()  =>  {},
 ): Promise<PlayerScrapeResult> {
   const checkpoint = await sink.checkpoint();
-  const hasSessions = await browser.openPlayer(playerId);
+  await browser.openPlayer(playerId);
   let page = await browser.readPage();
 
   // The open session shows PUMBILITY as of that session, so it is current only for the newest one,
@@ -55,10 +55,6 @@ export async function scrapePlayer(
   await sink.savePlayerInfo(page.playerName, pumbility);
 
   const result: PlayerScrapeResult = { name: page.playerName, sessions: 0, playsAdded: 0, bestsImproved: 0 };
-  if (! hasSessions) {
-    await sink.markScraped();
-    return result;
-  }
 
   // Page back through the history until a stored session or the end of Phoenix 2 history is reached.
   const collectedCards: SessionCard[] = [];

@@ -40,8 +40,10 @@ export class SessionsBrowser {
   }
 
 
-  // Opens a player's Sessions page; returns false when the player has no sessions listed.
-  async openPlayer(playerId: string): Promise<boolean> {
+  // Opens a player's Sessions page and waits for its session cards.
+  // piuscores may take over 10 seconds to show them, and how it shows a player with no sessions
+  //  isn't known, so cards that don't show up are an error rather than taken as no sessions.
+  async openPlayer(playerId: string) {
     await sleep(config.scrapeDelayMs);
     await this.page.goto(`${config.piuscoresUrl}/Player/${encodeURIComponent(playerId)}/Sessions`, {
       waitUntil: 'domcontentloaded',
@@ -49,14 +51,12 @@ export class SessionsBrowser {
     });
 
     await this.page.waitForSelector('main h5', { timeout: TIMEOUT_MS });
-
-    const cards = await this.page.waitForSelector('[data-testid="session-card"]', { timeout: 10000 })
-      .then(()  =>  true, ()  =>  false);
-
     if (! /Sessions$/i.test((await this.page.textContent('main h5'))?.trim()  ||  ''))
       throw new Error(`No Sessions page for player ${playerId}`);
 
-    return cards;
+    await this.page.waitForSelector('[data-testid="session-card"]', { timeout: TIMEOUT_MS }).catch(()  => {
+      throw new Error(`Timed out waiting for the sessions of player ${playerId}`);
+    });
   }
 
 
