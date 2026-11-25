@@ -1,10 +1,11 @@
 import type { PlayerSummary, Rival } from '@piu-rivals/shared';
-import { type ReactNode, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { tabsClass, useTabsFit } from './layout.ts';
 import { type Chartboard, displayName, type PlayerBests } from '../../data/model.ts';
 import type { CountBy, LevelRange } from '../../data/preferences.ts';
 import { usePlayers } from '../../data/other_players.ts';
 import { OtherPlayers } from './other_players.tsx';
+import { isFound, PlayerSearch } from './player_search.tsx';
 import { RivalListItem, type ListedPlayer } from './rival_list_item.tsx';
 import { type Counts, NO_COUNTS, playerCounts } from '../../data/stats.ts';
 import type { SetupTab } from './ui_state.ts';
@@ -47,13 +48,26 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
   const { players: allPlayers, error: playersError } = usePlayers();
   const rivalStats = useMemo(()  =>  playerCounts(chartboards), [chartboards]);
 
-  // You and your rivals by PUMBILITY (highest first); those without one follow alphabetically.
-  const players = [me, ...rivals].map(toListedPlayer).sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
-    ||  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  // Each tab's search is kept while you switch tabs.
+  const [rivalQuery, setRivalQuery] = useState('');
+  const [otherPlayerQuery, setOtherPlayerQuery] = useState('');
+  const searchText = rivalQuery.trim().toLowerCase();
+
+  // You and the rivals found by `rivalQuery`, by PUMBILITY (highest first); those without one follow alphabetically.
+  const players = [me, ...rivals].map(toListedPlayer)
+    .filter((p)  =>  p.playerId === me.id  ||  isFound(p.fullName, searchText))
+    .sort((a, b)  =>  (b.pumbility  ??  -1) - (a.pumbility  ??  -1)
+      ||  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
   const hiddenIds = new Set(rivals.filter((r)  =>  r.hidden).map((r)  =>  r.id));
   const rivalIds = new Set(rivals.map((r)  =>  r.id));
   const otherPlayerCount = allPlayers  &&  allPlayers.filter((p)  =>  p.id !== me.id  &&  ! rivalIds.has(p.id)).length;
+
+  // My rivals opens centered on you, before a focused rival is brought into view below.
+  useEffect(()  => {
+    if (tab === 'mine')
+      container.current?.querySelector('.rival.me')?.scrollIntoView({ block: 'center' });
+  }, [tab]);
 
   // A newly added rival is focused; it's brought into view once you're back on My rivals. A rival unrolls as it's
   //  focused, so it's brought into view again once it has.
@@ -89,16 +103,21 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
 
   return (
     <div className="rival-list" aria-label="Setup">
-      <div className={`rival-tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist">
-        {renderTabButton('mine', 'My rivals', rivals.length)}
-        {renderTabButton('others', 'Others', otherPlayerCount)}
-        {renderTabButton('preferences', 'Preferences', null)}
+      {/* The search sticks to the top with the tabs where the page scrolls. */}
+      <div className="setup-head">
+        <div className={`rival-tabs${tabsClass(tabsFit)}`} ref={tabBar} role="tablist">
+          {renderTabButton('mine', 'My rivals', rivals.length)}
+          {renderTabButton('others', 'Others', otherPlayerCount)}
+          {renderTabButton('preferences', 'Preferences', null)}
+        </div>
+        {tab === 'mine'  &&  !! rivals.length  &&  <PlayerSearch query={rivalQuery} placeholder="Find a rival…" onQuery={setRivalQuery} />}
+        {tab === 'others'  &&  <PlayerSearch query={otherPlayerQuery} placeholder="Find a player…" onQuery={setOtherPlayerQuery} />}
       </div>
       {tab === 'preferences'
         ?  preferencesPanel
         :  tab === 'others'
         ?  (
-          <OtherPlayers me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds}
+          <OtherPlayers query={otherPlayerQuery} me={me} myBests={bests.get(me.id)} players={allPlayers} error={playersError} rivalIds={rivalIds}
             focusedPlayerId={focusedPlayerId} soloPlayerId={soloPlayerId} scoreCap={scoreCap} levelRange={levelRange} onFocus={onFocus} onAdd={add} onSolo={onSolo}
             onStats={onStats} />
         )
@@ -132,6 +151,7 @@ export function RivalList({ tab, chartboards, me, rivals, bests, focusedPlayerId
               );
             })}
             {! rivals.length  &&  <div className="muted rival-hint">No rivals yet. Add some on the Others tab.</div>}
+            {!! rivals.length  &&  players.length === 1  &&  <div className="muted rival-hint">No such rival.</div>}
           </div>
         )}
     </div>

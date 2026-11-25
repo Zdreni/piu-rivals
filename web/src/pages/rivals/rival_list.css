@@ -63,13 +63,16 @@
 .rivals .rival-counts .zero, .rivals .rival-stats .zero { opacity: .4; }
 .rivals .rival.off .rival-name, .rivals .rival.off .rival-pum, .rivals .rival.off .rival-scrap { opacity: .45; }
 
+/* The search box of My rivals and Others */
+
+.rivals .player-search { margin: 0 16px 8px 14px; }
+.rivals .player-search input { width: 100%; background: #1C2B22; color: #EAF5EC; border: 1px solid #2B4034; border-radius: 4px;
+                               padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
+.rivals .player-search input::placeholder { color: #8A9590; }
+.rivals .player-search input:focus { border-color: #4FE33F; }
+
 /* Others: players to add as rivals */
 
-.rivals .rival-add { margin: 0 16px 8px 14px; }
-.rivals .rival-add input { width: 100%; background: #1C2B22; color: #EAF5EC; border: 1px solid #2B4034; border-radius: 4px;
-                           padding: 4px 8px; font: 400 14px/1.4 Roboto, Arial, sans-serif; outline: none; }
-.rivals .rival-add input::placeholder { color: #8A9590; }
-.rivals .rival-add input:focus { border-color: #4FE33F; }
 .rivals .rival.other { padding: 6px; }
 .rivals .rival-plus { flex-shrink: 0; width: 28px; height: 22px; background: #1C2B22; color: #9AB3A3; border: 1px solid #2B4034;
                       border-radius: 4px; font: 600 16px/1 Roboto, Arial, sans-serif; cursor: pointer; }

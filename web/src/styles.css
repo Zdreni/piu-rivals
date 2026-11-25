@@ -105,16 +105,16 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
    under the tabs or the title that stick there. They fade to the page's background (--page-bg). */
 .app { --page-bg: var(--bg); }
 .app.full { --page-bg: #14201A; }
-.app::before, .app::after, .app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after {
+.app::before, .app::after, .app .rivals :is(.tabs, .setup-head, .group-title.stuck)::after {
   content: ''; position: fixed; left: 0; right: 0; z-index: 30; height: 32px; pointer-events: none; opacity: 0;
   transition: opacity .2s ease; }
 .app::after { bottom: var(--bottom-nav-height); background: linear-gradient(transparent, var(--page-bg)); }
-.app::before, .app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { background: linear-gradient(var(--page-bg), transparent); }
+.app::before, .app .rivals :is(.tabs, .setup-head, .group-title.stuck)::after { background: linear-gradient(var(--page-bg), transparent); }
 .app::before { top: 0; }
-.app .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { position: absolute; top: 100%; }
+.app .rivals :is(.tabs, .setup-head, .group-title.stuck)::after { position: absolute; top: 100%; }
 .app.more-below::after { opacity: 1; }
 /* Where tabs or a folder's title stick to the top, the veil is under them, over the rest of their column. */
-.app.more-above:not(:has(.rivals .tabs, .rivals .rival-tabs, .group-title.stuck))::before, .app.more-above .rivals :is(.tabs, .rival-tabs, .group-title.stuck)::after { opacity: 1; }
+.app.more-above:not(:has(.rivals .tabs, .rivals .setup-head, .group-title.stuck))::before, .app.more-above .rivals :is(.tabs, .setup-head, .group-title.stuck)::after { opacity: 1; }
 
 /* The footer keeps to the bottom of the window, below short pages too. */
 .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
